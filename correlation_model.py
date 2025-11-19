@@ -16,10 +16,15 @@ CORR_MODEL_FILE = Path('correlation_model_weights.json')
 
 
 def sigmoid(x: float) -> float:
+    """Sigmoid function with bounds to prevent extreme predictions"""
     try:
-        return 1.0 / (1.0 + math.exp(-x))
+        # Clip input to prevent extreme outputs
+        x_clipped = max(-5.0, min(5.0, x))  # Prevents outputs outside ~0.007 to ~0.993
+        result = 1.0 / (1.0 + math.exp(-x_clipped))
+        # Apply additional bounds to prevent 0% or 100% predictions
+        return max(0.05, min(0.95, result))  # Keep between 5% and 95%
     except OverflowError:
-        return 0.0 if x < 0 else 1.0
+        return 0.05 if x < 0 else 0.95
 
 
 class CorrelationModel:
@@ -31,7 +36,8 @@ class CorrelationModel:
             'gs_diff','power_play_diff','blocked_shots_diff','corsi_diff','hits_diff',
             'rest_diff','hdc_diff','shots_diff','giveaways_diff','sos_diff',
             'takeaways_diff','xg_diff','pim_diff','faceoff_diff',
-            'goalie_matchup_quality','special_teams_matchup'
+            'goalie_matchup_quality','special_teams_matchup',
+            'goalie_perf_diff','recent_form_diff','venue_win_pct_diff'  # Additional variables
         ]
         self._load()
 
@@ -62,6 +68,9 @@ class CorrelationModel:
             'faceoff_diff': -0.0118,
             'goalie_matchup_quality': 0.0,  # Will be learned from data
             'special_teams_matchup': 0.0,  # Will be learned from data
+            'goalie_perf_diff': 0.0,  # Will be learned from data
+            'recent_form_diff': 0.0,  # Will be learned from data
+            'venue_win_pct_diff': 0.0,  # Will be learned from data
         }
         self.bias = 0.0
 
@@ -88,19 +97,34 @@ class CorrelationModel:
             'pim_diff': float(metrics.get('away_penalty_minutes', 0.0)) - float(metrics.get('home_penalty_minutes', 0.0)),
             'faceoff_diff': float(metrics.get('away_faceoff_pct', 50.0)) - float(metrics.get('home_faceoff_pct', 50.0)),
         }
-        # Add goalie and recent form if available
+        # Add goalie and recent form if available (always include in feature_keys)
         if 'away_goalie_perf' in metrics and 'home_goalie_perf' in metrics:
             feat['goalie_perf_diff'] = float(metrics.get('away_goalie_perf', 0.0)) - float(metrics.get('home_goalie_perf', 0.0))
+        else:
+            feat['goalie_perf_diff'] = 0.0
+        
         if 'recent_form_diff' in metrics:
             feat['recent_form_diff'] = float(metrics.get('recent_form_diff', 0.0))
+        else:
+            feat['recent_form_diff'] = 0.0
+        
         # Add venue win percentage difference (replaces generic home ice advantage)
         if 'away_venue_win_pct' in metrics and 'home_venue_win_pct' in metrics:
             feat['venue_win_pct_diff'] = float(metrics.get('away_venue_win_pct', 0.5)) - float(metrics.get('home_venue_win_pct', 0.5))
+        else:
+            feat['venue_win_pct_diff'] = 0.0
+        
         # Add goalie matchup quality and special teams matchup
         if 'goalie_matchup_quality' in metrics:
             feat['goalie_matchup_quality'] = float(metrics.get('goalie_matchup_quality', 0.0))
+        else:
+            feat['goalie_matchup_quality'] = 0.0
+        
         if 'special_teams_matchup' in metrics:
             feat['special_teams_matchup'] = float(metrics.get('special_teams_matchup', 0.0))
+        else:
+            feat['special_teams_matchup'] = 0.0
+        
         return feat
 
     def _score(self, feats: Dict[str, float]) -> float:
@@ -114,28 +138,9 @@ class CorrelationModel:
             if k == 'gs_diff':
                 v = v * 0.5  # Reduce GS influence by 50%
             s += w * v
-        # Use venue-specific win percentage difference instead of generic home ice advantage
-        # This accounts for teams that are actually bad at home or good on the road
-        venue_win_pct_diff = feats.get('venue_win_pct_diff', 0.0)
-        if venue_win_pct_diff != 0.0:
-            # Weight venue win% difference: positive = away team better at away than home team at home
-            # Scale by 0.5 to account for typical NHL home advantage range
-            s += 0.5 * venue_win_pct_diff
-        else:
-            # Fallback to neutral if no venue data available
-            pass
-        # Add recent form if available
-        recent_form_diff = feats.get('recent_form_diff', 0.0)
-        if recent_form_diff != 0.0:
-            s += 0.2 * recent_form_diff  # Weight recent form
-        # Add goalie matchup quality (already normalized -1 to +1)
-        goalie_matchup = feats.get('goalie_matchup_quality', 0.0)
-        if goalie_matchup != 0.0:
-            s += 0.2 * goalie_matchup  # Weight goalie matchup (tuned for best accuracy)
-        # Add special teams matchup (already normalized -1 to +1)
-        special_teams = feats.get('special_teams_matchup', 0.0)
-        if special_teams != 0.0:
-            s += 0.1 * special_teams  # Weight special teams matchup (tuned for best accuracy)
+        # Note: venue_win_pct_diff, recent_form_diff, goalie_matchup_quality, 
+        # special_teams_matchup, and goalie_perf_diff are now included in feature_keys
+        # and handled by the weight loop above. Weights are learned from data during refitting.
         return s
 
     def predict_from_metrics(self, metrics: Dict) -> Dict[str, float]:
@@ -163,31 +168,83 @@ class CorrelationModel:
         self.bias = self.bias - lr * err
         self._save()
     
-    def refit_weights_from_history(self, predictions_file: str = 'win_probability_predictions_v2.json') -> None:
+    def refit_weights_from_history(self, predictions_file: str = 'win_probability_predictions_v2.json', 
+                                   learning_model=None) -> None:
         """Periodically re-fit weights using logistic regression on all completed games.
         This should be called weekly/monthly to ensure weights stay current.
+        
+        Args:
+            predictions_file: Path to predictions JSON file (fallback if learning_model not provided)
+            learning_model: Optional ImprovedSelfLearningModelV2 instance - if provided, uses its internal data
         """
         import json
         from pathlib import Path
         
-        pred_file = Path(predictions_file)
-        if not pred_file.exists():
-            return
+        # Prefer learning_model's internal data if available (has all games)
+        if learning_model and hasattr(learning_model, 'model_data'):
+            completed = [p for p in learning_model.model_data.get('predictions', []) if p.get('actual_winner')]
+            print(f"📊 Using {len(completed)} completed games from learning_model internal data")
+        else:
+            # Fallback to file
+            pred_file = Path(predictions_file)
+            if not pred_file.exists():
+                print(f"⚠️  Predictions file not found: {predictions_file}")
+                return
+            
+            with open(pred_file, 'r') as f:
+                data = json.load(f)
+            
+            completed = [p for p in data.get('predictions', []) if p.get('actual_winner')]
+            print(f"📊 Using {len(completed)} completed games from file: {predictions_file}")
         
-        with open(pred_file, 'r') as f:
-            data = json.load(f)
-        
-        completed = [p for p in data.get('predictions', []) if p.get('actual_winner')]
-        if len(completed) < 20:  # Need minimum samples
+        if len(completed) < 5:  # Minimum samples for refitting (lowered to allow learning with limited data)
+            print(f"⚠️  Only {len(completed)} completed games found, need at least 5 for refitting")
             return
         
         # Build feature matrix and labels
         X = []
         y = []
         for pred in completed:
-            metrics = pred.get('metrics_used', {})
+            metrics = pred.get('metrics_used', {}).copy() if pred.get('metrics_used') else {}
             if not metrics:
                 continue
+            
+            # Calculate missing metrics from historical data if learning_model provided
+            if learning_model:
+                away_team = pred.get('away_team', '')
+                home_team = pred.get('home_team', '')
+                game_date = pred.get('date', '')
+                
+                # Calculate goalie performance if missing (always recalculate from historical data)
+                try:
+                    away_goalie_perf = learning_model._goalie_performance_for_game(away_team, 'away', game_date)
+                    home_goalie_perf = learning_model._goalie_performance_for_game(home_team, 'home', game_date)
+                    metrics['away_goalie_perf'] = away_goalie_perf
+                    metrics['home_goalie_perf'] = home_goalie_perf
+                except Exception:
+                    metrics['away_goalie_perf'] = metrics.get('away_goalie_perf', 0.0)
+                    metrics['home_goalie_perf'] = metrics.get('home_goalie_perf', 0.0)
+                
+                # Calculate recent form if missing (always recalculate from historical data)
+                try:
+                    away_perf = learning_model.get_team_performance(away_team, 'away')
+                    home_perf = learning_model.get_team_performance(home_team, 'home')
+                    away_recent_form = away_perf.get('recent_form', 0.5)
+                    home_recent_form = home_perf.get('recent_form', 0.5)
+                    metrics['recent_form_diff'] = away_recent_form - home_recent_form
+                except Exception:
+                    metrics['recent_form_diff'] = metrics.get('recent_form_diff', 0.0)
+                
+                # Calculate venue win percentages if missing (always recalculate from historical data)
+                try:
+                    away_venue_win_pct = learning_model._calculate_venue_win_percentage(away_team, 'away')
+                    home_venue_win_pct = learning_model._calculate_venue_win_percentage(home_team, 'home')
+                    metrics['away_venue_win_pct'] = away_venue_win_pct
+                    metrics['home_venue_win_pct'] = home_venue_win_pct
+                except Exception:
+                    metrics['away_venue_win_pct'] = metrics.get('away_venue_win_pct', 0.5)
+                    metrics['home_venue_win_pct'] = metrics.get('home_venue_win_pct', 0.5)
+            
             feats = self._feature_row_from_metrics(metrics)
             X.append([feats.get(k, 0.0) for k in self.feature_keys])
             # Normalize label
@@ -201,8 +258,19 @@ class CorrelationModel:
             else:
                 continue
         
-        if len(X) < 20:
+        if len(X) < 5:
+            print(f"⚠️  Only {len(X)} valid samples after feature extraction, need at least 5")
             return
+        
+        # Debug: Show feature statistics
+        if len(X) > 0:
+            X_arr_debug = np.array(X)
+            print(f"\n📊 Feature statistics for {len(X)} games:")
+            for i, key in enumerate(self.feature_keys):
+                values = X_arr_debug[:, i]
+                non_zero = np.count_nonzero(values)
+                std_val = np.std(values)
+                print(f"  {key:25s}: mean={np.mean(values):7.3f}, std={std_val:7.3f}, non-zero={non_zero}/{len(X)}")
         
         # Simple batch gradient descent (logistic regression)
         # Initialize from current weights

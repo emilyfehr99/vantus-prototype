@@ -83,6 +83,27 @@ def recalculate_advanced_metrics():
                            'home_nzt', 'home_nztsa', 'home_ozs', 'home_nzs', 'home_dzs', 'home_fc', 'home_rush']:
                     metrics[key] = 0
             
+            # Calculate game-level xG and HDC (needed for team stats)
+            try:
+                if 'play_by_play' in game_data:
+                    away_xg, home_xg = generator._calculate_xg_from_plays(game_data)
+                    away_hdc, home_hdc = generator._calculate_hdc_from_plays(game_data)
+                    metrics['away_xg'] = away_xg
+                    metrics['home_xg'] = home_xg
+                    metrics['away_hdc'] = away_hdc
+                    metrics['home_hdc'] = home_hdc
+                else:
+                    metrics['away_xg'] = 0.0
+                    metrics['home_xg'] = 0.0
+                    metrics['away_hdc'] = 0
+                    metrics['home_hdc'] = 0
+            except Exception as e:
+                print(f"  ⚠️  xG/HDC calculation error for {game_id}: {e}")
+                metrics['away_xg'] = 0.0
+                metrics['home_xg'] = 0.0
+                metrics['away_hdc'] = 0
+                metrics['home_hdc'] = 0
+            
             # Calculate movement metrics
             try:
                 analyzer = AdvancedMetricsAnalyzer(game_data.get('play_by_play', {}))
@@ -148,16 +169,22 @@ def recalculate_advanced_metrics():
                 if period_gs_xg_away:
                     metrics['away_period_gs'] = period_gs_xg_away[0]  # [p1_gs, p2_gs, p3_gs]
                     metrics['away_period_xg'] = period_gs_xg_away[1]  # [p1_xg, p2_xg, p3_xg]
+                    # Calculate game-level GS total
+                    metrics['away_gs'] = sum(period_gs_xg_away[0])
                 else:
                     metrics['away_period_gs'] = [0.0, 0.0, 0.0]
                     metrics['away_period_xg'] = [0.0, 0.0, 0.0]
+                    metrics['away_gs'] = 0.0
                 
                 if period_gs_xg_home:
                     metrics['home_period_gs'] = period_gs_xg_home[0]
                     metrics['home_period_xg'] = period_gs_xg_home[1]
+                    # Calculate game-level GS total
+                    metrics['home_gs'] = sum(period_gs_xg_home[0])
                 else:
                     metrics['home_period_gs'] = [0.0, 0.0, 0.0]
                     metrics['home_period_xg'] = [0.0, 0.0, 0.0]
+                    metrics['home_gs'] = 0.0
                 
                 # Period zone metrics
                 metrics['away_period_nzt'] = away_zone_metrics.get('nz_turnovers', [0, 0, 0])
@@ -175,6 +202,39 @@ def recalculate_advanced_metrics():
                 metrics['home_period_dzs'] = home_zone_metrics.get('dz_originating_shots', [0, 0, 0])
                 metrics['home_period_fc'] = home_zone_metrics.get('fc_cycle_sog', [0, 0, 0])
                 metrics['home_period_rush'] = home_zone_metrics.get('rush_sog', [0, 0, 0])
+                
+                # Calculate game-level power play percentage and faceoff percentage
+                pp_goals_away = metrics['away_pp_goals']
+                pp_attempts_away = metrics['away_pp_attempts']
+                metrics['away_power_play_pct'] = (pp_goals_away / pp_attempts_away * 100) if pp_attempts_away > 0 else 0.0
+                
+                pp_goals_home = metrics['home_pp_goals']
+                pp_attempts_home = metrics['home_pp_attempts']
+                metrics['home_power_play_pct'] = (pp_goals_home / pp_attempts_home * 100) if pp_attempts_home > 0 else 0.0
+                
+                fo_wins_away = metrics['away_faceoff_wins']
+                fo_total_away = metrics['away_faceoff_total']
+                metrics['away_faceoff_pct'] = (fo_wins_away / fo_total_away * 100) if fo_total_away > 0 else 50.0
+                
+                fo_wins_home = metrics['home_faceoff_wins']
+                fo_total_home = metrics['home_faceoff_total']
+                metrics['home_faceoff_pct'] = (fo_wins_home / fo_total_home * 100) if fo_total_home > 0 else 50.0
+                
+                # Calculate game-level corsi percentage (average of periods)
+                metrics['away_corsi_pct'] = sum(away_period_stats.get('corsi_pct', [50.0, 50.0, 50.0])) / 3.0
+                metrics['home_corsi_pct'] = sum(home_period_stats.get('corsi_pct', [50.0, 50.0, 50.0])) / 3.0
+                
+                # Calculate game-level physical play metrics (sum across periods)
+                metrics['away_hits'] = sum(away_period_stats.get('hits', [0, 0, 0]))
+                metrics['home_hits'] = sum(home_period_stats.get('hits', [0, 0, 0]))
+                metrics['away_blocked_shots'] = sum(away_period_stats.get('bs', [0, 0, 0]))
+                metrics['home_blocked_shots'] = sum(home_period_stats.get('bs', [0, 0, 0]))
+                metrics['away_giveaways'] = sum(away_period_stats.get('gv', [0, 0, 0]))
+                metrics['home_giveaways'] = sum(home_period_stats.get('gv', [0, 0, 0]))
+                metrics['away_takeaways'] = sum(away_period_stats.get('tk', [0, 0, 0]))
+                metrics['home_takeaways'] = sum(home_period_stats.get('tk', [0, 0, 0]))
+                metrics['away_penalty_minutes'] = sum(away_period_stats.get('pim', [0, 0, 0]))
+                metrics['home_penalty_minutes'] = sum(home_period_stats.get('pim', [0, 0, 0]))
                 
             except Exception as e:
                 print(f"  ⚠️  Period stats error for {game_id}: {e}")
@@ -196,6 +256,26 @@ def recalculate_advanced_metrics():
                     metrics[key] = default_period_pct.copy()
                 for key in ['away_period_gs', 'away_period_xg', 'home_period_gs', 'home_period_xg']:
                     metrics[key] = [0.0, 0.0, 0.0]
+                # Set game-level defaults
+                metrics['away_gs'] = 0.0
+                metrics['home_gs'] = 0.0
+                metrics['away_power_play_pct'] = 0.0
+                metrics['home_power_play_pct'] = 0.0
+                metrics['away_faceoff_pct'] = 50.0
+                metrics['home_faceoff_pct'] = 50.0
+                metrics['away_corsi_pct'] = 50.0
+                metrics['home_corsi_pct'] = 50.0
+                # Set game-level physical play defaults
+                metrics['away_hits'] = 0
+                metrics['home_hits'] = 0
+                metrics['away_blocked_shots'] = 0
+                metrics['home_blocked_shots'] = 0
+                metrics['away_giveaways'] = 0
+                metrics['home_giveaways'] = 0
+                metrics['away_takeaways'] = 0
+                metrics['home_takeaways'] = 0
+                metrics['away_penalty_minutes'] = 0
+                metrics['home_penalty_minutes'] = 0
                 for key in ['away_period_nzt', 'away_period_nztsa', 'away_period_ozs', 'away_period_nzs',
                            'away_period_dzs', 'away_period_fc', 'away_period_rush',
                            'home_period_nzt', 'home_period_nztsa', 'home_period_ozs', 'home_period_nzs',

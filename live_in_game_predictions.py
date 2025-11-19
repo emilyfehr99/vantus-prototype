@@ -47,10 +47,10 @@ class LiveInGamePredictor:
             print(f"❌ Error getting live games: {e}")
             return []
     
-    def get_live_game_data(self, game_id):
         """Get comprehensive live game data including ALL metrics from post-game reports"""
         try:
             game_data = self.api.get_comprehensive_game_data(game_id)
+            
             if not game_data:
                 return None
                 
@@ -126,6 +126,55 @@ class LiveInGamePredictor:
                 'away_power_play_opportunities': away_stats.get('powerPlayOpportunities', 0),
                 'home_power_play_opportunities': home_stats.get('powerPlayOpportunities', 0),
             }
+
+            # Extract Scoring Summary
+            scoring_summary = []
+            try:
+                # Try to get scoring from boxscore first (some APIs have it)
+                # If not, parse play-by-play
+                plays = game_data.get('play_by_play', {}).get('plays', []) or []
+                for play in plays:
+                    if play.get('typeDescKey') == 'goal':
+                        details = play.get('details', {})
+                        period = play.get('periodDescriptor', {}).get('number', 0)
+                        time_in_period = play.get('timeInPeriod', '00:00')
+                        
+                        scoring_team_id = details.get('eventOwnerTeamId')
+                        scoring_team = away_abbrev if scoring_team_id == away_team_id else home_abbrev
+                        
+                        scorer_id = details.get('scoringPlayerId')
+                        scorer_name = "Unknown"
+                        # Try to find player name in roster
+                        # (Simplified for now, would need roster lookup)
+                        
+                        assist_ids = [details.get('assist1PlayerId'), details.get('assist2PlayerId')]
+                        assists = [] # Placeholder for names
+                        
+                        scoring_summary.append({
+                            'period': period,
+                            'time': time_in_period,
+                            'team': scoring_team,
+                            'scorer': f"Player {scorer_id}", # Placeholder until roster lookup
+                            'assists': [],
+                            'away_score': details.get('awayScore', 0),
+                            'home_score': details.get('homeScore', 0)
+                        })
+            except Exception as e:
+                print(f"Error extracting scoring summary: {e}")
+            
+            live_metrics['scoring_summary'] = scoring_summary
+
+            # Extract Goalie Stats
+            goalie_stats = {'away': {}, 'home': {}}
+            try:
+                # Need to iterate players in boxscore
+                # This depends heavily on API structure, assuming standard NHL API
+                # For now, we'll initialize with defaults if we can't find them easily
+                pass 
+            except Exception as e:
+                print(f"Error extracting goalie stats: {e}")
+            
+            live_metrics['goalie_stats'] = goalie_stats
             
             # Calculate advanced metrics from play-by-play if available
             if game_data.get('play_by_play') and away_team_id and home_team_id:
