@@ -359,21 +359,28 @@ def get_today_predictions():
                 # Filter for today's predictions (games without actual_winner are upcoming)
                 todays_predictions = []
                 for pred in all_predictions:
+                    # Check if it's today and no winner yet (upcoming game)
                     if pred.get('date') == today and not pred.get('actual_winner'):
+                        # Values are already in decimal format (0.47) in the file
+                        away_prob = pred.get('predicted_away_win_prob', 0.5)
+                        home_prob = pred.get('predicted_home_win_prob', 0.5)
+                        
                         todays_predictions.append({
                             'game_id': pred.get('game_id'),
                             'away_team': pred.get('away_team'),
                             'home_team': pred.get('home_team'),
-                            'away_win_prob': pred.get('predicted_away_win_prob', 0.5) / 100 if pred.get('predicted_away_win_prob', 0) > 1 else pred.get('predicted_away_win_prob', 0.5),
-                            'home_win_prob': pred.get('predicted_home_win_prob', 0.5) / 100 if pred.get('predicted_home_win_prob', 0) > 1 else pred.get('predicted_home_win_prob', 0.5),
-                            'favorite': pred.get('home_team') if pred.get('predicted_home_win_prob', 50) > pred.get('predicted_away_win_prob', 50) else pred.get('away_team'),
-                            'spread': abs(pred.get('predicted_home_win_prob', 50) - pred.get('predicted_away_win_prob', 50)) / 100 if pred.get('predicted_home_win_prob', 0) > 1 else abs(pred.get('predicted_home_win_prob', 0.5) - pred.get('predicted_away_win_prob', 0.5)),
-                            'confidence': max(pred.get('predicted_away_win_prob', 50), pred.get('predicted_home_win_prob', 50)) / 100 if pred.get('predicted_home_win_prob', 0) > 1 else max(pred.get('predicted_away_win_prob', 0.5), pred.get('predicted_home_win_prob', 0.5))
+                            'away_win_prob': away_prob,
+                            'home_win_prob': home_prob,
+                            'favorite': pred.get('home_team') if home_prob > away_prob else pred.get('away_team'),
+                            'spread': abs(home_prob - away_prob),
+                            'confidence': max(away_prob, home_prob)
                         })
                 
                 if todays_predictions:
-                    print(f"✅ Found {len(todays_predictions)} predictions for today from file")
+                    print(f"✅ Found {len(todays_predictions)} predictions for today ({today}) from file")
                     return jsonify(todays_predictions)
+                else:
+                    print(f"⚠️  No predictions found for today ({today}) in file")
         except Exception as file_error:
             print(f"Could not read predictions file: {file_error}")
         
