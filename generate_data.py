@@ -68,10 +68,12 @@ def generate_team_stats():
                 "nztsa": [gen_metric(0.5, 0.2, -0.5) for _ in range(gp // 2)], # NZ Turnovers to Shots Against
                 "fc": [gen_metric(12, 3, 0.5) for _ in range(gp // 2)], # Forecheck shots
                 "rush": [gen_metric(8, 2, 0.6) for _ in range(gp // 2)], # Rush shots
-                "lateral": [gen_metric(18, 4, 0.5) for _ in range(gp // 2)], # Lateral movement
-                "longitudinal": [gen_metric(45, 8, 0.2) for _ in range(gp // 2)], # Longitudinal movement
+                "lat": [gen_metric(18, 4, 0.5) for _ in range(gp // 2)], # Lateral movement
+                "long_movement": [gen_metric(45, 8, 0.2) for _ in range(gp // 2)], # Longitudinal movement
                 "hdc": [gen_metric(10, 3, 0.7) for _ in range(gp // 2)], # High Danger Chances
+                "hdca": [gen_metric(9, 3, -0.6) for _ in range(gp // 2)], # High Danger Chances Against
                 "period_dzs": [gen_metric(15, 4, -0.4) for _ in range(gp // 2)], # Period Defensive Zone Starts
+                "goals_against": [gen_metric(2.9, 1.5, -0.7) for _ in range(gp // 2)], # Goals Against
             },
             "away": {
                 "gs": [gen_metric(50, 10, 0.8) for _ in range(gp // 2)],
@@ -99,10 +101,12 @@ def generate_team_stats():
                 "nztsa": [gen_metric(0.6, 0.2, -0.5) for _ in range(gp // 2)],
                 "fc": [gen_metric(10, 3, 0.5) for _ in range(gp // 2)],
                 "rush": [gen_metric(7, 2, 0.6) for _ in range(gp // 2)],
-                "lateral": [gen_metric(16, 4, 0.5) for _ in range(gp // 2)],
-                "longitudinal": [gen_metric(42, 8, 0.2) for _ in range(gp // 2)],
+                "lat": [gen_metric(16, 4, 0.5) for _ in range(gp // 2)],
+                "long_movement": [gen_metric(42, 8, 0.2) for _ in range(gp // 2)],
                 "hdc": [gen_metric(9, 3, 0.7) for _ in range(gp // 2)],
+                "hdca": [gen_metric(10, 3, -0.6) for _ in range(gp // 2)],
                 "period_dzs": [gen_metric(16, 4, -0.4) for _ in range(gp // 2)],
+                "goals_against": [gen_metric(3.1, 1.5, -0.7) for _ in range(gp // 2)],
             }
         }
         

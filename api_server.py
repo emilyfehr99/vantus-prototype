@@ -298,14 +298,77 @@ def get_team_heatmap(team_abbr):
                 
                 is_for = (int(event_owner_id) == int(target_team_id)) if target_team_id else True
                     
+                    
                 if play.get('typeDescKey') == 'shot-on-goal':
-                    point = {'x': x, 'y': y}
+                    # Extract metadata for tooltip
+                    shooter_id = details.get('shootingPlayerId')
+                    shooter_name = None
+                    if shooter_id and 'rosterSpots' in pbp:
+                        for spot in pbp['rosterSpots']:
+                            if spot.get('playerId') == shooter_id:
+                                shooter_name = spot.get('firstName', {}).get('default', '') + ' ' + spot.get('lastName', {}).get('default', '')
+                                break
+                    
+                    point = {
+                        'x': x,
+                        'y': y,
+                        'shooter': shooter_name,
+                        'shotType': details.get('shotType'),
+                        'xg': details.get('xGoal', 0.0)  # xG value if available
+                    }
+                    
+                    # Determine movement type based on previous events
+                    movement = None
+                    play_idx = pbp.get('plays', []).index(play)
+                    if play_idx > 0:
+                        prev_play = pbp['plays'][play_idx - 1]
+                        prev_type = prev_play.get('typeDescKey', '')
+                        if 'faceoff' in prev_type:
+                            movement = 'rush'
+                        elif 'hit' in prev_type or 'takeaway' in prev_type:
+                            movement = 'forecheck'
+                        elif prev_play.get('details', {}).get('zoneCode') != play.get('details', {}).get('zoneCode'):
+                            movement = 'transition'
+                    
+                    point['movement'] = movement
+                    
                     if is_for:
                         shots_for.append(point)
                     else:
                         shots_against.append(point)
                 elif play.get('typeDescKey') == 'goal':
-                    point = {'x': x, 'y': y}
+                    # Extract metadata for goals too
+                    shooter_id = details.get('scoringPlayerId') or details.get('shootingPlayerId')
+                    shooter_name = None
+                    if shooter_id and 'rosterSpots' in pbp:
+                        for spot in pbp['rosterSpots']:
+                            if spot.get('playerId') == shooter_id:
+                                shooter_name = spot.get('firstName', {}).get('default', '') + ' ' + spot.get('lastName', {}).get('default', '')
+                                break
+                    
+                    point = {
+                        'x': x,
+                        'y': y,
+                        'shooter': shooter_name,
+                        'shotType': details.get('shotType'),
+                        'xg': details.get('xGoal', 1.0)  # Goals have high xG
+                    }
+                    
+                    # Determine movement type
+                    movement = None
+                    play_idx = pbp.get('plays', []).index(play)
+                    if play_idx > 0:
+                        prev_play = pbp['plays'][play_idx - 1]
+                        prev_type = prev_play.get('typeDescKey', '')
+                        if 'faceoff' in prev_type:
+                            movement = 'rush'
+                        elif 'hit' in prev_type or 'takeaway' in prev_type:
+                            movement = 'forecheck'
+                        elif prev_play.get('details', {}).get('zoneCode') != play.get('details', {}).get('zoneCode'):
+                            movement = 'transition'
+                    
+                    point['movement'] = movement
+                    
                     if is_for:
                         goals_for.append(point)
                     else:
