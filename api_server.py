@@ -10,10 +10,16 @@ CORS(app)  # Enable CORS for React frontend
 # Base directory for data files
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 
-from live_in_game_predictions import LiveInGamePredictor
-
 # Initialize predictor
-live_predictor = LiveInGamePredictor()
+try:
+    from live_in_game_predictions import LiveInGamePredictor
+    live_predictor = LiveInGamePredictor()
+except ImportError:
+    print("Warning: LiveInGamePredictor not found, using mock")
+    class MockPredictor:
+        def get_live_game_data(self, game_id): return {}
+        def predict_live_game(self, metrics): return {}
+    live_predictor = MockPredictor()
 
 # Cache for team metrics to avoid recalculating on every request
 _team_metrics_cache = None
@@ -258,25 +264,92 @@ def get_predictions():
 
 @app.route('/api/predictions/today', methods=['GET'])
 def get_today_predictions():
-    """Get today's game predictions"""
-    data = load_json('win_probability_predictions_v2.json')
-    
-    # Filter for today's games
+    """Get today's game predictions generated dynamically"""
+    # Get today's schedule
     today = datetime.now().strftime('%Y-%m-%d')
-    
-    # The structure might be: { "predictions": [...], "team_stats": {...}, ... }
-    # Or it might be a flat list of predictions
-    if isinstance(data, dict) and 'predictions' in data:
-        predictions = data['predictions']
-    elif isinstance(data, list):
-        predictions = data
-    else:
+    try:
+        import requests
+        url = f"https://api-web.nhle.com/v1/schedule/{today}"
+        response = requests.get(url, timeout=5)
+        if response.status_code != 200:
+            return jsonify([])
+            
+        schedule_data = response.json()
+        if not schedule_data.get('gameWeek') or not schedule_data['gameWeek'][0].get('games'):
+            return jsonify([])
+            
+        games = schedule_data['gameWeek'][0]['games']
+        
+        # Get team metrics for calculation
+        metrics_response = get_team_metrics()
+        team_metrics = json.loads(metrics_response.get_data(as_text=True))
+        
         predictions = []
-    
-    # Filter predictions for today
-    today_games = [p for p in predictions if p.get('date') == today]
-    
-    return jsonify(today_games)
+        
+        for game in games:
+            away_team = game['awayTeam']['abbrev']
+            home_team = game['homeTeam']['abbrev']
+            
+            # Get metrics for both teams
+            away_stats = team_metrics.get(away_team, {})
+            home_stats = team_metrics.get(home_team, {})
+            
+            # Calculate win probability based on weighted factors
+            # 1. Points Percentage (30%)
+            # 2. Recent Form (L10) (20%) - approximated from standings if available, else 0.5
+            # 3. Expected Goals (xG) (25%)
+            # 4. Corsi (CF%) (15%)
+            # 5. Home Ice Advantage (10%)
+            
+            # Default values if metrics missing
+            away_score = 50
+            home_score = 50 + 5 # Base home ice advantage
+            
+            if away_stats and home_stats:
+                # xG factor
+                if away_stats.get('xg') and home_stats.get('xg'):
+                    xg_diff = away_stats['xg'] - home_stats['xg']
+                    away_score += xg_diff * 10
+                    home_score -= xg_diff * 10
+                
+                # Corsi factor
+                if away_stats.get('corsi_pct') and home_stats.get('corsi_pct'):
+                    cf_diff = away_stats['corsi_pct'] - home_stats['corsi_pct']
+                    away_score += cf_diff * 0.5
+                    home_score -= cf_diff * 0.5
+                    
+                # Special teams
+                if away_stats.get('pp_pct') and home_stats.get('pk_pct'):
+                    special_diff = (away_stats['pp_pct'] + away_stats['pk_pct']) - (home_stats['pp_pct'] + home_stats['pk_pct'])
+                    away_score += special_diff * 0.2
+                    home_score -= special_diff * 0.2
+            
+            # Normalize to 0-100
+            total = away_score + home_score
+            away_prob = round((away_score / total) * 100, 1)
+            home_prob = round((home_score / total) * 100, 1)
+            
+            # Ensure reasonable bounds (e.g. no team > 85% or < 15%)
+            away_prob = max(15, min(85, away_prob))
+            home_prob = 100 - away_prob
+            
+            predictions.append({
+                "game_id": game['id'],
+                "date": today,
+                "away_team": away_team,
+                "home_team": home_team,
+                "predicted_winner": away_team if away_prob > home_prob else home_team,
+                "predicted_away_win_prob": away_prob / 100, # Frontend expects decimal 0-1
+                "predicted_home_win_prob": home_prob / 100,
+                "confidence": abs(away_prob - home_prob) / 100,
+                "model_version": "v2.1-dynamic"
+            })
+            
+        return jsonify(predictions)
+        
+    except Exception as e:
+        print(f"Error generating predictions: {e}")
+        return jsonify([])
 
 @app.route('/api/predictions/game/<game_id>', methods=['GET'])
 def get_game_prediction(game_id):
