@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
@@ -15,21 +15,38 @@ from live_in_game_predictions import LiveInGamePredictor
 # Initialize predictor
 live_predictor = LiveInGamePredictor()
 
+# Cache for team metrics to avoid recalculating on every request
+_team_metrics_cache = None
+_team_metrics_cache_time = None
+_team_metrics_file_mtime = None
+CACHE_DURATION = timedelta(hours=1)  # Cache for 1 hour
+
 def load_json(filename):
-    """Load JSON file from data directory"""
-    filepath = os.path.join(DATA_DIR, filename)
+    """Load JSON file from current directory"""
     try:
-        with open(filepath, 'r') as f:
+        with open(filename, 'r') as f:
             return json.load(f)
     except FileNotFoundError:
+        print(f"Warning: {filename} not found, returning empty dict")
         return {}
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        print(f"Error decoding {filename}: {e}")
         return {}
 
+def get_file_mtime(filename):
+    """Get file modification time"""
+    try:
+        return os.path.getmtime(filename)
+    except:
+        return None
+
 @app.route('/api/health', methods=['GET'])
-def health_check():
+def health():
     """Health check endpoint"""
-    return jsonify({"status": "ok", "timestamp": datetime.now().isoformat()})
+    return jsonify({
+        'status': 'ok',
+        'timestamp': datetime.now().isoformat()
+    })
 
 @app.route('/api/team-stats', methods=['GET'])
 def get_team_stats():
@@ -53,8 +70,31 @@ def get_team_stats_by_abbrev(team_abbrev):
 
 @app.route('/api/team-metrics', methods=['GET'])
 def get_team_metrics():
-    """Get aggregated team metrics for all teams (for Metrics page)"""
-    data = load_json('season_2025_2026_team_stats.json')
+    """Get aggregated team metrics for all teams (for Metrics page)
+    Uses caching to avoid recalculating on every request.
+    Cache is invalidated when the source file is modified or after 1 hour.
+    """
+    global _team_metrics_cache, _team_metrics_cache_time, _team_metrics_file_mtime
+    
+    filename = 'season_2025_2026_team_stats.json'
+    current_mtime = get_file_mtime(filename)
+    current_time = datetime.now()
+    
+    # Check if cache is valid
+    cache_valid = (
+        _team_metrics_cache is not None and
+        _team_metrics_cache_time is not None and
+        _team_metrics_file_mtime is not None and
+        current_mtime == _team_metrics_file_mtime and
+        (current_time - _team_metrics_cache_time) < CACHE_DURATION
+    )
+    
+    if cache_valid:
+        print(f"Returning cached team metrics (age: {(current_time - _team_metrics_cache_time).seconds}s)")
+        return jsonify(_team_metrics_cache)
+    
+    print("Calculating fresh team metrics...")
+    data = load_json(filename)
     
     # Handle both structures
     teams = data.get('teams', data)
@@ -190,6 +230,11 @@ def get_team_metrics():
             'gamesProcessed': len(home_stats.get('games', [])) + len(away_stats.get('games', []))
         }
     
+    # Cache the results
+    _team_metrics_cache = metrics
+    _team_metrics_cache_time = current_time
+    _team_metrics_file_mtime = current_mtime
+    
     return jsonify(metrics)
 
 @app.route('/api/edge-data', methods=['GET'])
@@ -257,6 +302,23 @@ def get_historical_stats():
     """Get historical season stats"""
     data = load_json('historical_seasons_team_stats.json')
     return jsonify(data)
+
+@app.route('/api/team-roster/<team_abbrev>', methods=['GET'])
+def get_team_roster(team_abbrev):
+    """Proxy endpoint for NHL team roster to avoid CORS issues"""
+    try:
+        import requests
+        # Use the NHL API to get the roster
+        url = f"https://api-web.nhle.com/v1/roster/{team_abbrev}/20252026"
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({'error': 'Failed to fetch roster'}), response.status_code
+    except Exception as e:
+        print(f"Error fetching roster for {team_abbrev}: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/historical-stats/<season>', methods=['GET'])
 def get_historical_stats_by_season(season):
@@ -344,7 +406,8 @@ if __name__ == '__main__':
     print(f"  GET /api/historical-stats/<season>")
     print(f"  POST /api/notify/discord")
     print("=" * 50)
-    print(f"Starting server on http://localhost:5002")
+    port = int(os.environ.get('PORT', 5002))
+    print(f"Starting server on http://localhost:{port}")
     print()
     
-    app.run(debug=True, port=5002, host='0.0.0.0')
+    app.run(debug=False, host='0.0.0.0', port=port)

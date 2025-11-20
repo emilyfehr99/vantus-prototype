@@ -1,12 +1,27 @@
 services:
+  # Backend API Server
   - type: web
-    name: nhl-predictions-dashboard
+    name: nhl-analytics-api
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python3 prediction_dashboard.py
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn -w 4 -b 0.0.0.0:$PORT api_server:app"
     envVars:
       - key: PYTHON_VERSION
-        value: 3.12.3
-      - key: FLASK_DEBUG
-        value: false
-
+        value: 3.11.0
+      - key: PORT
+        value: 5002
+    healthCheckPath: /api/health
+    
+  # Frontend (Static Site)
+  - type: web
+    name: nhl-analytics-frontend
+    env: static
+    buildCommand: "cd automated-post-game-reports/nhl-analytics && npm install && npm run build"
+    staticPublishPath: automated-post-game-reports/nhl-analytics/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://nhl-analytics-api.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -47,10 +47,15 @@ class LiveInGamePredictor:
             print(f"❌ Error getting live games: {e}")
             return []
     
+    def get_live_game_data(self, game_id):
         """Get comprehensive live game data including ALL metrics from post-game reports"""
         try:
             game_data = self.api.get_comprehensive_game_data(game_id)
             
+            # DEBUG: Mock Data for BOS vs ANA (2025020318) - REMOVED
+            # if str(game_id) == '2025020318': ...
+
+
             if not game_data:
                 return None
                 
@@ -130,32 +135,45 @@ class LiveInGamePredictor:
             # Extract Scoring Summary
             scoring_summary = []
             try:
-                # Try to get scoring from boxscore first (some APIs have it)
-                # If not, parse play-by-play
-                plays = game_data.get('play_by_play', {}).get('plays', []) or []
+                # Get roster from play_by_play (rosterSpots) like PDF generator
+                play_by_play = game_data.get('play_by_play', {})
+                player_names = {}
+                
+                if 'rosterSpots' in play_by_play:
+                    for player in play_by_play['rosterSpots']:
+                        player_id = player.get('playerId')
+                        first_name = player.get('firstName', {}).get('default', '')
+                        last_name = player.get('lastName', {}).get('default', '')
+                        player_names[player_id] = f"{first_name} {last_name}".strip()
+                
+                plays = play_by_play.get('plays', []) or []
                 for play in plays:
                     if play.get('typeDescKey') == 'goal':
                         details = play.get('details', {})
-                        period = play.get('periodDescriptor', {}).get('number', 0)
+                        period_desc = play.get('periodDescriptor', {})
                         time_in_period = play.get('timeInPeriod', '00:00')
                         
+                        # Determine scoring team
                         scoring_team_id = details.get('eventOwnerTeamId')
-                        scoring_team = away_abbrev if scoring_team_id == away_team_id else home_abbrev
+                        scoring_team = away_team['abbrev'] if scoring_team_id == away_team['id'] else home_team['abbrev']
                         
+                        # Get scorer ID and name
                         scorer_id = details.get('scoringPlayerId')
-                        scorer_name = "Unknown"
-                        # Try to find player name in roster
-                        # (Simplified for now, would need roster lookup)
+                        scorer_name = player_names.get(scorer_id, f"Player {scorer_id}")
                         
-                        assist_ids = [details.get('assist1PlayerId'), details.get('assist2PlayerId')]
-                        assists = [] # Placeholder for names
+                        # Get assists
+                        assists = []
+                        for i in range(1, 3):  # assist1PlayerId, assist2PlayerId
+                            assist_id = details.get(f'assist{i}PlayerId')
+                            if assist_id:
+                                assists.append(player_names.get(assist_id, f"Player {assist_id}"))
                         
                         scoring_summary.append({
-                            'period': period,
+                            'period': period_desc.get('number', 0),
                             'time': time_in_period,
                             'team': scoring_team,
-                            'scorer': f"Player {scorer_id}", # Placeholder until roster lookup
-                            'assists': [],
+                            'scorer': scorer_name,
+                            'assists': assists,
                             'away_score': details.get('awayScore', 0),
                             'home_score': details.get('homeScore', 0)
                         })
@@ -164,13 +182,101 @@ class LiveInGamePredictor:
             
             live_metrics['scoring_summary'] = scoring_summary
 
-            # Extract Goalie Stats
+            # Extract goals by period for period-by-period display
+            goals_by_period = {'away': [0, 0, 0], 'home': [0, 0, 0]}
+            try:
+                for goal in scoring_summary:
+                    period_idx = goal['period'] - 1  # Convert to 0-indexed
+                    if 0 <= period_idx < 3:  # Only regular periods
+                        if goal['team'] == away_team['abbrev']:
+                            goals_by_period['away'][period_idx] += 1
+                        else:
+                            goals_by_period['home'][period_idx] += 1
+            except Exception as e:
+                print(f"Error calculating goals by period: {e}")
+            
+            live_metrics['goals_by_period'] = goals_by_period
+
+            # Extract Shot Data for Charts
+            shots_data = []
+            try:
+                plays = game_data.get('play_by_play', {}).get('plays', []) or []
+                for play in plays:
+                    event_type = play.get('typeDescKey')
+                    if event_type in ['goal', 'shot-on-goal', 'missed-shot', 'blocked-shot']:
+                        details = play.get('details', {})
+                        x = details.get('xCoord')
+                        y = details.get('yCoord')
+                        
+                        if x is not None and y is not None:
+                            # Map team_id to team abbreviation
+                            team_id = details.get('eventOwnerTeamId')
+                            team_abbrev = away_team['abbrev'] if team_id == away_team['id'] else home_team['abbrev']
+                            
+                            # Determine shot type (GOAL vs SHOT)
+                            event_shot_type = 'GOAL' if event_type == 'goal' else 'SHOT'
+                            
+                            # Get actual shot type (wrist, slap, snap, etc.)
+                            actual_shot_type = details.get('shotType', 'wrist')
+                            
+                            # Get shooter name
+                            shooter_id = details.get('shootingPlayerId') or details.get('scoringPlayerId')
+                            shooter_name = player_names.get(shooter_id, 'Unknown')
+                            
+                            # Calculate xG using the report generator's method
+                            xg_value = 0.0
+                            try:
+                                xg_value = self.report_generator._calculate_improved_xg(x, y, actual_shot_type)
+                            except:
+                                # Fallback simple xG based on distance
+                                distance = ((x ** 2) + (y ** 2)) ** 0.5
+                                xg_value = max(0.01, 0.15 - (distance * 0.001))
+                            
+                            shots_data.append({
+                                'x': x,
+                                'y': y,
+                                'type': event_shot_type,
+                                'team': team_abbrev,
+                                'period': play.get('periodDescriptor', {}).get('number', 0),
+                                'time': play.get('timeInPeriod', '00:00'),
+                                'player_id': shooter_id,
+                                'shooter': shooter_name,
+                                'shotType': actual_shot_type,
+                                'xg': round(xg_value, 3)
+                            })
+            except Exception as e:
+                print(f"Error extracting shot data: {e}")
+            
+            live_metrics['shots_data'] = shots_data
+
+            # Extract Goalie Stats from boxscore like PDF generator
             goalie_stats = {'away': {}, 'home': {}}
             try:
-                # Need to iterate players in boxscore
-                # This depends heavily on API structure, assuming standard NHL API
-                # For now, we'll initialize with defaults if we can't find them easily
-                pass 
+                boxscore = game_data.get('boxscore', {})
+                
+                # Get away goalie
+                away_goalies = boxscore.get('playerByGameStats', {}).get('awayTeam', {}).get('goalies', [])
+                if away_goalies:
+                    # Get the goalie who played (most saves)
+                    away_goalie = max(away_goalies, key=lambda g: g.get('saves', 0))
+                    goalie_stats['away'] = {
+                        'name': f"{away_goalie.get('name', {}).get('default', 'Unknown')}",
+                        'saves': away_goalie.get('saves', 0),
+                        'shotsAgainst': away_goalie.get('shotsAgainst', 0),
+                        'savePctg': away_goalie.get('savePctg', 0.0)
+                    }
+                
+                # Get home goalie  
+                home_goalies = boxscore.get('playerByGameStats', {}).get('homeTeam', {}).get('goalies', [])
+                if home_goalies:
+                    # Get the goalie who played (most saves)
+                    home_goalie = max(home_goalies, key=lambda g: g.get('saves', 0))
+                    goalie_stats['home'] = {
+                        'name': f"{home_goalie.get('name', {}).get('default', 'Unknown')}",
+                        'saves': home_goalie.get('saves', 0),
+                        'shotsAgainst': home_goalie.get('shotsAgainst', 0),
+                        'savePctg': home_goalie.get('savePctg', 0.0)
+                    }
             except Exception as e:
                 print(f"Error extracting goalie stats: {e}")
             
@@ -285,6 +391,23 @@ class LiveInGamePredictor:
                     live_metrics['away_scored_first'] = (first_goal_scorer == away_team_id)
                     live_metrics['home_scored_first'] = (first_goal_scorer == home_team_id)
                     
+                    # Create period_breakdown structure for frontend
+                    period_breakdown = []
+                    num_periods = max(len(away_period_goals), len(home_period_goals), len(away_xg_periods), len(home_xg_periods))
+                    
+                    for i in range(num_periods):
+                        period_breakdown.append({
+                            'period': i + 1,
+                            'away_goals': away_period_goals[i] if i < len(away_period_goals) else 0,
+                            'home_goals': home_period_goals[i] if i < len(home_period_goals) else 0,
+                            'away_xg': round(away_xg_periods[i], 2) if i < len(away_xg_periods) else 0.0,
+                            'home_xg': round(home_xg_periods[i], 2) if i < len(home_xg_periods) else 0.0,
+                            'away_gs': round(away_gs_periods[i], 2) if i < len(away_gs_periods) else 0.0,
+                            'home_gs': round(home_gs_periods[i], 2) if i < len(home_gs_periods) else 0.0
+                        })
+                    
+                    live_metrics['period_breakdown'] = period_breakdown
+                    
                 except Exception as e:
                     print(f"⚠️  Error calculating advanced metrics: {e}")
                     import traceback
@@ -298,6 +421,63 @@ class LiveInGamePredictor:
                                'away_power_play_pct', 'home_power_play_pct']:
                         if key not in live_metrics:
                             live_metrics[key] = 0.0 if 'pct' in key or 'lateral' in key or 'longitudinal' in key else 0
+            
+            # Construct nested objects for frontend compatibility
+            live_metrics['stats'] = {
+                'away': {
+                    'shots': live_metrics.get('away_shots', 0),
+                    'hits': live_metrics.get('away_hits', 0),
+                    'pim': live_metrics.get('away_pim', 0),
+                    'blocked_shots': live_metrics.get('away_blocked_shots', 0),
+                    'giveaways': live_metrics.get('away_giveaways', 0),
+                    'takeaways': live_metrics.get('away_takeaways', 0),
+                    'faceoff_pct': live_metrics.get('away_faceoff_pct', 0),
+                    'power_play_pct': live_metrics.get('away_power_play_pct', 0),
+                    'power_play_goals': live_metrics.get('away_power_play_goals', 0),
+                    'power_play_opportunities': live_metrics.get('away_power_play_opportunities', 0)
+                },
+                'home': {
+                    'shots': live_metrics.get('home_shots', 0),
+                    'hits': live_metrics.get('home_hits', 0),
+                    'pim': live_metrics.get('home_pim', 0),
+                    'blocked_shots': live_metrics.get('home_blocked_shots', 0),
+                    'giveaways': live_metrics.get('home_giveaways', 0),
+                    'takeaways': live_metrics.get('home_takeaways', 0),
+                    'faceoff_pct': live_metrics.get('home_faceoff_pct', 0),
+                    'power_play_pct': live_metrics.get('home_power_play_pct', 0),
+                    'power_play_goals': live_metrics.get('home_power_play_goals', 0),
+                    'power_play_opportunities': live_metrics.get('home_power_play_opportunities', 0)
+                }
+            }
+
+            live_metrics['advanced_metrics'] = {
+                'away_xg': live_metrics.get('away_xg', 0), 'home_xg': live_metrics.get('home_xg', 0),
+                'away_hdc': live_metrics.get('away_hdc', 0), 'home_hdc': live_metrics.get('home_hdc', 0),
+                'away_gs': live_metrics.get('away_gs', 0), 'home_gs': live_metrics.get('home_gs', 0),
+                'away_corsi_pct': live_metrics.get('away_corsi_pct', 0), 'home_corsi_pct': live_metrics.get('home_corsi_pct', 0),
+                'away_ozs_pct': live_metrics.get('away_ozs', 0), 'home_ozs_pct': live_metrics.get('home_ozs', 0), # Using raw counts as pct placeholder if needed, or calculate pct
+                'away_nzs_pct': live_metrics.get('away_nzs', 0), 'home_nzs_pct': live_metrics.get('home_nzs', 0)
+            }
+
+            live_metrics['period_stats'] = {
+                'away': live_metrics.get('away_period_stats', {}),
+                'home': live_metrics.get('home_period_stats', {})
+            }
+
+            live_metrics['zone_metrics'] = {
+                'away_nzt': live_metrics.get('away_nzt', 0), 'home_nzt': live_metrics.get('home_nzt', 0),
+                'away_nztsa': live_metrics.get('away_nztsa', 0), 'home_nztsa': live_metrics.get('home_nztsa', 0),
+                'away_ozs': live_metrics.get('away_ozs', 0), 'home_ozs': live_metrics.get('home_ozs', 0),
+                'away_nzs': live_metrics.get('away_nzs', 0), 'home_nzs': live_metrics.get('home_nzs', 0),
+                'away_dzs': live_metrics.get('away_dzs', 0), 'home_dzs': live_metrics.get('home_dzs', 0),
+                'away_fc': live_metrics.get('away_fc', 0), 'home_fc': live_metrics.get('home_fc', 0),
+                'away_rush': live_metrics.get('away_rush', 0), 'home_rush': live_metrics.get('home_rush', 0)
+            }
+
+            live_metrics['movement_metrics'] = {
+                'away_lateral': live_metrics.get('away_lateral', 0), 'home_lateral': live_metrics.get('home_lateral', 0),
+                'away_longitudinal': live_metrics.get('away_longitudinal', 0), 'home_longitudinal': live_metrics.get('home_longitudinal', 0)
+            }
             
             return live_metrics
         except Exception as e:
@@ -403,7 +583,8 @@ class LiveInGamePredictor:
             confidence = 0.5 + (live_metrics['current_period'] - 1) * 0.1
             confidence = min(0.95, confidence)
             
-            return {
+            # Merge live_metrics into the result so they are at the top level
+            result = {
                 'away_team': away_team,
                 'home_team': home_team,
                 'away_score': live_metrics['away_score'],
@@ -414,8 +595,12 @@ class LiveInGamePredictor:
                 'home_prob': home_prob,
                 'confidence': confidence,
                 'momentum': momentum,
-                'live_metrics': live_metrics
             }
+            
+            # Add all live metrics to the result
+            result.update(live_metrics)
+            
+            return result
             
         except Exception as e:
             print(f"❌ Error making live prediction: {e}")
