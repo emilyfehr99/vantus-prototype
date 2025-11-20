@@ -256,7 +256,9 @@ def get_team_heatmap(team_abbr):
     """Get aggregated shot data for team heatmap"""
     try:
         from nhl_api_client import NHLAPIClient
+        from improved_xg_model import ImprovedXGModel
         client = NHLAPIClient()
+        xg_model = ImprovedXGModel()
         
         # Team ID mapping (copied from client for reliability)
         team_ids = {
@@ -278,13 +280,19 @@ def get_team_heatmap(team_abbr):
         goals_against = []
         
         for game_id in game_ids:
-            # Get play-by-play for each game
+            # Get play-by-play and game center for each game
             pbp = client.get_play_by_play(game_id)
+            game_center = client.get_game_center(game_id)
             
-            if not pbp:
+            if not pbp or not game_center:
                 continue
+            
+            # Determine if target team is home or away
+            home_team_id = game_center.get('homeTeam', {}).get('id')
+            away_team_id = game_center.get('awayTeam', {}).get('id')
+            is_home_team = (int(home_team_id) == int(target_team_id)) if home_team_id and target_team_id else False
                 
-            for play in pbp.get('plays', []):
+            for play_index, play in enumerate(pbp.get('plays', [])):
                 details = play.get('details', {})
                 if not details:
                     continue
@@ -292,11 +300,29 @@ def get_team_heatmap(team_abbr):
                 x = details.get('xCoord')
                 y = details.get('yCoord')
                 event_owner_id = details.get('eventOwnerTeamId')
+                period = play.get('periodDescriptor', {}).get('number', 1)
                 
                 if x is None or y is None or event_owner_id is None:
                     continue
                 
                 is_for = (int(event_owner_id) == int(target_team_id)) if target_team_id else True
+                
+                # Normalize coordinates so target team always shoots right (positive x)
+                # In odd periods (1,3), home team defends left goal (shoots right, positive x)
+                # In even periods (2), teams switch
+                normalized_x = x
+                normalized_y = y
+                
+                if is_home_team:
+                    # Home team: in odd periods shoots right, even periods shoots left
+                    if period % 2 == 0:  # Even period - flip
+                        normalized_x = -x
+                        normalized_y = -y
+                else:
+                    # Away team: in odd periods shoots left, even periods shoots right  
+                    if period % 2 == 1:  # Odd period - flip
+                        normalized_x = -x
+                        normalized_y = -y
                     
                     
                 if play.get('typeDescKey') == 'shot-on-goal':
@@ -309,19 +335,33 @@ def get_team_heatmap(team_abbr):
                                 shooter_name = spot.get('firstName', {}).get('default', '') + ' ' + spot.get('lastName', {}).get('default', '')
                                 break
                     
+                    # Calculate xG using the same model as team calculations
+                    previous_events = pbp.get('plays', [])[max(0, play_index-10):play_index]
+                    shot_data = {
+                        'x_coord': x,
+                        'y_coord': y,
+                        'shot_type': details.get('shotType', 'wrist').lower(),
+                        'event_type': 'shot-on-goal',
+                        'time_in_period': play.get('timeInPeriod', '00:00'),
+                        'period': period,
+                        'strength_state': 'even',  # Simplified
+                        'score_differential': 0,
+                        'team_id': event_owner_id
+                    }
+                    xg_value = xg_model.calculate_xg(shot_data, previous_events)
+                    
                     point = {
-                        'x': x,
-                        'y': y,
+                        'x': normalized_x,
+                        'y': normalized_y,
                         'shooter': shooter_name,
                         'shotType': details.get('shotType'),
-                        'xg': details.get('xGoal', 0.0)  # xG value if available
+                        'xg': xg_value
                     }
                     
                     # Determine movement type based on previous events
                     movement = None
-                    play_idx = pbp.get('plays', []).index(play)
-                    if play_idx > 0:
-                        prev_play = pbp['plays'][play_idx - 1]
+                    if play_index > 0:
+                        prev_play = pbp['plays'][play_index - 1]
                         prev_type = prev_play.get('typeDescKey', '')
                         if 'faceoff' in prev_type:
                             movement = 'rush'
@@ -346,19 +386,33 @@ def get_team_heatmap(team_abbr):
                                 shooter_name = spot.get('firstName', {}).get('default', '') + ' ' + spot.get('lastName', {}).get('default', '')
                                 break
                     
+                    # Calculate xG for goals
+                    previous_events = pbp.get('plays', [])[max(0, play_index-10):play_index]
+                    shot_data = {
+                        'x_coord': x,
+                        'y_coord': y,
+                        'shot_type': details.get('shotType', 'wrist').lower(),
+                        'event_type': 'goal',
+                        'time_in_period': play.get('timeInPeriod', '00:00'),
+                        'period': period,
+                        'strength_state': 'even',
+                        'score_differential': 0,
+                        'team_id': event_owner_id
+                    }
+                    xg_value = xg_model.calculate_xg(shot_data, previous_events)
+                    
                     point = {
-                        'x': x,
-                        'y': y,
+                        'x': normalized_x,
+                        'y': normalized_y,
                         'shooter': shooter_name,
                         'shotType': details.get('shotType'),
-                        'xg': details.get('xGoal', 1.0)  # Goals have high xG
+                        'xg': xg_value
                     }
                     
                     # Determine movement type
                     movement = None
-                    play_idx = pbp.get('plays', []).index(play)
-                    if play_idx > 0:
-                        prev_play = pbp['plays'][play_idx - 1]
+                    if play_index > 0:
+                        prev_play = pbp['plays'][play_index - 1]
                         prev_type = prev_play.get('typeDescKey', '')
                         if 'faceoff' in prev_type:
                             movement = 'rush'
