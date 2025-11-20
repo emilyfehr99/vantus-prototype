@@ -356,11 +356,13 @@ def get_today_predictions():
                 data = json.load(f)
                 all_predictions = data.get('predictions', [])
                 
-                # Filter for today's predictions (games without actual_winner are upcoming)
+                print(f"📊 Total predictions in file: {len(all_predictions)}")
+                
+                # Filter for today's predictions
                 todays_predictions = []
                 for pred in all_predictions:
-                    # Check if it's today and no winner yet (upcoming game)
-                    if pred.get('date') == today and not pred.get('actual_winner'):
+                    # Show all of today's games (even if they already have a winner)
+                    if pred.get('date') == today:
                         # Values are already in decimal format (0.47) in the file
                         away_prob = pred.get('predicted_away_win_prob', 0.5)
                         home_prob = pred.get('predicted_home_win_prob', 0.5)
@@ -373,11 +375,15 @@ def get_today_predictions():
                             'home_win_prob': home_prob,
                             'favorite': pred.get('home_team') if home_prob > away_prob else pred.get('away_team'),
                             'spread': abs(home_prob - away_prob),
-                            'confidence': max(away_prob, home_prob)
+                            'confidence': max(away_prob, home_prob),
+                            'actual_winner': pred.get('actual_winner')  # Include for reference
                         })
                 
                 if todays_predictions:
                     print(f"✅ Found {len(todays_predictions)} predictions for today ({today}) from file")
+                    for p in todays_predictions:
+                        status = f"(FINAL: {p['actual_winner']})" if p.get('actual_winner') else "(UPCOMING)"
+                        print(f"   {p['away_team']} @ {p['home_team']}: {p['away_win_prob']:.1%} / {p['home_win_prob']:.1%} {status}")
                     return jsonify(todays_predictions)
                 else:
                     print(f"⚠️  No predictions found for today ({today}) in file")
