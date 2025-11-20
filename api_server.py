@@ -147,11 +147,11 @@ def get_team_metrics():
         away_rush = avg(away_stats.get('rush', []))
         
         # Additional metrics
-        home_lateral = avg(home_stats.get('lateral', []))
-        away_lateral = avg(away_stats.get('lateral', []))
+        home_lat = avg(home_stats.get('lat', []))
+        away_lat = avg(away_stats.get('lat', []))
         
-        home_longitudinal = avg(home_stats.get('longitudinal', []))
-        away_longitudinal = avg(away_stats.get('longitudinal', []))
+        home_long = avg(home_stats.get('long_movement', []))
+        away_long = avg(away_stats.get('long_movement', []))
         
         home_nztsa = avg(home_stats.get('nztsa', []))
         away_nztsa = avg(away_stats.get('nztsa', []))
@@ -161,6 +161,9 @@ def get_team_metrics():
         
         home_hdc = avg(home_stats.get('hdc', []))
         away_hdc = avg(away_stats.get('hdc', []))
+
+        home_hdca = avg(home_stats.get('hdca', []))
+        away_hdca = avg(away_stats.get('hdca', []))
         
         home_corsi = avg(home_stats.get('corsi_pct', []))
         away_corsi = avg(away_stats.get('corsi_pct', []))
@@ -194,6 +197,9 @@ def get_team_metrics():
         
         home_fo_pct = avg(home_stats.get('faceoff_pct', []))
         away_fo_pct = avg(away_stats.get('faceoff_pct', []))
+
+        home_ga = avg(home_stats.get('goals_against', []))
+        away_ga = avg(away_stats.get('goals_against', []))
         
         # Average home and away stats
         metrics[team_abbrev] = {
@@ -208,14 +214,16 @@ def get_team_metrics():
             'rush': round((home_rush + away_rush) / 2),
             
             # Movement metrics
-            'lateral': round((home_lateral + away_lateral) / 2, 1),
-            'longitudinal': round((home_longitudinal + away_longitudinal) / 2, 1),
+            'lat': round((home_lat + away_lat) / 2, 1),
+            'long_movement': round((home_long + away_long) / 2, 1),
             
             # Shooting metrics
             'xg': round((home_xg + away_xg) / 2, 2),
             'hdc': round((home_hdc + away_hdc) / 2, 1),
+            'hdca': round((home_hdca + away_hdca) / 2, 1),
             'shots': round((home_shots + away_shots) / 2, 1),
             'goals': round((home_goals + away_goals) / 2, 2),
+            'ga_gp': round((home_ga + away_ga) / 2, 2),
             
             # Possession metrics
             'corsi_pct': round((home_corsi + away_corsi) / 2, 1),
@@ -243,6 +251,79 @@ def get_team_metrics():
     
     return jsonify(metrics)
 
+@app.route('/api/team-heatmap/<team_abbr>', methods=['GET'])
+def get_team_heatmap(team_abbr):
+    """Get aggregated shot data for team heatmap"""
+    try:
+        from nhl_api_client import NHLAPIClient
+        client = NHLAPIClient()
+        
+        # Team ID mapping (copied from client for reliability)
+        team_ids = {
+            'FLA': 13, 'EDM': 22, 'BOS': 6, 'TOR': 10, 'MTL': 8, 'OTT': 9,
+            'BUF': 7, 'DET': 17, 'TBL': 14, 'CAR': 12, 'WSH': 15, 'PIT': 5,
+            'NYR': 3, 'NYI': 2, 'NJD': 1, 'PHI': 4, 'CBJ': 29, 'NSH': 18,
+            'STL': 19, 'MIN': 30, 'WPG': 52, 'COL': 21, 'ARI': 53, 'VGK': 54,
+            'SJS': 28, 'LAK': 26, 'ANA': 24, 'CGY': 20, 'VAN': 23, 'SEA': 55,
+            'CHI': 16, 'DAL': 25, 'UTA': 59
+        }
+        target_team_id = team_ids.get(team_abbr.upper())
+        
+        # Get recent games (increased to 10)
+        game_ids = client.get_team_recent_games(team_abbr, limit=10)
+        
+        shots_for = []
+        goals_for = []
+        shots_against = []
+        goals_against = []
+        
+        for game_id in game_ids:
+            # Get play-by-play for each game
+            pbp = client.get_play_by_play(game_id)
+            
+            if not pbp:
+                continue
+                
+            for play in pbp.get('plays', []):
+                details = play.get('details', {})
+                if not details:
+                    continue
+                    
+                x = details.get('xCoord')
+                y = details.get('yCoord')
+                event_owner_id = details.get('eventOwnerTeamId')
+                
+                if x is None or y is None or event_owner_id is None:
+                    continue
+                
+                is_for = (int(event_owner_id) == int(target_team_id)) if target_team_id else True
+                    
+                if play.get('typeDescKey') == 'shot-on-goal':
+                    point = {'x': x, 'y': y}
+                    if is_for:
+                        shots_for.append(point)
+                    else:
+                        shots_against.append(point)
+                elif play.get('typeDescKey') == 'goal':
+                    point = {'x': x, 'y': y}
+                    if is_for:
+                        goals_for.append(point)
+                    else:
+                        goals_against.append(point)
+                    
+        return jsonify({
+            'team': team_abbr,
+            'games_count': len(game_ids),
+            'shots_for': shots_for,
+            'goals_for': goals_for,
+            'shots_against': shots_against,
+            'goals_against': goals_against
+        })
+        
+    except Exception as e:
+        print(f"Error generating heatmap for {team_abbr}: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/edge-data', methods=['GET'])
 def get_edge_data():
     """Get NHL Edge data (skating speeds, distances, bursts)"""
@@ -264,91 +345,129 @@ def get_predictions():
 
 @app.route('/api/predictions/today', methods=['GET'])
 def get_today_predictions():
-    """Get today's game predictions generated dynamically"""
-    # Get today's schedule
-    today = datetime.now().strftime('%Y-%m-%d')
+    """Get today's game predictions using the self-learning model"""
     try:
-        import requests
-        url = f"https://api-web.nhle.com/v1/schedule/{today}"
-        response = requests.get(url, timeout=5)
-        if response.status_code != 200:
-            return jsonify([])
-            
-        schedule_data = response.json()
-        if not schedule_data.get('gameWeek') or not schedule_data['gameWeek'][0].get('games'):
-            return jsonify([])
-            
-        games = schedule_data['gameWeek'][0]['games']
+        # First, try to read from the predictions file
+        predictions_file = os.path.join('automated-post-game-reports', 'win_probability_predictions_v2.json')
+        today = datetime.now().strftime('%Y-%m-%d')
         
-        # Get team metrics for calculation
-        metrics_response = get_team_metrics()
-        team_metrics = json.loads(metrics_response.get_data(as_text=True))
-        
-        predictions = []
-        
-        for game in games:
-            away_team = game['awayTeam']['abbrev']
-            home_team = game['homeTeam']['abbrev']
-            
-            # Get metrics for both teams
-            away_stats = team_metrics.get(away_team, {})
-            home_stats = team_metrics.get(home_team, {})
-            
-            # Calculate win probability based on weighted factors
-            # 1. Points Percentage (30%)
-            # 2. Recent Form (L10) (20%) - approximated from standings if available, else 0.5
-            # 3. Expected Goals (xG) (25%)
-            # 4. Corsi (CF%) (15%)
-            # 5. Home Ice Advantage (10%)
-            
-            # Default values if metrics missing
-            away_score = 50
-            home_score = 50 + 5 # Base home ice advantage
-            
-            if away_stats and home_stats:
-                # xG factor
-                if away_stats.get('xg') and home_stats.get('xg'):
-                    xg_diff = away_stats['xg'] - home_stats['xg']
-                    away_score += xg_diff * 10
-                    home_score -= xg_diff * 10
+        try:
+            with open(predictions_file, 'r') as f:
+                data = json.load(f)
+                all_predictions = data.get('predictions', [])
                 
-                # Corsi factor
-                if away_stats.get('corsi_pct') and home_stats.get('corsi_pct'):
-                    cf_diff = away_stats['corsi_pct'] - home_stats['corsi_pct']
-                    away_score += cf_diff * 0.5
-                    home_score -= cf_diff * 0.5
-                    
-                # Special teams
-                if away_stats.get('pp_pct') and home_stats.get('pk_pct'):
-                    special_diff = (away_stats['pp_pct'] + away_stats['pk_pct']) - (home_stats['pp_pct'] + home_stats['pk_pct'])
-                    away_score += special_diff * 0.2
-                    home_score -= special_diff * 0.2
-            
-            # Normalize to 0-100
-            total = away_score + home_score
-            away_prob = round((away_score / total) * 100, 1)
-            home_prob = round((home_score / total) * 100, 1)
-            
-            # Ensure reasonable bounds (e.g. no team > 85% or < 15%)
-            away_prob = max(15, min(85, away_prob))
-            home_prob = 100 - away_prob
-            
-            predictions.append({
-                "game_id": game['id'],
-                "date": today,
-                "away_team": away_team,
-                "home_team": home_team,
-                "predicted_winner": away_team if away_prob > home_prob else home_team,
-                "predicted_away_win_prob": away_prob / 100, # Frontend expects decimal 0-1
-                "predicted_home_win_prob": home_prob / 100,
-                "confidence": abs(away_prob - home_prob) / 100,
-                "model_version": "v2.1-dynamic"
-            })
-            
-        return jsonify(predictions)
+                # Filter for today's predictions (games without actual_winner are upcoming)
+                todays_predictions = []
+                for pred in all_predictions:
+                    if pred.get('date') == today and not pred.get('actual_winner'):
+                        todays_predictions.append({
+                            'game_id': pred.get('game_id'),
+                            'away_team': pred.get('away_team'),
+                            'home_team': pred.get('home_team'),
+                            'away_win_prob': pred.get('predicted_away_win_prob', 0.5) / 100 if pred.get('predicted_away_win_prob', 0) > 1 else pred.get('predicted_away_win_prob', 0.5),
+                            'home_win_prob': pred.get('predicted_home_win_prob', 0.5) / 100 if pred.get('predicted_home_win_prob', 0) > 1 else pred.get('predicted_home_win_prob', 0.5),
+                            'favorite': pred.get('home_team') if pred.get('predicted_home_win_prob', 50) > pred.get('predicted_away_win_prob', 50) else pred.get('away_team'),
+                            'spread': abs(pred.get('predicted_home_win_prob', 50) - pred.get('predicted_away_win_prob', 50)) / 100 if pred.get('predicted_home_win_prob', 0) > 1 else abs(pred.get('predicted_home_win_prob', 0.5) - pred.get('predicted_away_win_prob', 0.5)),
+                            'confidence': max(pred.get('predicted_away_win_prob', 50), pred.get('predicted_home_win_prob', 50)) / 100 if pred.get('predicted_home_win_prob', 0) > 1 else max(pred.get('predicted_away_win_prob', 0.5), pred.get('predicted_home_win_prob', 0.5))
+                        })
+                
+                if todays_predictions:
+                    print(f"✅ Found {len(todays_predictions)} predictions for today from file")
+                    return jsonify(todays_predictions)
+        except Exception as file_error:
+            print(f"Could not read predictions file: {file_error}")
         
+        # Fallback: Try to use the actual prediction model
+        try:
+            from prediction_interface import PredictionInterface
+            predictor = PredictionInterface()
+            predictions = predictor.get_todays_predictions()
+            
+            # Format for frontend
+            formatted_predictions = []
+            for pred in predictions:
+                formatted_predictions.append({
+                    'game_id': pred.get('game_id'),
+                    'away_team': pred.get('away_team'),
+                    'home_team': pred.get('home_team'),
+                    'away_win_prob': pred.get('predicted_away_win_prob', 0.5),
+                    'home_win_prob': pred.get('predicted_home_win_prob', 0.5),
+                    'favorite': pred.get('favorite'),
+                    'spread': pred.get('spread', 0),
+                    'confidence': pred.get('prediction_confidence', 0.5)
+                })
+            
+            return jsonify(formatted_predictions)
+            
+        except Exception as model_error:
+            print(f"Error using prediction model: {model_error}")
+            # Final fallback to simple calculation
+            
+            import requests
+            url = f"https://api-web.nhle.com/v1/schedule/{today}"
+            response = requests.get(url, timeout=5)
+            if response.status_code != 200:
+                return jsonify([])
+                
+            schedule_data = response.json()
+            if not schedule_data.get('gameWeek') or not schedule_data['gameWeek'][0].get('games'):
+                return jsonify([])
+                
+            games = schedule_data['gameWeek'][0]['games']
+            
+            # Load team stats for calculation
+            team_stats = {}
+            try:
+                with open(os.path.join(DATA_DIR, 'season_2025_2026_team_stats.json'), 'r') as f:
+                    data = json.load(f)
+                    team_stats = data.get('teams', {})
+            except Exception as e:
+                print(f"Error loading team stats: {e}")
+                
+            predictions = []
+            
+            for game in games:
+                away_abbr = game['awayTeam']['abbrev']
+                home_abbr = game['homeTeam']['abbrev']
+                
+                # Calculate win probability based on team stats
+                away_metrics = team_stats.get(away_abbr, {}).get('away', {})
+                home_metrics = team_stats.get(home_abbr, {}).get('home', {})
+                
+                # Default probability if no stats
+                home_prob = 0.55 
+                
+                if away_metrics and home_metrics:
+                    # Use xG and Corsi as factors
+                    home_xg = sum(home_metrics.get('xg', [0])) / len(home_metrics.get('xg', [1])) if home_metrics.get('xg') else 2.5
+                    away_xg = sum(away_metrics.get('xg', [0])) / len(away_metrics.get('xg', [1])) if away_metrics.get('xg') else 2.5
+                    
+                    home_corsi = sum(home_metrics.get('corsi_pct', [0])) / len(home_metrics.get('corsi_pct', [1])) if home_metrics.get('corsi_pct') else 50
+                    away_corsi = sum(away_metrics.get('corsi_pct', [0])) / len(away_metrics.get('corsi_pct', [1])) if away_metrics.get('corsi_pct') else 50
+                    
+                    # Weighted calculation
+                    xg_factor = (home_xg / (home_xg + away_xg)) * 0.6
+                    corsi_factor = (home_corsi / (home_corsi + away_corsi)) * 0.4
+                    
+                    home_prob = xg_factor + corsi_factor
+                
+                away_prob = 1 - home_prob
+                
+                predictions.append({
+                    'game_id': game.get('id'),
+                    'away_team': away_abbr,
+                    'home_team': home_abbr,
+                    'away_win_prob': away_prob,
+                    'home_win_prob': home_prob,
+                    'favorite': home_abbr if home_prob > away_prob else away_abbr,
+                    'spread': abs(home_prob - away_prob),
+                    'confidence': max(home_prob, away_prob)
+                })
+                
+            return jsonify(predictions)
+            
     except Exception as e:
-        print(f"Error generating predictions: {e}")
+        print(f"Error getting predictions: {e}")
         return jsonify([])
 
 @app.route('/api/predictions/game/<game_id>', methods=['GET'])
