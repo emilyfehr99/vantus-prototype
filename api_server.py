@@ -90,21 +90,18 @@ def get_team_stats_by_abbrev(team_abbrev):
 @app.route('/api/team-metrics', methods=['GET'])
 def get_team_metrics():
     """Get aggregated team metrics for all teams (for Metrics page)
-    Uses caching to avoid recalculating on every request.
-    Cache is invalidated when the source file is modified or after 1 hour.
+    Fetches directly from MoneyPuck teams.csv (updated daily by MoneyPuck).
+    Uses caching to avoid fetching on every request.
+    Cache is invalidated after 1 hour.
     """
-    global _team_metrics_cache, _team_metrics_cache_time, _team_metrics_file_mtime
+    global _team_metrics_cache, _team_metrics_cache_time
     
-    filename = 'season_2025_2026_team_stats.json'
-    current_mtime = get_file_mtime(filename)
     current_time = datetime.now()
     
     # Check if cache is valid
     cache_valid = (
         _team_metrics_cache is not None and
         _team_metrics_cache_time is not None and
-        _team_metrics_file_mtime is not None and
-        current_mtime == _team_metrics_file_mtime and
         (current_time - _team_metrics_cache_time) < CACHE_DURATION
     )
     
@@ -112,157 +109,129 @@ def get_team_metrics():
         print(f"Returning cached team metrics (age: {(current_time - _team_metrics_cache_time).seconds}s)")
         return jsonify(_team_metrics_cache)
     
-    print("Calculating fresh team metrics...")
-    data = load_json(filename)
+    print("Fetching fresh team metrics from MoneyPuck...")
     
-    # Handle both structures
-    teams = data.get('teams', data)
+    # Fetch from MoneyPuck teams.csv (situation='all' for overall team stats)
+    # MoneyPuck updates this data daily, so we fetch it on-demand
+    season = request.args.get('season', '2025')
+    game_type = request.args.get('type', 'regular')
+    situation = request.args.get('situation', 'all')  # Use 'all' for overall team metrics
     
-    # Helper function to calculate average from list
-    def avg(lst):
-        if not lst or len(lst) == 0:
-            return 0
-        # Filter out non-numeric values
-        numeric_values = [x for x in lst if isinstance(x, (int, float))]
-        if len(numeric_values) == 0:
-            return 0
-        return sum(numeric_values) / len(numeric_values)
+    url = f"https://moneypuck.com/moneypuck/playerData/seasonSummary/{season}/{game_type}/teams.csv"
     
-    # Transform to format expected by Metrics page
-    # Calculate averages from home/away stats (which are lists)
-    metrics = {}
-    for team_abbrev, team_data in teams.items():
-        # Structure is: teams.EDM.home and teams.EDM.away
-        # Each metric is a list of values (one per game)
-        home_stats = team_data.get('home', {})
-        away_stats = team_data.get('away', {})
+    try:
+        response = requests.get(url, timeout=15)
         
-        # Calculate averages from lists
-        home_gs = avg(home_stats.get('gs', []))
-        away_gs = avg(away_stats.get('gs', []))
+        if response.status_code != 200:
+            raise Exception(f"MoneyPuck API returned status {response.status_code}")
         
-        home_nzt = avg(home_stats.get('nzt', []))
-        away_nzt = avg(away_stats.get('nzt', []))
+        # Parse MoneyPuck CSV data - include ALL fields
+        content = response.content.decode('utf-8')
+        csv_reader = csv.DictReader(io.StringIO(content))
         
-        home_ozs = avg(home_stats.get('ozs', []))
-        away_ozs = avg(away_stats.get('ozs', []))
+        metrics = {}
         
-        home_nzs = avg(home_stats.get('nzs', []))
-        away_nzs = avg(away_stats.get('nzs', []))
+        # Helper functions
+        def safe_float(val, default=0.0):
+            try:
+                return float(val) if val else default
+            except:
+                return default
         
-        home_dzs = avg(home_stats.get('period_dzs', []))  # Using period_dzs
-        away_dzs = avg(away_stats.get('period_dzs', []))
+        def safe_int(val, default=0):
+            try:
+                return int(float(val)) if val else default
+            except:
+                return default
         
-        home_fc = avg(home_stats.get('fc', []))
-        away_fc = avg(away_stats.get('fc', []))
+        # Process all rows and include ALL fields from MoneyPuck teams.csv
+        for row in csv_reader:
+            if row.get('situation', '').strip() == situation:
+                team_abbr = row.get('team', '').strip()
+                if not team_abbr:
+                    continue
+                
+                # Include ALL fields from MoneyPuck teams.csv
+                team_metrics = {}
+                
+                # Copy all fields, converting types appropriately
+                for key, value in row.items():
+                    if key == 'team':
+                        team_metrics[key] = value
+                    elif key in ['season', 'name', 'position', 'situation']:
+                        team_metrics[key] = value
+                    elif 'percentage' in key.lower() or 'pct' in key.lower():
+                        # Convert percentages (0-1 scale) to 0-100 scale
+                        team_metrics[key] = safe_float(value) * 100
+                    elif key in ['iceTime', 'xGoalsFor', 'xGoalsAgainst', 'xOnGoalFor', 'xOnGoalAgainst',
+                                'xReboundsFor', 'xReboundsAgainst', 'xFreezeFor', 'xFreezeAgainst',
+                                'flurryAdjustedxGoalsFor', 'flurryAdjustedxGoalsAgainst',
+                                'scoreVenueAdjustedxGoalsFor', 'scoreVenueAdjustedxGoalsAgainst',
+                                'flurryScoreVenueAdjustedxGoalsFor', 'flurryScoreVenueAdjustedxGoalsAgainst',
+                                'xGoalsFromxReboundsOfShotsFor', 'xGoalsFromxReboundsOfShotsAgainst',
+                                'xGoalsFromActualReboundsOfShotsFor', 'xGoalsFromActualReboundsOfShotsAgainst',
+                                'reboundxGoalsFor', 'reboundxGoalsAgainst',
+                                'totalShotCreditFor', 'totalShotCreditAgainst',
+                                'scoreAdjustedTotalShotCreditFor', 'scoreAdjustedTotalShotCreditAgainst',
+                                'scoreFlurryAdjustedTotalShotCreditFor', 'scoreFlurryAdjustedTotalShotCreditAgainst',
+                                'lowDangerxGoalsFor', 'mediumDangerxGoalsFor', 'highDangerxGoalsFor',
+                                'lowDangerxGoalsAgainst', 'mediumDangerxGoalsAgainst', 'highDangerxGoalsAgainst',
+                                'scoreAdjustedShotsAttemptsFor', 'scoreAdjustedShotsAttemptsAgainst',
+                                'scoreAdjustedUnblockedShotAttemptsFor', 'scoreAdjustedUnblockedShotAttemptsAgainst']:
+                        team_metrics[key] = safe_float(value)
+                    else:
+                        # Try int first, fall back to float
+                        try:
+                            if value and '.' not in str(value):
+                                team_metrics[key] = safe_int(value)
+                            else:
+                                team_metrics[key] = safe_float(value)
+                        except:
+                            team_metrics[key] = value
+                
+                # Add legacy/compatibility fields
+                team_metrics['xg'] = safe_float(row.get('xGoalsFor'))
+                team_metrics['hdc'] = safe_int(row.get('highDangerShotsFor'))
+                team_metrics['hdca'] = safe_int(row.get('highDangerShotsAgainst'))
+                team_metrics['shots'] = safe_int(row.get('shotsOnGoalFor'))
+                team_metrics['goals'] = safe_int(row.get('goalsFor'))
+                team_metrics['ga_gp'] = safe_int(row.get('goalsAgainst'))
+                team_metrics['corsi_pct'] = safe_float(row.get('corsiPercentage')) * 100
+                team_metrics['hits'] = safe_int(row.get('hitsFor'))
+                team_metrics['blocks'] = safe_int(row.get('blockedShotAttemptsFor'))
+                team_metrics['giveaways'] = safe_int(row.get('giveawaysFor'))
+                team_metrics['takeaways'] = safe_int(row.get('takeawaysFor'))
+                team_metrics['pim'] = safe_int(row.get('penalityMinutesFor'))
+                
+                metrics[team_abbr] = team_metrics
         
-        home_rush = avg(home_stats.get('rush', []))
-        away_rush = avg(away_stats.get('rush', []))
+        print(f"Successfully fetched MoneyPuck team data for {len(metrics)} teams (situation={situation})")
         
-        # Additional metrics
-        home_lat = avg(home_stats.get('lat', []))
-        away_lat = avg(away_stats.get('lat', []))
+        # Cache the results
+        _team_metrics_cache = metrics
+        _team_metrics_cache_time = current_time
         
-        home_long = avg(home_stats.get('long_movement', []))
-        away_long = avg(away_stats.get('long_movement', []))
+        return jsonify(metrics)
         
-        home_nztsa = avg(home_stats.get('nztsa', []))
-        away_nztsa = avg(away_stats.get('nztsa', []))
-        
-        home_xg = avg(home_stats.get('xg', []))
-        away_xg = avg(away_stats.get('xg', []))
-        
-        home_hdc = avg(home_stats.get('hdc', []))
-        away_hdc = avg(away_stats.get('hdc', []))
-
-        home_hdca = avg(home_stats.get('hdca', []))
-        away_hdca = avg(away_stats.get('hdca', []))
-        
-        home_corsi = avg(home_stats.get('corsi_pct', []))
-        away_corsi = avg(away_stats.get('corsi_pct', []))
-        
-        home_shots = avg(home_stats.get('shots', []))
-        away_shots = avg(away_stats.get('shots', []))
-        
-        home_goals = avg(home_stats.get('goals', []))
-        away_goals = avg(away_stats.get('goals', []))
-        
-        home_hits = avg(home_stats.get('hits', []))
-        away_hits = avg(away_stats.get('hits', []))
-        
-        home_blocks = avg(home_stats.get('blocked_shots', []))
-        away_blocks = avg(away_stats.get('blocked_shots', []))
-        
-        home_giveaways = avg(home_stats.get('giveaways', []))
-        away_giveaways = avg(away_stats.get('giveaways', []))
-        
-        home_takeaways = avg(home_stats.get('takeaways', []))
-        away_takeaways = avg(away_stats.get('takeaways', []))
-        
-        home_pim = avg(home_stats.get('penalty_minutes', []))
-        away_pim = avg(away_stats.get('penalty_minutes', []))
-        
-        home_pp_pct = avg(home_stats.get('power_play_pct', []))
-        away_pp_pct = avg(away_stats.get('power_play_pct', []))
-        
-        home_pk_pct = avg(home_stats.get('penalty_kill_pct', []))
-        away_pk_pct = avg(away_stats.get('penalty_kill_pct', []))
-        
-        home_fo_pct = avg(home_stats.get('faceoff_pct', []))
-        away_fo_pct = avg(away_stats.get('faceoff_pct', []))
-
-        home_ga = avg(home_stats.get('goals_against', []))
-        away_ga = avg(away_stats.get('goals_against', []))
-        
-        # Average home and away stats
-        metrics[team_abbrev] = {
-            # Core advanced metrics
-            'gs': round((home_gs + away_gs) / 2, 1),
-            'nzts': round((home_nzt + away_nzt) / 2),  # nzt = neutral zone turnovers
-            'nztsa': round((home_nztsa + away_nztsa) / 2, 1),  # neutral zone turnovers to shots against
-            'ozs': round((home_ozs + away_ozs) / 2),
-            'nzs': round((home_nzs + away_nzs) / 2),
-            'dzs': round((home_dzs + away_dzs) / 2),
-            'fc': round((home_fc + away_fc) / 2),
-            'rush': round((home_rush + away_rush) / 2),
-            
-            # Movement metrics
-            'lat': round((home_lat + away_lat) / 2, 1),
-            'long_movement': round((home_long + away_long) / 2, 1),
-            
-            # Shooting metrics
-            'xg': round((home_xg + away_xg) / 2, 2),
-            'hdc': round((home_hdc + away_hdc) / 2, 1),
-            'hdca': round((home_hdca + away_hdca) / 2, 1),
-            'shots': round((home_shots + away_shots) / 2, 1),
-            'goals': round((home_goals + away_goals) / 2, 2),
-            'ga_gp': round((home_ga + away_ga) / 2, 2),
-            
-            # Possession metrics
-            'corsi_pct': round((home_corsi + away_corsi) / 2, 1),
-            
-            # Physical metrics
-            'hits': round((home_hits + away_hits) / 2, 1),
-            'blocks': round((home_blocks + away_blocks) / 2, 1),
-            'giveaways': round((home_giveaways + away_giveaways) / 2, 1),
-            'takeaways': round((home_takeaways + away_takeaways) / 2, 1),
-            'pim': round((home_pim + away_pim) / 2, 1),
-            
-            # Special teams
-            'pp_pct': round((home_pp_pct + away_pp_pct) / 2, 1),
-            'pk_pct': round((home_pk_pct + away_pk_pct) / 2, 1),
-            'fo_pct': round((home_fo_pct + away_fo_pct) / 2, 1),
-            
-            # Meta
-            'gamesProcessed': len(home_stats.get('games', [])) + len(away_stats.get('games', []))
-        }
-    
-    # Cache the results
-    _team_metrics_cache = metrics
-    _team_metrics_cache_time = current_time
-    _team_metrics_file_mtime = current_mtime
-    
-    return jsonify(metrics)
+    except Exception as e:
+        print(f"Error fetching MoneyPuck team data: {e}")
+        import traceback
+        traceback.print_exc()
+        # Fallback to local file - return empty dict if fallback fails
+        try:
+            filename = 'season_2025_2026_team_stats.json'
+            data = load_json(filename)
+            teams = data.get('teams', data)
+            # Return simplified fallback
+            metrics = {}
+            for team_abbrev, team_data in teams.items():
+                metrics[team_abbrev] = team_data if isinstance(team_data, dict) else {}
+            _team_metrics_cache = metrics
+            _team_metrics_cache_time = current_time
+            return jsonify(metrics)
+        except Exception as fallback_error:
+            print(f"Fallback also failed: {fallback_error}")
+            return jsonify({})
 
 @app.route('/api/team-heatmap/<team_abbr>', methods=['GET'])
 def get_team_heatmap(team_abbr):

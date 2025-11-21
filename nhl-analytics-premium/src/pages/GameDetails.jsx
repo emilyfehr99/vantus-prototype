@@ -174,8 +174,8 @@ const extractTopPerformers = (boxscore) => {
     
     // Sort by GS/GP and return top 5
     const sorted = allPlayers
-        .filter(p => p.gsPerGame > 0 || p.points > 0 || p.goals > 0 || p.assists > 0)
-        .sort((a, b) => b.gsPerGame - a.gsPerGame)
+        .filter(p => p && (p.gsPerGame > 0 || p.points > 0 || p.goals > 0 || p.assists > 0))
+        .sort((a, b) => (b.gsPerGame || 0) - (a.gsPerGame || 0))
         .slice(0, 5);
     
     console.log('Top 5 players:', sorted);
@@ -191,6 +191,7 @@ const GameDetailsContent = () => {
     const [prediction, setPrediction] = useState(null);
     const [awayHeatmap, setAwayHeatmap] = useState(null);
     const [homeHeatmap, setHomeHeatmap] = useState(null);
+    const [shotsFromPbp, setShotsFromPbp] = useState([]);
     const [topPerformers, setTopPerformers] = useState([]);
 
     useEffect(() => {
@@ -203,6 +204,54 @@ const GameDetailsContent = () => {
 
                 setGameData(data);
                 setLiveData(liveGameData);
+
+                // Extract shots from play-by-play data for completed/live games
+                if (data?.playByPlay && data?.boxscore) {
+                    try {
+                        const plays = data.playByPlay.plays || data.playByPlay || [];
+                        const awayTeam = data.boxscore.awayTeam;
+                        const homeTeam = data.boxscore.homeTeam;
+                        const shots = [];
+                        
+                        if (Array.isArray(plays)) {
+                            plays.forEach(play => {
+                                const eventType = play.typeDescKey || play.typeDesc;
+                                if (eventType && ['goal', 'shot-on-goal', 'missed-shot', 'blocked-shot'].includes(eventType)) {
+                                    const details = play.details || {};
+                                    const x = details.xCoord;
+                                    const y = details.yCoord;
+                                    
+                                    if (x !== null && x !== undefined && y !== null && y !== undefined) {
+                                        const teamId = details.eventOwnerTeamId;
+                                        const teamAbbrev = (teamId === awayTeam?.id) ? awayTeam.abbrev : 
+                                                         (teamId === homeTeam?.id) ? homeTeam.abbrev : 
+                                                         (details.eventOwnerTeamId ? 'UNK' : null);
+                                        
+                                        if (teamAbbrev) {
+                                            shots.push({
+                                                x: x,
+                                                y: y,
+                                                type: eventType === 'goal' ? 'GOAL' : 'SHOT',
+                                                team: teamAbbrev,
+                                                period: play.periodDescriptor?.number || play.period || 1,
+                                                time: play.timeInPeriod || play.time || '00:00',
+                                                shooter: details.shootingPlayerId || details.scoringPlayerId || 'Unknown',
+                                                shotType: details.shotType || 'wrist',
+                                                xg: 0.1 // Default xG, could be calculated if needed
+                                            });
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                        
+                        console.log(`Extracted ${shots.length} shots from play-by-play data`);
+                        setShotsFromPbp(shots);
+                    } catch (error) {
+                        console.error('Error extracting shots from play-by-play:', error);
+                        setShotsFromPbp([]);
+                    }
+                }
 
                 // Fetch team metrics, prediction, and heatmap data for pre-game/post-game
                 if (data?.boxscore) {
@@ -241,15 +290,19 @@ const GameDetailsContent = () => {
         };
 
         fetchGameData();
-        // Poll for live data every 30s if game is live, also refresh team metrics
+        // Poll for live data every 30s if game is live, also refresh team metrics and game data for top performers
         const interval = setInterval(() => {
             if (gameData?.boxscore?.gameState === 'LIVE' || gameData?.boxscore?.gameState === 'CRIT') {
                 Promise.all([
                     backendApi.getLiveGame(id).catch(() => null),
-                    backendApi.getTeamMetrics().catch(() => ({}))
-                ]).then(([live, metrics]) => {
+                    backendApi.getTeamMetrics().catch(() => ({})),
+                    nhlApi.getGameCenter(id).catch(() => null) // Refresh game data to get updated boxscore for top performers
+                ]).then(([live, metrics, updatedGameData]) => {
                     setLiveData(live);
                     setTeamMetrics(metrics);
+                    if (updatedGameData) {
+                        setGameData(updatedGameData); // Update gameData to refresh top performers
+                    }
                 }).catch(err => console.error('Polling error:', err));
             }
         }, 30000);
@@ -257,7 +310,7 @@ const GameDetailsContent = () => {
         return () => clearInterval(interval);
     }, [id, gameData?.boxscore?.gameState]);
     
-    // Extract top performers when gameData changes
+    // Extract top performers when gameData changes or when live data updates
     useEffect(() => {
         if (gameData?.boxscore) {
             const gameState = gameData.boxscore.gameState;
@@ -315,7 +368,7 @@ const GameDetailsContent = () => {
                 fetchRecentPerformers();
             }
         }
-    }, [gameData]);
+    }, [gameData, liveData]); // Also update when liveData changes for live games
 
     if (loading) {
         return (
@@ -389,30 +442,30 @@ const GameDetailsContent = () => {
         return (
             <div className="mb-4">
                 <div className="flex justify-between text-sm font-mono mb-2">
-                    <span 
-                        className={clsx(awayBetter ? "font-bold" : "text-text-muted")}
-                        style={awayBetter ? { color: awayColor } : {}}
-                    >
+                    <span className={clsx(awayBetter ? "font-bold text-white" : "text-white")}>
                         {format(awayVal)}
                     </span>
                     <span className="text-text-secondary uppercase text-xs tracking-wider">{label}</span>
-                    <span 
-                        className={clsx(homeBetter ? "font-bold" : "text-text-muted")}
-                        style={homeBetter ? { color: homeColor } : {}}
-                    >
+                    <span className={clsx(homeBetter ? "font-bold text-white" : "text-white")}>
                         {format(homeVal)}
                     </span>
                 </div>
-                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden flex">
+                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden flex relative">
                     <div
-                        className="h-full transition-all duration-500"
+                        className={clsx(
+                            "h-full transition-all duration-500",
+                            awayBetter && "shadow-[0_0_8px_2px_rgba(255,255,255,0.6)]"
+                        )}
                         style={{ 
                             width: `${awayPct}%`,
                             backgroundColor: awayColor
                         }}
                     />
                     <div
-                        className="h-full transition-all duration-500"
+                        className={clsx(
+                            "h-full transition-all duration-500",
+                            homeBetter && "shadow-[0_0_8px_2px_rgba(255,255,255,0.6)]"
+                        )}
                         style={{ 
                             width: `${100 - awayPct}%`,
                             backgroundColor: homeColor
@@ -949,33 +1002,15 @@ const GameDetailsContent = () => {
                             <Target className="w-6 h-6 text-accent-secondary" />
                             <h3 className="text-xl font-display font-bold">SHOT MAP</h3>
                         </div>
-                        <div className="aspect-[2/1] bg-white/5 rounded-xl overflow-hidden relative">
+                        <div className="aspect-[2/1] rounded-xl overflow-hidden relative">
                             <ShotChart
-                                shotsData={liveData?.shots_data || []}
+                                shotsData={liveData?.shots_data || shotsFromPbp || []}
                                 homeTeam={homeTeam.abbrev}
                                 awayTeam={awayTeam.abbrev}
                                 awayHeatmap={awayHeatmap}
                                 homeHeatmap={homeHeatmap}
                                 gameState={gameState}
                             />
-                        </div>
-                        <div className="flex justify-center gap-6 mt-4 text-xs font-mono text-text-muted">
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-accent-primary"></div>
-                                <span>{awayTeam.abbrev} GOAL</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full border border-accent-primary"></div>
-                                <span>{awayTeam.abbrev} SHOT</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-accent-secondary"></div>
-                                <span>{homeTeam.abbrev} GOAL</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full border border-accent-secondary"></div>
-                                <span>{homeTeam.abbrev} SHOT</span>
-                            </div>
                         </div>
                     </section>
 
@@ -1010,8 +1045,12 @@ const GameDetailsContent = () => {
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="font-mono font-bold text-color-success">{player.gsPerGame.toFixed(2)} GS/GP</div>
-                                        <div className="text-xs font-mono text-text-muted">{player.points} P ({player.goals}G, {player.assists}A)</div>
+                                        <div className="font-mono font-bold text-color-success">
+                                            {player.gsPerGame ? player.gsPerGame.toFixed(2) : '0.00'} GS/GP
+                                        </div>
+                                        <div className="text-xs font-mono text-text-muted">
+                                            {player.points || 0} P ({(player.goals || 0)}G, {(player.assists || 0)}A)
+                                        </div>
                                     </div>
                                 </div>
                                 ))

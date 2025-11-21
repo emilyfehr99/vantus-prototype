@@ -142,7 +142,7 @@ const ShotChart = ({ shotsData = [], awayTeam, homeTeam, awayHeatmap = null, hom
     const homeColor = getTeamColor(homeTeam);
 
     return (
-        <div className="relative w-full bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl overflow-hidden">
+        <div className="relative w-full rounded-xl overflow-hidden">
             {/* Rink Image Background */}
             <div className="relative w-full" style={{ paddingBottom: '42.5%' }}>
                 <img

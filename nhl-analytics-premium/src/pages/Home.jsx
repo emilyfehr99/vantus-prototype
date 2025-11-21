@@ -17,6 +17,7 @@ const Home = () => {
         const fetchData = async () => {
             try {
                 const today = new Date().toISOString().split('T')[0];
+                
                 const [standingsResult, scheduleResult, predictionsResult, metricsResult] = await Promise.allSettled([
                     nhlApi.getStandings(today),
                     nhlApi.getSchedule(today),
@@ -65,6 +66,19 @@ const Home = () => {
         };
 
         fetchData();
+        
+        // Poll for game updates every 60 seconds to catch games transitioning from FUT -> LIVE -> FINAL
+        const interval = setInterval(() => {
+            const today = new Date().toISOString().split('T')[0];
+            nhlApi.getSchedule(today)
+                .then(scheduleResult => {
+                    const fetchedGames = scheduleResult.gameWeek?.[0]?.games || [];
+                    setGames(fetchedGames);
+                })
+                .catch(err => console.error('Polling schedule error:', err));
+        }, 60000); // Poll every 60 seconds
+        
+        return () => clearInterval(interval);
     }, []);
 
     if (loading) {
