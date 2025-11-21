@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import json
 import os
+import sys
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -10,12 +11,21 @@ CORS(app)  # Enable CORS for React frontend
 # Base directory for data files
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Add project root and reports dir to sys.path
+project_root = os.path.abspath(os.path.dirname(__file__))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+reports_dir = os.path.join(project_root, 'automated-post-game-reports')
+if os.path.exists(reports_dir) and reports_dir not in sys.path:
+    sys.path.insert(0, reports_dir)
+
 # Initialize predictor
 try:
     from live_in_game_predictions import LiveInGamePredictor
     live_predictor = LiveInGamePredictor()
-except ImportError:
-    print("Warning: LiveInGamePredictor not found, using mock")
+except ImportError as e:
+    print(f"Warning: LiveInGamePredictor not found ({e}), using mock")
     class MockPredictor:
         def get_live_game_data(self, game_id): return {}
         def predict_live_game(self, metrics): return {}
@@ -256,10 +266,30 @@ def get_team_heatmap(team_abbr):
     """Get aggregated shot data for team heatmap"""
     try:
         from nhl_api_client import NHLAPIClient
-        from improved_xg_model import ImprovedXGModel
         client = NHLAPIClient()
-        xg_model = ImprovedXGModel()
         
+        # ----- XG model import with fallback -----
+        use_xg_model = False
+        xg_model = None
+        try:
+            import sys
+            import os
+            # Add the project root to path if not already there
+            project_root = os.path.abspath(os.path.dirname(__file__))
+            if project_root not in sys.path:
+                sys.path.insert(0, project_root)
+            
+            # Also try adding the automated-post-game-reports subdir
+            reports_dir = os.path.join(project_root, 'automated-post-game-reports')
+            if os.path.exists(reports_dir) and reports_dir not in sys.path:
+                sys.path.insert(0, reports_dir)
+
+            from improved_xg_model import ImprovedXGModel
+            xg_model = ImprovedXGModel()
+            use_xg_model = True
+        except Exception as e:
+            print(f"Could not load ImprovedXGModel: {e} – using distance-based fallback")
+
         # Team ID mapping (copied from client for reliability)
         team_ids = {
             'FLA': 13, 'EDM': 22, 'BOS': 6, 'TOR': 10, 'MTL': 8, 'OTT': 9,
@@ -271,7 +301,7 @@ def get_team_heatmap(team_abbr):
         }
         target_team_id = team_ids.get(team_abbr.upper())
         
-        # Get recent games (increased to 10)
+        # Get recent games (limit 10)
         game_ids = client.get_team_recent_games(team_abbr, limit=10)
         
         shots_for = []
@@ -284,13 +314,20 @@ def get_team_heatmap(team_abbr):
             pbp = client.get_play_by_play(game_id)
             game_center = client.get_game_center(game_id)
             
-            if not pbp or not game_center:
-                continue
+            # Robust check for game_center data
+            home_team_id = None
+            away_team_id = None
+            if game_center:
+                home_team_id = game_center.get('homeTeam', {}).get('id')
+                away_team_id = game_center.get('awayTeam', {}).get('id')
             
             # Determine if target team is home or away
-            home_team_id = game_center.get('homeTeam', {}).get('id')
-            away_team_id = game_center.get('awayTeam', {}).get('id')
-            is_home_team = (int(home_team_id) == int(target_team_id)) if home_team_id and target_team_id else False
+            is_home_team = False
+            if home_team_id and target_team_id:
+                is_home_team = (int(home_team_id) == int(target_team_id))
+            
+            if not pbp or 'plays' not in pbp:
+                continue
                 
             for play_index, play in enumerate(pbp.get('plays', [])):
                 details = play.get('details', {})
@@ -308,8 +345,6 @@ def get_team_heatmap(team_abbr):
                 is_for = (int(event_owner_id) == int(target_team_id)) if target_team_id else True
                 
                 # Normalize coordinates so target team always shoots right (positive x)
-                # In odd periods (1,3), home team defends left goal (shoots right, positive x)
-                # In even periods (2), teams switch
                 normalized_x = x
                 normalized_y = y
                 
@@ -324,121 +359,89 @@ def get_team_heatmap(team_abbr):
                         normalized_x = -x
                         normalized_y = -y
                     
+                # Helper for xG calculation
+                def _calc_xg(event_type):
+                    if use_xg_model and xg_model:
+                        try:
+                            previous = pbp.get('plays', [])[max(0, play_index-10):play_index]
+                            shot_data = {
+                                'x_coord': x,
+                                'y_coord': y,
+                                'shot_type': details.get('shotType', 'wrist').lower(),
+                                'event_type': event_type,
+                                'time_in_period': play.get('timeInPeriod', '00:00'),
+                                'period': period,
+                                'strength_state': 'even',
+                                'score_differential': 0,
+                                'team_id': event_owner_id,
+                            }
+                            return xg_model.calculate_xg(shot_data, previous)
+                        except Exception as e:
+                            print(f"xG model error: {e}")
                     
+                    # Fallback distance-based xG
+                    import math
+                    distance = math.sqrt(x**2 + y**2)
+                    if event_type == 'goal':
+                        return max(0.1, min(0.8, 1.0 - (distance / 100)))
+                    return max(0.01, min(0.5, 1.0 - (distance / 100)))
+
+                # Common point data
+                shooter_name = None
+                shooter_id = details.get('shootingPlayerId') or details.get('scoringPlayerId')
+                
+                if shooter_id and 'rosterSpots' in pbp:
+                    for spot in pbp['rosterSpots']:
+                        if spot.get('playerId') == shooter_id:
+                            shooter_name = spot.get('firstName', {}).get('default', '') + ' ' + spot.get('lastName', {}).get('default', '')
+                            break
+                
+                # Determine movement type based on previous events
+                movement = None
+                if play_index > 0:
+                    prev_play = pbp['plays'][play_index - 1]
+                    prev_type = prev_play.get('typeDescKey', '')
+                    if 'faceoff' in prev_type:
+                        movement = 'rush'
+                    elif 'hit' in prev_type or 'takeaway' in prev_type:
+                        movement = 'forecheck'
+                    elif prev_play.get('details', {}).get('zoneCode') != play.get('details', {}).get('zoneCode'):
+                        movement = 'transition'
+
+                point = {
+                    'x': normalized_x,
+                    'y': normalized_y,
+                    'shooter': shooter_name,
+                    'shotType': details.get('shotType'),
+                    'movement': movement
+                }
+
                 if play.get('typeDescKey') == 'shot-on-goal':
-                    # Extract metadata for tooltip
-                    shooter_id = details.get('shootingPlayerId')
-                    shooter_name = None
-                    if shooter_id and 'rosterSpots' in pbp:
-                        for spot in pbp['rosterSpots']:
-                            if spot.get('playerId') == shooter_id:
-                                shooter_name = spot.get('firstName', {}).get('default', '') + ' ' + spot.get('lastName', {}).get('default', '')
-                                break
-                    
-                    # Calculate xG using the same model as team calculations
-                    previous_events = pbp.get('plays', [])[max(0, play_index-10):play_index]
-                    shot_data = {
-                        'x_coord': x,
-                        'y_coord': y,
-                        'shot_type': details.get('shotType', 'wrist').lower(),
-                        'event_type': 'shot-on-goal',
-                        'time_in_period': play.get('timeInPeriod', '00:00'),
-                        'period': period,
-                        'strength_state': 'even',  # Simplified
-                        'score_differential': 0,
-                        'team_id': event_owner_id
-                    }
-                    xg_value = xg_model.calculate_xg(shot_data, previous_events)
-                    
-                    point = {
-                        'x': normalized_x,
-                        'y': normalized_y,
-                        'shooter': shooter_name,
-                        'shotType': details.get('shotType'),
-                        'xg': xg_value
-                    }
-                    
-                    # Determine movement type based on previous events
-                    movement = None
-                    if play_index > 0:
-                        prev_play = pbp['plays'][play_index - 1]
-                        prev_type = prev_play.get('typeDescKey', '')
-                        if 'faceoff' in prev_type:
-                            movement = 'rush'
-                        elif 'hit' in prev_type or 'takeaway' in prev_type:
-                            movement = 'forecheck'
-                        elif prev_play.get('details', {}).get('zoneCode') != play.get('details', {}).get('zoneCode'):
-                            movement = 'transition'
-                    
-                    point['movement'] = movement
-                    
+                    point['xg'] = _calc_xg('shot-on-goal')
                     if is_for:
                         shots_for.append(point)
                     else:
                         shots_against.append(point)
                 elif play.get('typeDescKey') == 'goal':
-                    # Extract metadata for goals too
-                    shooter_id = details.get('scoringPlayerId') or details.get('shootingPlayerId')
-                    shooter_name = None
-                    if shooter_id and 'rosterSpots' in pbp:
-                        for spot in pbp['rosterSpots']:
-                            if spot.get('playerId') == shooter_id:
-                                shooter_name = spot.get('firstName', {}).get('default', '') + ' ' + spot.get('lastName', {}).get('default', '')
-                                break
-                    
-                    # Calculate xG for goals
-                    previous_events = pbp.get('plays', [])[max(0, play_index-10):play_index]
-                    shot_data = {
-                        'x_coord': x,
-                        'y_coord': y,
-                        'shot_type': details.get('shotType', 'wrist').lower(),
-                        'event_type': 'goal',
-                        'time_in_period': play.get('timeInPeriod', '00:00'),
-                        'period': period,
-                        'strength_state': 'even',
-                        'score_differential': 0,
-                        'team_id': event_owner_id
-                    }
-                    xg_value = xg_model.calculate_xg(shot_data, previous_events)
-                    
-                    point = {
-                        'x': normalized_x,
-                        'y': normalized_y,
-                        'shooter': shooter_name,
-                        'shotType': details.get('shotType'),
-                        'xg': xg_value
-                    }
-                    
-                    # Determine movement type
-                    movement = None
-                    if play_index > 0:
-                        prev_play = pbp['plays'][play_index - 1]
-                        prev_type = prev_play.get('typeDescKey', '')
-                        if 'faceoff' in prev_type:
-                            movement = 'rush'
-                        elif 'hit' in prev_type or 'takeaway' in prev_type:
-                            movement = 'forecheck'
-                        elif prev_play.get('details', {}).get('zoneCode') != play.get('details', {}).get('zoneCode'):
-                            movement = 'transition'
-                    
-                    point['movement'] = movement
-                    
+                    point['xg'] = _calc_xg('goal')
                     if is_for:
                         goals_for.append(point)
                     else:
                         goals_against.append(point)
-                    
-        return jsonify({
-            'team': team_abbr,
-            'games_count': len(game_ids),
+        
+        heatmap = {
             'shots_for': shots_for,
             'goals_for': goals_for,
             'shots_against': shots_against,
             'goals_against': goals_against
-        })
+        }
         
+        return jsonify(heatmap)
+
     except Exception as e:
         print(f"Error generating heatmap for {team_abbr}: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/edge-data', methods=['GET'])
