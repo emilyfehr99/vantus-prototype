@@ -1,15 +1,18 @@
 """
 Velocity Logic - Web Interface
-Simple Flask web interface for the Velocity Logic agent.
+Flask API for multi-tenant quoting system.
 """
 
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
+from functools import wraps
 import os
 import json
 from datetime import datetime
 from main import VelocityLogicAgent
 from services.polling_service import PollingService
+from database.db_manager import DatabaseManager
+from database.auth_service import AuthService
 import threading
 import time
 
@@ -17,15 +20,11 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 app.config['UPLOAD_FOLDER'] = 'output'
 
-# Initialize agent
+# Initialize database and agent
+db = DatabaseManager()
 agent = None
-polling_service = PollingService(check_interval=60)  # Check every 60 seconds
-agent_status = {
-    "running": False,
-    "last_check": None,
-    "processed_count": 0,
-    "errors": []
-}
+polling_service = PollingService(check_interval=60)
+auth_service = AuthService()
 
 def init_agent():
     """Initialize the agent in a separate thread."""
@@ -38,17 +37,14 @@ def init_agent():
         agent = None
 
 # Initialize agent on startup
-# Initialize agent on startup
 init_agent()
 
-# Store drafts in a JSON file for persistence
-DRAFTS_FILE = 'drafts.json'
-SETTINGS_FILE = 'settings.json'
+# Register authentication routes
+from routes.auth_routes import auth_bp
+app.register_blueprint(auth_bp)
 
-# In-memory activity log (could be persisted later)
-activity_log = []
-
-def log_activity(action: str, details: str):
+# Import auth middleware
+from middleware.auth_middleware import require_auth
     """Log an activity event."""
     event = {
         "id": len(activity_log) + 1,

@@ -751,7 +751,12 @@ class LiveInGamePredictor:
                             
                             # Ensure shooter_name is actually a name, not an ID
                             if shooter_name and (str(shooter_name).isdigit() or (isinstance(shooter_name, int))):
-                                print(f"❌ ERROR: shooter_name is still an ID ({shooter_name}) for player_id {shooter_id}, forcing fallback")
+                                print(f"❌ ERROR: shooter_name is still an ID ({shooter_name}) for player_id {shooter_id}, forcing fallback", flush=True)
+                                shooter_name = f"Player #{shooter_id}"
+                            
+                            # FINAL CHECK: Make absolutely sure shooter is never an ID
+                            if isinstance(shooter_name, int) or (isinstance(shooter_name, str) and shooter_name.isdigit()):
+                                print(f"❌❌❌ CRITICAL ERROR: shooter_name is STILL an ID after all checks: {shooter_name} (type: {type(shooter_name).__name__})", flush=True)
                                 shooter_name = f"Player #{shooter_id}"
                             
                             shots_data.append({
@@ -770,9 +775,18 @@ class LiveInGamePredictor:
                             
                             # Debug: log if we're still getting IDs instead of names
                             if shooter_name and (str(shooter_name).isdigit() or shooter_name.startswith('Player #')):
-                                print(f"⚠️ WARNING: shooter_name is still ID-like: {shooter_name} for player_id {shooter_id}")
+                                print(f"⚠️ WARNING: shooter_name is still ID-like: {shooter_name} for player_id {shooter_id}", flush=True)
             except Exception as e:
-                print(f"Error extracting shot data: {e}")
+                print(f"❌ Error extracting shot data: {e}", flush=True)
+                import traceback
+                traceback.print_exc()
+            
+            print(f"✅ Created {len(shots_data)} shots in shots_data", flush=True)
+            if shots_data:
+                sample = shots_data[0]
+                print(f"   Sample shot - shooter: {sample.get('shooter')} (type: {type(sample.get('shooter')).__name__})", flush=True)
+                if isinstance(sample.get('shooter'), int):
+                    print(f"   ❌❌❌ CRITICAL: Sample shot has shooter as INT ID!", flush=True)
             
             live_metrics['shots_data'] = shots_data
 
