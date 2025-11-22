@@ -309,7 +309,7 @@ def get_team_metrics():
         skip_moneypuck = request.args.get('skip_moneypuck', '0') == '1'
         
         if not skip_moneypuck:
-        print("Supplementing with MoneyPuck data for additional fields...")
+            print("Supplementing with MoneyPuck data for additional fields...")
         
         season = request.args.get('season', '2025')
         game_type = request.args.get('type', 'regular')
@@ -402,7 +402,8 @@ def get_team_metrics():
         except Exception as moneypuck_error:
             print(f"⚠️ Warning: Could not fetch MoneyPuck data (non-critical): {moneypuck_error}")
             # Continue without MoneyPuck data - season stats are primary source
-        else:
+        
+        if skip_moneypuck:
             print("⏩ Skipping MoneyPuck supplement for faster response (use ?skip_moneypuck=0 to enable)")
         
         # Debug: Final check before caching
@@ -410,11 +411,10 @@ def get_team_metrics():
             cbj_metrics = metrics['CBJ']
             print(f"DEBUG: Final CBJ metrics before cache - ozs: {cbj_metrics.get('ozs')}, nzs: {cbj_metrics.get('nzs')}, gs: {cbj_metrics.get('gs')}, fc: {cbj_metrics.get('fc')}, rush: {cbj_metrics.get('rush')}, lat: {cbj_metrics.get('lat')}")
     
-    # Cache the results
-    _team_metrics_cache = metrics
-    _team_metrics_cache_time = current_time
-    return jsonify(metrics)
-    
+        # Cache the results
+        _team_metrics_cache = metrics
+        _team_metrics_cache_time = current_time
+        return jsonify(metrics)
     except Exception as e:
         print(f"Error loading team metrics: {e}")
         import traceback
@@ -1734,7 +1734,12 @@ def get_live_game_data(game_id):
                 # Also check if we have period stats with data for all 3 periods (indicates game is complete)
                 if game_state in ['FINAL', 'OFF']:
                     current_period = 3  # Force show all periods for completed games
-                    print(f"   ✅ Game is FINAL/OFF, showing all 3 periods")
+                    # CRITICAL: Update current_period in all places so frontend receives it
+                    live_data['current_period'] = current_period
+                    prediction['current_period'] = current_period
+                    if 'live_metrics' in prediction:
+                        prediction['live_metrics']['current_period'] = current_period
+                    print(f"   ✅ Game is FINAL/OFF, showing all 3 periods (current_period set to {current_period})")
                 elif away_period_stats and home_period_stats:
                     # If we have period stats with data for all periods, show all periods
                     away_shots_list = away_period_stats.get('shots', [])
@@ -2092,12 +2097,19 @@ def get_live_game_data(game_id):
                                 
                                 # Get current period to filter periods
                                 current_period = live_data.get('current_period', 1)
+                                game_state_fallback = live_data.get('game_state', '')
+                                
+                                # CRITICAL: For completed games (FINAL/OFF), always show all 3 periods
+                                if game_state_fallback in ['FINAL', 'OFF']:
+                                    current_period = 3
+                                    print(f"   ✅ Fallback: Game is FINAL/OFF, showing all 3 periods")
                                 
                                 period_stats_array = []
                                 for period_num in range(1, 4):
                                     # Only show period if it's completed or currently active
-                                    if period_num > current_period:
-                                        continue  # Skip future periods
+                                    # For completed games (FINAL/OFF), always show all periods
+                                    if game_state_fallback not in ['FINAL', 'OFF'] and period_num > current_period:
+                                        continue  # Skip future periods for live games
                                     period_idx = period_num - 1
                                     # Get zone metrics per period
                                     away_ozs_period = away_zone_metrics.get('oz_originating_shots', [0, 0, 0])[period_idx] if isinstance(away_zone_metrics, dict) and period_idx < len(away_zone_metrics.get('oz_originating_shots', [])) else 0
@@ -2171,7 +2183,11 @@ def get_live_game_data(game_id):
                                 if 'live_metrics' not in prediction:
                                     prediction['live_metrics'] = {}
                                 prediction['live_metrics']['period_stats'] = period_stats_array
-                                print(f"✅ Fallback period_stats formatted: {len(period_stats_array)} periods")
+                                # CRITICAL: Also update current_period for FINAL games
+                                if game_state_fallback in ['FINAL', 'OFF']:
+                                    prediction['current_period'] = 3
+                                    prediction['live_metrics']['current_period'] = 3
+                                print(f"✅ Fallback period_stats formatted: {len(period_stats_array)} periods (game_state={game_state_fallback}, current_period={current_period})")
                 except Exception as e:
                     print(f"⚠️ Fallback calculation failed: {e}")
                     import traceback
@@ -2246,10 +2262,115 @@ def get_live_game_data(game_id):
                     prediction['live_metrics']['home_shots'] = int(boxscore_absolute_final['homeTeam']['sog'])
                 print(f"✅✅✅ ABSOLUTE FINAL BEFORE DEEPCOPY: away_hits={prediction['live_metrics']['away_hits']}, blocked={prediction['live_metrics']['away_blocked_shots']}, gv={prediction['live_metrics']['away_giveaways']}", flush=True)
         
+        # CRITICAL DEBUG: This print MUST appear in logs if code is executing
+        print(f"🔍🔍🔍 REACHED LINE 2265: About to create final_response via deepcopy", flush=True)
+        
         # FINAL CHECK: Ensure period_stats is in the response
         # Use deep copy to avoid reference issues
         import copy
         final_response = copy.deepcopy(prediction)
+        
+        # CRITICAL DEBUG: This print MUST appear after deepcopy
+        print(f"🔍🔍🔍 REACHED LINE 2269: After deepcopy, about to check game_state", flush=True)
+        
+        # FINAL CHECK: Calculate PP%, PK%, and FO% from period stats for FINAL games (if not already calculated)
+        # The boxscore doesn't have these percentages, so we need to calculate from period stats
+        # CRITICAL: Do this AFTER deep copy so we modify final_response directly
+        game_state_before_copy = final_response.get('game_state') or final_response.get('live_metrics', {}).get('game_state', '')
+        print(f"🔍 API_SERVER FINAL CHECK: game_state_before_copy='{game_state_before_copy}', is FINAL/OFF: {game_state_before_copy in ['FINAL', 'OFF']}", flush=True)
+        if game_state_before_copy in ['FINAL', 'OFF']:
+            try:
+                # Get period stats from live_metrics - try multiple paths
+                live_metrics_for_final = final_response.get('live_metrics', {})
+                away_period_stats_final = live_metrics_for_final.get('away_period_stats', {})
+                home_period_stats_final = live_metrics_for_final.get('home_period_stats', {})
+                
+                # Fallback: check top level
+                if not away_period_stats_final:
+                    away_period_stats_final = final_response.get('away_period_stats', {})
+                if not home_period_stats_final:
+                    home_period_stats_final = final_response.get('home_period_stats', {})
+                
+                print(f"🔍 API_SERVER FINAL: Calculating percentages from period stats", flush=True)
+                print(f"🔍 API_SERVER FINAL: away_period_stats exists: {bool(away_period_stats_final)}, type: {type(away_period_stats_final)}", flush=True)
+                print(f"🔍 API_SERVER FINAL: away_period_stats keys: {list(away_period_stats_final.keys()) if isinstance(away_period_stats_final, dict) else 'Not a dict'}", flush=True)
+                
+                # Calculate Power Play Percentage from period stats
+                if away_period_stats_final and isinstance(away_period_stats_final, dict):
+                    away_pp_goals_total = sum(away_period_stats_final.get('pp_goals', [0]))
+                    away_pp_attempts_total = sum(away_period_stats_final.get('pp_attempts', [0]))
+                    print(f"🔍 API_SERVER FINAL: away_pp_goals_total={away_pp_goals_total}, away_pp_attempts_total={away_pp_attempts_total}", flush=True)
+                    if away_pp_attempts_total > 0:
+                        final_response['live_metrics']['away_power_play_pct'] = (away_pp_goals_total / away_pp_attempts_total) * 100
+                        print(f"✅✅✅ API_SERVER FINAL: Calculated away_power_play_pct from period stats: {final_response['live_metrics']['away_power_play_pct']:.1f}% (goals={away_pp_goals_total}, attempts={away_pp_attempts_total})", flush=True)
+                    elif final_response.get('live_metrics', {}).get('away_power_play_pct') is None:
+                        print(f"⚠️ API_SERVER FINAL: away_pp_attempts_total=0, cannot calculate PP%", flush=True)
+                
+                if home_period_stats_final and isinstance(home_period_stats_final, dict):
+                    home_pp_goals_total = sum(home_period_stats_final.get('pp_goals', [0]))
+                    home_pp_attempts_total = sum(home_period_stats_final.get('pp_attempts', [0]))
+                    print(f"🔍 API_SERVER FINAL: home_pp_goals_total={home_pp_goals_total}, home_pp_attempts_total={home_pp_attempts_total}", flush=True)
+                    if home_pp_attempts_total > 0:
+                        final_response['live_metrics']['home_power_play_pct'] = (home_pp_goals_total / home_pp_attempts_total) * 100
+                        print(f"✅✅✅ API_SERVER FINAL: Calculated home_power_play_pct from period stats: {final_response['live_metrics']['home_power_play_pct']:.1f}% (goals={home_pp_goals_total}, attempts={home_pp_attempts_total})", flush=True)
+                    elif final_response.get('live_metrics', {}).get('home_power_play_pct') is None:
+                        print(f"⚠️ API_SERVER FINAL: home_pp_attempts_total=0, cannot calculate PP%", flush=True)
+                
+                # Calculate Faceoff Percentage from period stats
+                # Period stats have 'fo_pct' (faceoff percentage per period), not wins/total
+                if away_period_stats_final and isinstance(away_period_stats_final, dict):
+                    # Try to get faceoff_wins and faceoff_total first (if they exist)
+                    away_fo_wins_total = sum(away_period_stats_final.get('faceoff_wins', [0]))
+                    away_fo_total = sum(away_period_stats_final.get('faceoff_total', [0]))
+                    
+                    if away_fo_total > 0:
+                        # Calculate from wins/total
+                        final_response['live_metrics']['away_faceoff_pct'] = (away_fo_wins_total / away_fo_total) * 100
+                        print(f"✅✅✅ API_SERVER FINAL: Calculated away_faceoff_pct from wins/total: {final_response['live_metrics']['away_faceoff_pct']:.1f}% (wins={away_fo_wins_total}, total={away_fo_total})", flush=True)
+                    else:
+                        # Fallback: Average the fo_pct percentages from each period
+                        away_fo_pct_list = away_period_stats_final.get('fo_pct', [])
+                        print(f"🔍 API_SERVER FINAL: away_fo_pct_list={away_fo_pct_list}", flush=True)
+                        if away_fo_pct_list and len(away_fo_pct_list) > 0:
+                            # Filter out None values and 50.0 defaults (likely means no faceoffs)
+                            valid_pcts = [p for p in away_fo_pct_list if p is not None and p != 50.0]
+                            if valid_pcts:
+                                final_response['live_metrics']['away_faceoff_pct'] = sum(valid_pcts) / len(valid_pcts)
+                                print(f"✅✅✅ API_SERVER FINAL: Calculated away_faceoff_pct from fo_pct average: {final_response['live_metrics']['away_faceoff_pct']:.1f}% (from {len(valid_pcts)} periods)", flush=True)
+                            elif final_response.get('live_metrics', {}).get('away_faceoff_pct') is None:
+                                print(f"⚠️ API_SERVER FINAL: No valid fo_pct data, cannot calculate away_faceoff_pct", flush=True)
+                        elif final_response.get('live_metrics', {}).get('away_faceoff_pct') is None:
+                            print(f"⚠️ API_SERVER FINAL: No faceoff data in period stats, cannot calculate away_faceoff_pct", flush=True)
+                
+                if home_period_stats_final and isinstance(home_period_stats_final, dict):
+                    home_fo_wins_total = sum(home_period_stats_final.get('faceoff_wins', [0]))
+                    home_fo_total = sum(home_period_stats_final.get('faceoff_total', [0]))
+                    
+                    if home_fo_total > 0:
+                        # Calculate from wins/total
+                        final_response['live_metrics']['home_faceoff_pct'] = (home_fo_wins_total / home_fo_total) * 100
+                        print(f"✅✅✅ API_SERVER FINAL: Calculated home_faceoff_pct from wins/total: {final_response['live_metrics']['home_faceoff_pct']:.1f}% (wins={home_fo_wins_total}, total={home_fo_total})", flush=True)
+                    else:
+                        # Fallback: Average the fo_pct percentages from each period
+                        home_fo_pct_list = home_period_stats_final.get('fo_pct', [])
+                        print(f"🔍 API_SERVER FINAL: home_fo_pct_list={home_fo_pct_list}", flush=True)
+                        if home_fo_pct_list and len(home_fo_pct_list) > 0:
+                            # Filter out None values and 50.0 defaults (likely means no faceoffs)
+                            valid_pcts = [p for p in home_fo_pct_list if p is not None and p != 50.0]
+                            if valid_pcts:
+                                final_response['live_metrics']['home_faceoff_pct'] = sum(valid_pcts) / len(valid_pcts)
+                                print(f"✅✅✅ API_SERVER FINAL: Calculated home_faceoff_pct from fo_pct average: {final_response['live_metrics']['home_faceoff_pct']:.1f}% (from {len(valid_pcts)} periods)", flush=True)
+                            elif final_response.get('live_metrics', {}).get('home_faceoff_pct') is None:
+                                print(f"⚠️ API_SERVER FINAL: No valid fo_pct data, cannot calculate home_faceoff_pct", flush=True)
+                        elif final_response.get('live_metrics', {}).get('home_faceoff_pct') is None:
+                            print(f"⚠️ API_SERVER FINAL: No faceoff data in period stats, cannot calculate home_faceoff_pct", flush=True)
+            except Exception as e:
+                print(f"⚠️ API_SERVER FINAL: Error calculating percentages from period stats: {e}", flush=True)
+                import traceback
+                traceback.print_exc()
+        
+        # FINAL CHECK: Ensure period_stats is in the response
+        # (final_response was already created above via deep copy)
         
         # CRITICAL: Ensure period_stats exists at top level
         if 'period_stats' not in final_response:
@@ -2280,28 +2401,60 @@ def get_live_game_data(game_id):
         # Physical stats will be extracted in the single final block before return
         
         # FINAL SAFEGUARD: Force percentages to None if totals are 0 (prevent 50% defaults)
-        if final_response.get('live_metrics', {}).get('away_faceoff_total', 0) == 0:
-            final_response['live_metrics']['away_faceoff_pct'] = None
-        if final_response.get('live_metrics', {}).get('home_faceoff_total', 0) == 0:
-            final_response['live_metrics']['home_faceoff_pct'] = None
-        if final_response.get('live_metrics', {}).get('away_power_play_opportunities', 0) == 0:
-            final_response['live_metrics']['away_power_play_pct'] = None
-        if final_response.get('live_metrics', {}).get('home_power_play_opportunities', 0) == 0:
-            final_response['live_metrics']['home_power_play_pct'] = None
+        # BUT: For FINAL/OFF games, preserve percentages extracted from boxscore (they're accurate even if opportunities=0)
+        game_state_final_check = final_response.get('game_state') or final_response.get('live_metrics', {}).get('game_state', '')
+        is_final_game = game_state_final_check in ['FINAL', 'OFF']
+        
+        # Debug: Check what percentages we have before overwriting
+        print(f"🔍 BEFORE FINAL SAFEGUARD: away_power_play_pct={final_response.get('live_metrics', {}).get('away_power_play_pct')}, home_power_play_pct={final_response.get('live_metrics', {}).get('home_power_play_pct')}", flush=True)
+        print(f"🔍 BEFORE FINAL SAFEGUARD: away_faceoff_pct={final_response.get('live_metrics', {}).get('away_faceoff_pct')}, home_faceoff_pct={final_response.get('live_metrics', {}).get('home_faceoff_pct')}", flush=True)
+        print(f"🔍 BEFORE FINAL SAFEGUARD: is_final_game={is_final_game}, game_state={game_state_final_check}", flush=True)
+        
+        # Only force to None if game is not FINAL and totals are 0
+        # For FINAL games, percentages from boxscore are accurate even if opportunities=0
+        if not is_final_game:
+            if final_response.get('live_metrics', {}).get('away_faceoff_total', 0) == 0:
+                final_response['live_metrics']['away_faceoff_pct'] = None
+            if final_response.get('live_metrics', {}).get('home_faceoff_total', 0) == 0:
+                final_response['live_metrics']['home_faceoff_pct'] = None
+            if final_response.get('live_metrics', {}).get('away_power_play_opportunities', 0) == 0:
+                final_response['live_metrics']['away_power_play_pct'] = None
+            if final_response.get('live_metrics', {}).get('home_power_play_opportunities', 0) == 0:
+                final_response['live_metrics']['home_power_play_pct'] = None
+        else:
+            # For FINAL games, only set to None if percentage is actually None/0 and wasn't extracted from boxscore
+            # If it was extracted from boxscore, it will be a valid number (even if 0.0)
+            # CRITICAL: Don't overwrite if we already have a value (it was extracted from boxscore)
+            print(f"✅ FINAL game detected, preserving boxscore-extracted percentages", flush=True)
+            # Only set to None if the value is actually missing (not extracted)
+            if final_response.get('live_metrics', {}).get('away_power_play_pct') is None:
+                print(f"⚠️ FINAL: away_power_play_pct is None, but game is FINAL - this shouldn't happen if extraction worked", flush=True)
+            if final_response.get('live_metrics', {}).get('home_power_play_pct') is None:
+                print(f"⚠️ FINAL: home_power_play_pct is None, but game is FINAL - this shouldn't happen if extraction worked", flush=True)
+            if final_response.get('live_metrics', {}).get('away_faceoff_pct') is None:
+                print(f"⚠️ FINAL: away_faceoff_pct is None, but game is FINAL - this shouldn't happen if extraction worked", flush=True)
+            if final_response.get('live_metrics', {}).get('home_faceoff_pct') is None:
+                print(f"⚠️ FINAL: home_faceoff_pct is None, but game is FINAL - this shouldn't happen if extraction worked", flush=True)
+        
+        # Debug: Check what percentages we have after the safeguard
+        print(f"🔍 AFTER FINAL SAFEGUARD: away_power_play_pct={final_response.get('live_metrics', {}).get('away_power_play_pct')}, home_power_play_pct={final_response.get('live_metrics', {}).get('home_power_play_pct')}", flush=True)
+        print(f"🔍 AFTER FINAL SAFEGUARD: away_faceoff_pct={final_response.get('live_metrics', {}).get('away_faceoff_pct')}, home_faceoff_pct={final_response.get('live_metrics', {}).get('home_faceoff_pct')}", flush=True)
         
         # Also check if percentages are 50.0 (likely a default) and totals are 0, force to None
-        if final_response.get('live_metrics', {}).get('away_faceoff_pct') == 50.0 and final_response.get('live_metrics', {}).get('away_faceoff_total', 0) == 0:
-            final_response['live_metrics']['away_faceoff_pct'] = None
-            print(f"⚠️ FINAL: FORCED away_faceoff_pct from 50.0 to None (total=0)", flush=True)
-        if final_response.get('live_metrics', {}).get('home_faceoff_pct') == 50.0 and final_response.get('live_metrics', {}).get('home_faceoff_total', 0) == 0:
-            final_response['live_metrics']['home_faceoff_pct'] = None
-            print(f"⚠️ FINAL: FORCED home_faceoff_pct from 50.0 to None (total=0)", flush=True)
-        if final_response.get('live_metrics', {}).get('away_power_play_pct') == 50.0 and final_response.get('live_metrics', {}).get('away_power_play_opportunities', 0) == 0:
-            final_response['live_metrics']['away_power_play_pct'] = None
-            print(f"⚠️ FINAL: FORCED away_power_play_pct from 50.0 to None (opportunities=0)", flush=True)
-        if final_response.get('live_metrics', {}).get('home_power_play_pct') == 50.0 and final_response.get('live_metrics', {}).get('home_power_play_opportunities', 0) == 0:
-            final_response['live_metrics']['home_power_play_pct'] = None
-            print(f"⚠️ FINAL: FORCED home_power_play_pct from 50.0 to None (opportunities=0)", flush=True)
+        # BUT: For FINAL games, don't overwrite boxscore-extracted percentages
+        if not is_final_game:
+            if final_response.get('live_metrics', {}).get('away_faceoff_pct') == 50.0 and final_response.get('live_metrics', {}).get('away_faceoff_total', 0) == 0:
+                final_response['live_metrics']['away_faceoff_pct'] = None
+                print(f"⚠️ FINAL: FORCED away_faceoff_pct from 50.0 to None (total=0)", flush=True)
+            if final_response.get('live_metrics', {}).get('home_faceoff_pct') == 50.0 and final_response.get('live_metrics', {}).get('home_faceoff_total', 0) == 0:
+                final_response['live_metrics']['home_faceoff_pct'] = None
+                print(f"⚠️ FINAL: FORCED home_faceoff_pct from 50.0 to None (total=0)", flush=True)
+            if final_response.get('live_metrics', {}).get('away_power_play_pct') == 50.0 and final_response.get('live_metrics', {}).get('away_power_play_opportunities', 0) == 0:
+                final_response['live_metrics']['away_power_play_pct'] = None
+                print(f"⚠️ FINAL: FORCED away_power_play_pct from 50.0 to None (opportunities=0)", flush=True)
+            if final_response.get('live_metrics', {}).get('home_power_play_pct') == 50.0 and final_response.get('live_metrics', {}).get('home_power_play_opportunities', 0) == 0:
+                final_response['live_metrics']['home_power_play_pct'] = None
+                print(f"⚠️ FINAL: FORCED home_power_play_pct from 50.0 to None (opportunities=0)", flush=True)
         
         # Ensure game_state is in the response (for frontend and our calculation)
         # Check prediction first (where predict_live_game puts it), then live_metrics

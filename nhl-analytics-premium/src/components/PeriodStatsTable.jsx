@@ -19,6 +19,7 @@ const PeriodStatsTable = ({ periodStats, awayTeam, homeTeam, currentPeriod }) =>
     // Filter periods to only show active/completed periods
     // If currentPeriod is provided, only show periods <= currentPeriod
     // Also always show OT/SO if they exist (they're marked as 'OT' or 'SO' strings)
+    // CRITICAL: If currentPeriod is 3 or higher, show all numeric periods (game is complete)
     const filteredPeriodStats = hasData ? periodStats.filter(period => {
         const periodNum = period.period;
         // Always show OT and SO if they exist
@@ -26,8 +27,13 @@ const PeriodStatsTable = ({ periodStats, awayTeam, homeTeam, currentPeriod }) =>
             return true;
         }
         // For numeric periods, only show if <= currentPeriod
+        // If currentPeriod is 3, show all periods (game is complete)
         const periodInt = parseInt(periodNum);
         if (!isNaN(periodInt)) {
+            // If currentPeriod is 3 or higher, show all periods (game is complete)
+            if (currentPeriod >= 3) {
+                return true;
+            }
             return currentPeriod ? periodInt <= currentPeriod : true;
         }
         return true;

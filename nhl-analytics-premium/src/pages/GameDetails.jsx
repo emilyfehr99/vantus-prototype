@@ -670,10 +670,13 @@ const GameDetailsContent = () => {
                                 awayTeam={awayTeam}
                                 homeTeam={homeTeam}
                                 currentPeriod={
-                                    liveData?.current_period || 
-                                    liveData?.live_metrics?.current_period || 
-                                    gameData?.boxscore?.periodDescriptor?.number || 
-                                    1
+                                    // For FINAL/OFF games, always show all periods (set to 3)
+                                    isFinal ? 3 : (
+                                        liveData?.current_period || 
+                                        liveData?.live_metrics?.current_period || 
+                                        gameData?.boxscore?.periodDescriptor?.number || 
+                                        1
+                                    )
                                 }
                             />
                         </section>

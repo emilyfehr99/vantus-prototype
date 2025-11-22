@@ -1577,6 +1577,8 @@ class LiveInGamePredictor:
                     live_metrics['home_corsi_pct'] = home_corsi_pct
                     
                     # Calculate faceoff percentage
+                    # Period stats have 'fo_pct' (percentage per period), not wins/total
+                    # Try to get wins/total first (if they exist from a different calculation)
                     away_fo_wins = sum(away_period_stats.get('faceoff_wins', [0]))
                     away_fo_total = sum(away_period_stats.get('faceoff_total', [0]))
                     home_fo_wins = sum(home_period_stats.get('faceoff_wins', [0]))
@@ -1584,17 +1586,45 @@ class LiveInGamePredictor:
                     
                     live_metrics['away_faceoff_total'] = away_fo_total
                     live_metrics['home_faceoff_total'] = home_fo_total
-                    # CRITICAL: Only calculate if we have actual data, otherwise set to None
+                    
+                    # CRITICAL: Calculate from wins/total if available, otherwise use fo_pct average
                     if away_fo_total > 0 and away_fo_wins >= 0:
                         live_metrics['away_faceoff_pct'] = (away_fo_wins / away_fo_total * 100)
+                        print(f"✅ Calculated away_faceoff_pct from wins/total: {live_metrics['away_faceoff_pct']:.1f}% (wins={away_fo_wins}, total={away_fo_total})", flush=True)
+                    else:
+                        # Fallback: Average the fo_pct percentages from each period
+                        away_fo_pct_list = away_period_stats.get('fo_pct', [])
+                        if away_fo_pct_list and len(away_fo_pct_list) > 0:
+                            # Filter out None values and 50.0 defaults (likely means no faceoffs)
+                            valid_pcts = [p for p in away_fo_pct_list if p is not None and p != 50.0]
+                            if valid_pcts:
+                                live_metrics['away_faceoff_pct'] = sum(valid_pcts) / len(valid_pcts)
+                                print(f"✅ Calculated away_faceoff_pct from fo_pct average: {live_metrics['away_faceoff_pct']:.1f}% (from {len(valid_pcts)} periods)", flush=True)
                     else:
                         live_metrics['away_faceoff_pct'] = None
-                        print(f"⚠️ Period stats: Setting away_faceoff_pct to None (wins={away_fo_wins}, total={away_fo_total})", flush=True)
+                                print(f"⚠️ Period stats: Setting away_faceoff_pct to None (no valid fo_pct data)", flush=True)
+                        else:
+                            live_metrics['away_faceoff_pct'] = None
+                            print(f"⚠️ Period stats: Setting away_faceoff_pct to None (wins={away_fo_wins}, total={away_fo_total}, fo_pct={away_fo_pct_list})", flush=True)
+                    
                     if home_fo_total > 0 and home_fo_wins >= 0:
                         live_metrics['home_faceoff_pct'] = (home_fo_wins / home_fo_total * 100)
+                        print(f"✅ Calculated home_faceoff_pct from wins/total: {live_metrics['home_faceoff_pct']:.1f}% (wins={home_fo_wins}, total={home_fo_total})", flush=True)
+                    else:
+                        # Fallback: Average the fo_pct percentages from each period
+                        home_fo_pct_list = home_period_stats.get('fo_pct', [])
+                        if home_fo_pct_list and len(home_fo_pct_list) > 0:
+                            # Filter out None values and 50.0 defaults (likely means no faceoffs)
+                            valid_pcts = [p for p in home_fo_pct_list if p is not None and p != 50.0]
+                            if valid_pcts:
+                                live_metrics['home_faceoff_pct'] = sum(valid_pcts) / len(valid_pcts)
+                                print(f"✅ Calculated home_faceoff_pct from fo_pct average: {live_metrics['home_faceoff_pct']:.1f}% (from {len(valid_pcts)} periods)", flush=True)
                     else:
                         live_metrics['home_faceoff_pct'] = None
-                        print(f"⚠️ Period stats: Setting home_faceoff_pct to None (wins={home_fo_wins}, total={home_fo_total})", flush=True)
+                                print(f"⚠️ Period stats: Setting home_faceoff_pct to None (no valid fo_pct data)", flush=True)
+                        else:
+                            live_metrics['home_faceoff_pct'] = None
+                            print(f"⚠️ Period stats: Setting home_faceoff_pct to None (wins={home_fo_wins}, total={home_fo_total}, fo_pct={home_fo_pct_list})", flush=True)
                     
                     # Power play percentage
                     away_pp_goals = sum(away_period_stats.get('pp_goals', [0]))
@@ -1890,7 +1920,9 @@ class LiveInGamePredictor:
             # This ensures physical stats are ALWAYS set from boxscore
             # Re-fetch boxscore to ensure we have the latest data
             boxscore_final = game_data.get('game_center', {}).get('boxscore') or game_data.get('boxscore', {})
-            if boxscore_final and 'playerByGameStats' in boxscore_final:
+            if boxscore_final:
+                # Extract physical stats from playerByGameStats
+                if 'playerByGameStats' in boxscore_final:
                 pbg_final = boxscore_final['playerByGameStats']
                 if 'awayTeam' in pbg_final and 'homeTeam' in pbg_final:
                     away_pl_final = (pbg_final['awayTeam'].get('forwards', []) or []) + (pbg_final['awayTeam'].get('defense', []) or [])
@@ -1907,6 +1939,45 @@ class LiveInGamePredictor:
                         live_metrics['home_blocked_shots'] = sum(p.get('blockedShots', 0) for p in home_pl_final)
                         live_metrics['home_giveaways'] = sum(p.get('giveaways', 0) for p in home_pl_final)
                         live_metrics['home_takeaways'] = sum(p.get('takeaways', 0) for p in home_pl_final)
+                
+                # For completed games, extract PP%, PK%, and FO% from boxscore teamStats
+                # This is more reliable than play-by-play for completed games
+                if game_state in ['FINAL', 'OFF']:
+                    teams_final = boxscore_final.get('teams', {})
+                    if not teams_final:
+                        away_team_final = boxscore_final.get('awayTeam', {})
+                        home_team_final = boxscore_final.get('homeTeam', {})
+                    else:
+                        away_team_final = teams_final.get('away', {}) or teams_final.get('awayTeam', {})
+                        home_team_final = teams_final.get('home', {}) or teams_final.get('homeTeam', {})
+                    
+                    # Extract from teamStats.teamSkaterStats
+                    away_team_stats = away_team_final.get('teamStats', {}).get('teamSkaterStats', {}) if isinstance(away_team_final, dict) else {}
+                    home_team_stats = home_team_final.get('teamStats', {}).get('teamSkaterStats', {}) if isinstance(home_team_final, dict) else {}
+                    
+                    # Power Play Percentage
+                    if away_team_stats.get('powerPlayPercentage') is not None:
+                        live_metrics['away_power_play_pct'] = away_team_stats.get('powerPlayPercentage')
+                        print(f"✅ FINAL: Extracted away_power_play_pct from boxscore: {live_metrics['away_power_play_pct']}", flush=True)
+                    if home_team_stats.get('powerPlayPercentage') is not None:
+                        live_metrics['home_power_play_pct'] = home_team_stats.get('powerPlayPercentage')
+                        print(f"✅ FINAL: Extracted home_power_play_pct from boxscore: {live_metrics['home_power_play_pct']}", flush=True)
+                    
+                    # Penalty Kill Percentage
+                    if away_team_stats.get('penaltyKillPercentage') is not None:
+                        live_metrics['away_penalty_kill_pct'] = away_team_stats.get('penaltyKillPercentage')
+                        print(f"✅ FINAL: Extracted away_penalty_kill_pct from boxscore: {live_metrics['away_penalty_kill_pct']}", flush=True)
+                    if home_team_stats.get('penaltyKillPercentage') is not None:
+                        live_metrics['home_penalty_kill_pct'] = home_team_stats.get('penaltyKillPercentage')
+                        print(f"✅ FINAL: Extracted home_penalty_kill_pct from boxscore: {live_metrics['home_penalty_kill_pct']}", flush=True)
+                    
+                    # Faceoff Winning Percentage
+                    if away_team_stats.get('faceOffWinningPercentage') is not None:
+                        live_metrics['away_faceoff_pct'] = away_team_stats.get('faceOffWinningPercentage')
+                        print(f"✅ FINAL: Extracted away_faceoff_pct from boxscore: {live_metrics['away_faceoff_pct']}", flush=True)
+                    if home_team_stats.get('faceOffWinningPercentage') is not None:
+                        live_metrics['home_faceoff_pct'] = home_team_stats.get('faceOffWinningPercentage')
+                        print(f"✅ FINAL: Extracted home_faceoff_pct from boxscore: {live_metrics['home_faceoff_pct']}", flush=True)
                     print(f"✅✅✅ ABSOLUTE FINAL in get_live_game_data: Set away_hits={live_metrics['away_hits']}, blocked={live_metrics['away_blocked_shots']}, gv={live_metrics['away_giveaways']}", flush=True)
             
             # FINAL FINAL CHECK: Ensure shots_data shooters are strings before returning
