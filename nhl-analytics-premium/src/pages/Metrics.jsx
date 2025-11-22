@@ -150,11 +150,13 @@ const Metrics = () => {
     };
 
     const sortedData = useMemo(() => {
+        if (!Array.isArray(data) || data.length === 0) return [];
         // Merge basic data with advanced metrics
         let sortableItems = data.map(item => {
+            if (!item || !item.abbrev) return null;
             const advanced = advancedMetrics[item.abbrev] || {};
             return { ...item, ...advanced };
-        });
+        }).filter(item => item !== null);
 
         if (sortConfig.key !== null) {
             sortableItems.sort((a, b) => {
@@ -194,11 +196,13 @@ const Metrics = () => {
 
     // Calculate min/max for heatmaps
     const stats = useMemo(() => {
-        if (data.length === 0) return {};
+        if (!Array.isArray(data) || data.length === 0) return {};
+        const validData = data.filter(d => d && typeof d.gf === 'number' && typeof d.ga === 'number');
+        if (validData.length === 0) return {};
         return {
-            gf: { min: Math.min(...data.map(d => d.gf)), max: Math.max(...data.map(d => d.gf)) },
-            ga: { min: Math.min(...data.map(d => d.ga)), max: Math.max(...data.map(d => d.ga)) },
-            diff: { min: Math.min(...data.map(d => d.diff)), max: Math.max(...data.map(d => d.diff)) },
+            gf: { min: Math.min(...validData.map(d => d.gf)), max: Math.max(...validData.map(d => d.gf)) },
+            ga: { min: Math.min(...validData.map(d => d.ga)), max: Math.max(...validData.map(d => d.ga)) },
+            diff: { min: Math.min(...validData.map(d => d.diff)), max: Math.max(...validData.map(d => d.diff)) },
         };
     }, [data]);
 

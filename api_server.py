@@ -201,17 +201,17 @@ def get_team_metrics():
                 team_metrics['blocks'] = safe_int(row.get('blockedShotAttemptsFor'))
                 team_metrics['giveaways'] = safe_int(row.get('giveawaysFor'))
                 team_metrics['takeaways'] = safe_int(row.get('takeawaysFor'))
-                team_metrics['pim'] = safe_int(row.get('penalityMinutesFor'))
+                team_metrics['pim'] = safe_int(row.get('penaltyMinutesFor'))
                 
                 metrics[team_abbr] = team_metrics
         
         print(f"Successfully fetched MoneyPuck team data for {len(metrics)} teams (situation={situation})")
-        
-        # Cache the results
-        _team_metrics_cache = metrics
-        _team_metrics_cache_time = current_time
-        
-        return jsonify(metrics)
+    
+    # Cache the results
+    _team_metrics_cache = metrics
+    _team_metrics_cache_time = current_time
+    
+    return jsonify(metrics)
         
     except Exception as e:
         print(f"Error fetching MoneyPuck team data: {e}")
@@ -1042,10 +1042,228 @@ def get_live_game_data(game_id):
         
         if not prediction:
             return jsonify({"error": "Could not generate prediction"}), 500
+        
+        # Remove any existing period_stats from prediction - we'll format it ourselves
+        if 'period_stats' in prediction:
+            del prediction['period_stats']
+            
+        # Transform the response to match frontend expectations
+        # Frontend expects: advanced_metrics.xg.away_total, advanced_metrics.corsi.away, etc.
+        # predict_live_game returns everything at top level (no 'live_metrics' key)
+        # So live_data IS the prediction dict itself
+        if 'live_metrics' in prediction:
+            live_data = prediction['live_metrics']
+        else:
+            # predict_live_game returns everything at top level, so use prediction itself
+            live_data = prediction
+        
+        # Initialize period_stats early to ensure it's always set
+        prediction['period_stats'] = []
+        
+        # FORCE period_stats formatting - this MUST execute
+        if live_data and isinstance(live_data, dict):
+            print(f"🔍 Processing live_data for period_stats...")
+            print(f"🔍 live_data keys: {list(live_data.keys())[:15]}")
+            # Build the advanced_metrics structure the frontend expects
+            advanced_metrics = {
+                'xg': {
+                    'away_total': live_data.get('away_xg', 0),
+                    'home_total': live_data.get('home_xg', 0)
+                },
+                'corsi': {
+                    'away': live_data.get('away_corsi_pct', 0),
+                    'home': live_data.get('home_corsi_pct', 0)
+                },
+                'shot_quality': {
+                    'high_danger_shots': {
+                        'away': live_data.get('away_hdc', 0),
+                        'home': live_data.get('home_hdc', 0)
+                    },
+                    'shooting_percentage': {
+                        'away': (live_data.get('away_score', 0) / live_data.get('away_shots', 1) * 100) if live_data.get('away_shots', 0) > 0 else 0,
+                        'home': (live_data.get('home_score', 0) / live_data.get('home_shots', 1) * 100) if live_data.get('home_shots', 0) > 0 else 0
+                    }
+                },
+                'pressure': {
+                    'oz_shots': {
+                        'away': live_data.get('away_ozs', 0),
+                        'home': live_data.get('home_ozs', 0)
+                    },
+                    'rush_shots': {
+                        'away': live_data.get('away_rush', 0),
+                        'home': live_data.get('home_rush', 0)
+                    },
+                    'sustained_pressure': {
+                        'away': live_data.get('away_fc', 0),
+                        'home': live_data.get('home_fc', 0)
+                    }
+                },
+                'shots': {
+                    'away': live_data.get('away_shots', 0),
+                    'home': live_data.get('home_shots', 0)
+                }
+            }
+            
+            # Add advanced_metrics to the prediction response
+            prediction['advanced_metrics'] = advanced_metrics
+            
+            # Create proper live_metrics structure for frontend
+            # Frontend expects liveData.period_stats, so ensure live_metrics exists
+            if 'live_metrics' not in prediction:
+                prediction['live_metrics'] = {}
+            
+            # Copy all live metrics fields into live_metrics for frontend access
+            live_metrics_fields = [
+                'away_period_stats', 'home_period_stats', 'away_period_goals', 'home_period_goals',
+                'away_xg_by_period', 'home_xg_by_period', 'away_zone_metrics', 'home_zone_metrics',
+                'away_xg', 'home_xg', 'away_shots', 'home_shots', 'away_corsi_pct', 'home_corsi_pct',
+                'away_hdc', 'home_hdc', 'away_ozs', 'home_ozs', 'away_rush', 'home_rush', 
+                'away_fc', 'home_fc', 'shots_data', 'away_score', 'home_score', 'current_period',
+                'time_remaining', 'away_team', 'home_team'
+            ]
+            for key in live_metrics_fields:
+                if key in live_data:
+                    prediction['live_metrics'][key] = live_data[key]
+            
+            # Also add shots_data if available
+            if 'shots_data' in live_data:
+                prediction['shots_data'] = live_data['shots_data']
+            
+            # Format period_stats for the frontend PeriodStatsTable component
+            # Frontend expects: liveData.period_stats
+            # PeriodStatsTable expects: [{ period: '1', away_stats: {...}, home_stats: {...} }, ...]
+            # CRITICAL: These come from play-by-play data via _calculate_real_period_stats
+            # Get period_stats from live_metrics (where we just copied them) or from live_data as fallback
+            # CRITICAL: Get directly from live_data since that's where predict_live_game puts them
+            away_period_stats = live_data.get('away_period_stats', {})
+            home_period_stats = live_data.get('home_period_stats', {})
+            
+            # SIMPLE: Extract from play-by-play data and format
+            if away_period_stats and home_period_stats and isinstance(away_period_stats, dict) and isinstance(home_period_stats, dict):
+                print(f"✅ Formatting period_stats from play-by-play data...")
+                # Get period goals
+                away_period_goals = live_data.get('away_period_goals', [0, 0, 0])
+                home_period_goals = live_data.get('home_period_goals', [0, 0, 0])
+                
+                # Get xG by period
+                away_xg_by_period = live_data.get('away_xg_by_period', [0, 0, 0])
+                home_xg_by_period = live_data.get('home_xg_by_period', [0, 0, 0])
+                
+                # Get zone metrics per period if available
+                away_zone_metrics = live_data.get('away_zone_metrics', {})
+                home_zone_metrics = live_data.get('home_zone_metrics', {})
+                
+                # Build period stats array
+                period_stats_array = []
+                for period_num in range(1, 4):  # Periods 1, 2, 3
+                    period_idx = period_num - 1
+                    
+                    # Get zone metrics per period if available
+                    away_ozs_period = away_zone_metrics.get('oz_originating_shots', [0, 0, 0])[period_idx] if isinstance(away_zone_metrics, dict) and period_idx < len(away_zone_metrics.get('oz_originating_shots', [])) else 0
+                    away_dzs_period = away_zone_metrics.get('dz_originating_shots', [0, 0, 0])[period_idx] if isinstance(away_zone_metrics, dict) and period_idx < len(away_zone_metrics.get('dz_originating_shots', [])) else 0
+                    away_nzs_period = away_zone_metrics.get('nz_originating_shots', [0, 0, 0])[period_idx] if isinstance(away_zone_metrics, dict) and period_idx < len(away_zone_metrics.get('nz_originating_shots', [])) else 0
+                    away_nzt_period = away_zone_metrics.get('nz_turnovers', [0, 0, 0])[period_idx] if isinstance(away_zone_metrics, dict) and period_idx < len(away_zone_metrics.get('nz_turnovers', [])) else 0
+                    away_nztsa_period = away_zone_metrics.get('nz_turnovers_to_shots', [0, 0, 0])[period_idx] if isinstance(away_zone_metrics, dict) and period_idx < len(away_zone_metrics.get('nz_turnovers_to_shots', [])) else 0
+                    away_rush_period = away_zone_metrics.get('rush_sog', [0, 0, 0])[period_idx] if isinstance(away_zone_metrics, dict) and period_idx < len(away_zone_metrics.get('rush_sog', [])) else 0
+                    away_fc_period = away_zone_metrics.get('fc_cycle_sog', [0, 0, 0])[period_idx] if isinstance(away_zone_metrics, dict) and period_idx < len(away_zone_metrics.get('fc_cycle_sog', [])) else 0
+                    
+                    home_ozs_period = home_zone_metrics.get('oz_originating_shots', [0, 0, 0])[period_idx] if isinstance(home_zone_metrics, dict) and period_idx < len(home_zone_metrics.get('oz_originating_shots', [])) else 0
+                    home_dzs_period = home_zone_metrics.get('dz_originating_shots', [0, 0, 0])[period_idx] if isinstance(home_zone_metrics, dict) and period_idx < len(home_zone_metrics.get('dz_originating_shots', [])) else 0
+                    home_nzs_period = home_zone_metrics.get('nz_originating_shots', [0, 0, 0])[period_idx] if isinstance(home_zone_metrics, dict) and period_idx < len(home_zone_metrics.get('nz_originating_shots', [])) else 0
+                    home_nzt_period = home_zone_metrics.get('nz_turnovers', [0, 0, 0])[period_idx] if isinstance(home_zone_metrics, dict) and period_idx < len(home_zone_metrics.get('nz_turnovers', [])) else 0
+                    home_nztsa_period = home_zone_metrics.get('nz_turnovers_to_shots', [0, 0, 0])[period_idx] if isinstance(home_zone_metrics, dict) and period_idx < len(home_zone_metrics.get('nz_turnovers_to_shots', [])) else 0
+                    home_rush_period = home_zone_metrics.get('rush_sog', [0, 0, 0])[period_idx] if isinstance(home_zone_metrics, dict) and period_idx < len(home_zone_metrics.get('rush_sog', [])) else 0
+                    home_fc_period = home_zone_metrics.get('fc_cycle_sog', [0, 0, 0])[period_idx] if isinstance(home_zone_metrics, dict) and period_idx < len(home_zone_metrics.get('fc_cycle_sog', [])) else 0
+                    
+                    # Get goals against (opposite team's goals for)
+                    away_ga = home_period_goals[period_idx] if period_idx < len(home_period_goals) else 0
+                    home_ga = away_period_goals[period_idx] if period_idx < len(away_period_goals) else 0
+                    
+                    # Get xG against (opposite team's xG for)
+                    away_xga = home_xg_by_period[period_idx] if period_idx < len(home_xg_by_period) else 0
+                    home_xga = away_xg_by_period[period_idx] if period_idx < len(away_xg_by_period) else 0
+                    
+                    period_stats_array.append({
+                        'period': str(period_num),
+                        'away_stats': {
+                            'goals': away_period_goals[period_idx] if period_idx < len(away_period_goals) else 0,
+                            'ga': away_ga,
+                            'shots': away_period_stats.get('shots', [0, 0, 0])[period_idx] if period_idx < len(away_period_stats.get('shots', [])) else 0,
+                            'corsi': away_period_stats.get('corsi_pct', [50, 50, 50])[period_idx] if period_idx < len(away_period_stats.get('corsi_pct', [])) else 50,
+                            'xg': away_xg_by_period[period_idx] if period_idx < len(away_xg_by_period) else 0,
+                            'xga': away_xga,
+                            'hits': away_period_stats.get('hits', [0, 0, 0])[period_idx] if period_idx < len(away_period_stats.get('hits', [])) else 0,
+                            'faceoff_pct': away_period_stats.get('fo_pct', [50, 50, 50])[period_idx] if period_idx < len(away_period_stats.get('fo_pct', [])) else 50,
+                            'pim': away_period_stats.get('pim', [0, 0, 0])[period_idx] if period_idx < len(away_period_stats.get('pim', [])) else 0,
+                            'blocked_shots': away_period_stats.get('bs', [0, 0, 0])[period_idx] if period_idx < len(away_period_stats.get('bs', [])) else 0,
+                            'giveaways': away_period_stats.get('gv', [0, 0, 0])[period_idx] if period_idx < len(away_period_stats.get('gv', [])) else 0,
+                            'takeaways': away_period_stats.get('tk', [0, 0, 0])[period_idx] if period_idx < len(away_period_stats.get('tk', [])) else 0,
+                            'nzt': away_nzt_period,
+                            'nztsa': away_nztsa_period,
+                            'ozs': away_ozs_period,
+                            'dzs': away_dzs_period,
+                            'nzs': away_nzs_period,
+                            'rush': away_rush_period,
+                            'fc': away_fc_period
+                        },
+                        'home_stats': {
+                            'goals': home_period_goals[period_idx] if period_idx < len(home_period_goals) else 0,
+                            'ga': home_ga,
+                            'shots': home_period_stats.get('shots', [0, 0, 0])[period_idx] if period_idx < len(home_period_stats.get('shots', [])) else 0,
+                            'corsi': home_period_stats.get('corsi_pct', [50, 50, 50])[period_idx] if period_idx < len(home_period_stats.get('corsi_pct', [])) else 50,
+                            'xg': home_xg_by_period[period_idx] if period_idx < len(home_xg_by_period) else 0,
+                            'xga': home_xga,
+                            'hits': home_period_stats.get('hits', [0, 0, 0])[period_idx] if period_idx < len(home_period_stats.get('hits', [])) else 0,
+                            'faceoff_pct': home_period_stats.get('fo_pct', [50, 50, 50])[period_idx] if period_idx < len(home_period_stats.get('fo_pct', [])) else 50,
+                            'pim': home_period_stats.get('pim', [0, 0, 0])[period_idx] if period_idx < len(home_period_stats.get('pim', [])) else 0,
+                            'blocked_shots': home_period_stats.get('bs', [0, 0, 0])[period_idx] if period_idx < len(home_period_stats.get('bs', [])) else 0,
+                            'giveaways': home_period_stats.get('gv', [0, 0, 0])[period_idx] if period_idx < len(home_period_stats.get('gv', [])) else 0,
+                            'takeaways': home_period_stats.get('tk', [0, 0, 0])[period_idx] if period_idx < len(home_period_stats.get('tk', [])) else 0,
+                            'nzt': home_nzt_period,
+                            'nztsa': home_nztsa_period,
+                            'ozs': home_ozs_period,
+                            'dzs': home_dzs_period,
+                            'nzs': home_nzs_period,
+                            'rush': home_rush_period,
+                            'fc': home_fc_period
+                        }
+                    })
+                
+                # CRITICAL: Set period_stats at top level AND in live_metrics for frontend
+                prediction['period_stats'] = period_stats_array
+                # Ensure live_metrics exists and set period_stats there
+                if 'live_metrics' not in prediction:
+                    prediction['live_metrics'] = {}
+                prediction['live_metrics']['period_stats'] = period_stats_array
+            else:
+                print(f"⚠️ Missing period stats: away={bool(away_period_stats)}, home={bool(home_period_stats)}")
+                # Still set empty array so frontend knows to show "No period stats available"
+                if 'period_stats' not in prediction:
+                    prediction['period_stats'] = []
+        else:
+            print(f"⚠️ No live_data found in prediction. Prediction keys: {list(prediction.keys()) if isinstance(prediction, dict) else 'Not a dict'}")
+            prediction['period_stats'] = []
+        
+        # Always ensure period_stats key exists - CRITICAL for frontend
+        if 'period_stats' not in prediction or prediction.get('period_stats') is None:
+            prediction['period_stats'] = []
+        elif not isinstance(prediction.get('period_stats'), list):
+            prediction['period_stats'] = []
+        
+        # Ensure live_metrics.period_stats also exists for frontend
+        if 'live_metrics' not in prediction:
+            prediction['live_metrics'] = {}
+        if 'period_stats' not in prediction['live_metrics']:
+            prediction['live_metrics']['period_stats'] = prediction.get('period_stats', [])
+        
+        print(f"✅ Returning period_stats: length={len(prediction.get('period_stats', []))}")
+        print(f"✅ live_metrics.period_stats: length={len(prediction.get('live_metrics', {}).get('period_stats', []))}")
             
         return jsonify(prediction)
     except Exception as e:
         print(f"Error in live-game endpoint: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':

@@ -100,6 +100,38 @@ class LiveInGamePredictor:
             away_stats = away_team.get('teamStats', {}).get('teamSkaterStats', {}) or {}
             home_stats = home_team.get('teamStats', {}).get('teamSkaterStats', {}) or {}
             
+            # Try multiple paths for shots - NHL API structure can vary
+            away_shots = (away_stats.get('shots') or 
+                         away_stats.get('shotsOnGoal') or 
+                         away_stats.get('sog') or 
+                         away_team.get('shotsOnGoal') or 
+                         away_team.get('sog') or 0)
+            home_shots = (home_stats.get('shots') or 
+                         home_stats.get('shotsOnGoal') or 
+                         home_stats.get('sog') or 
+                         home_team.get('shotsOnGoal') or 
+                         home_team.get('sog') or 0)
+            
+            # If shots are 0, count from play-by-play data
+            if away_shots == 0 or home_shots == 0:
+                play_by_play = game_data.get('playByPlay', {}) or game_data.get('play_by_play', {})
+                plays = play_by_play.get('plays', []) if play_by_play else []
+                away_shots_count = 0
+                home_shots_count = 0
+                for play in plays:
+                    event_type = play.get('typeDescKey', '') or play.get('typeDesc', '')
+                    if event_type == 'shot-on-goal':
+                        details = play.get('details', {})
+                        event_team_id = details.get('eventOwnerTeamId')
+                        if event_team_id == away_team_id:
+                            away_shots_count += 1
+                        elif event_team_id == home_team_id:
+                            home_shots_count += 1
+                if away_shots == 0:
+                    away_shots = away_shots_count
+                if home_shots == 0:
+                    home_shots = home_shots_count
+            
             # Initialize comprehensive metrics dict
             live_metrics = {
                 'away_team': away_abbrev,
@@ -111,9 +143,9 @@ class LiveInGamePredictor:
                 'current_period': current_period,
                 'time_remaining': time_remaining,
                 'game_id': game_id,
-                # Basic stats
-                'away_shots': away_stats.get('shots', 0) or away_stats.get('sog', 0),
-                'home_shots': home_stats.get('shots', 0) or home_stats.get('sog', 0),
+                # Basic stats - get shots from boxscore teamStats
+                'away_shots': away_shots,
+                'home_shots': home_shots,
                 'away_hits': away_stats.get('hits', 0),
                 'home_hits': home_stats.get('hits', 0),
                 'away_pim': away_stats.get('pim', 0) or away_stats.get('penaltyMinutes', 0),
@@ -309,6 +341,10 @@ class LiveInGamePredictor:
                     away_zone_metrics = self.report_generator._calculate_zone_metrics(game_data, away_team_id, 'away')
                     home_zone_metrics = self.report_generator._calculate_zone_metrics(game_data, home_team_id, 'home')
                     
+                    # Store both totals and per-period arrays
+                    live_metrics['away_zone_metrics'] = away_zone_metrics  # Keep full structure for per-period access
+                    live_metrics['home_zone_metrics'] = home_zone_metrics  # Keep full structure for per-period access
+                    
                     live_metrics['away_nzt'] = sum(away_zone_metrics.get('nz_turnovers', [0, 0, 0]))
                     live_metrics['away_nztsa'] = sum(away_zone_metrics.get('nz_turnovers_to_shots', [0, 0, 0]))
                     live_metrics['away_ozs'] = sum(away_zone_metrics.get('oz_originating_shots', [0, 0, 0]))
@@ -459,10 +495,11 @@ class LiveInGamePredictor:
                 'away_nzs_pct': live_metrics.get('away_nzs', 0), 'home_nzs_pct': live_metrics.get('home_nzs', 0)
             }
 
-            live_metrics['period_stats'] = {
-                'away': live_metrics.get('away_period_stats', {}),
-                'home': live_metrics.get('home_period_stats', {})
-            }
+            # Don't set period_stats here - it will be formatted in api_server.py for frontend
+            # live_metrics['period_stats'] = {
+            #     'away': live_metrics.get('away_period_stats', {}),
+            #     'home': live_metrics.get('home_period_stats', {})
+            # }
 
             live_metrics['zone_metrics'] = {
                 'away_nzt': live_metrics.get('away_nzt', 0), 'home_nzt': live_metrics.get('home_nzt', 0),

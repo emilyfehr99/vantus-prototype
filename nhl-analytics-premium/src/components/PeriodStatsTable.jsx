@@ -2,25 +2,142 @@ import React from 'react';
 import clsx from 'clsx';
 
 const PeriodStatsTable = ({ periodStats, awayTeam, homeTeam }) => {
-    // Defensive check: ensure periodStats is an array
-    if (!periodStats || !Array.isArray(periodStats) || periodStats.length === 0) {
-        return null;
+    // Show empty table structure when no data
+    const hasData = periodStats && Array.isArray(periodStats) && periodStats.length > 0;
+    
+    // If no data, show empty table structure
+    if (!hasData) {
+        const emptyMetrics = [
+            { key: 'goals', label: 'GF' },
+            { key: 'ga', label: 'GA' },
+            { key: 'shots', label: 'S' },
+            { key: 'corsi', label: 'CF%' },
+            { key: 'xg', label: 'xGF' },
+            { key: 'xga', label: 'xGA' },
+            { key: 'hits', label: 'HITS' },
+            { key: 'faceoff_pct', label: 'FO%' },
+            { key: 'pim', label: 'PIM' },
+            { key: 'blocked_shots', label: 'BLK' },
+            { key: 'giveaways', label: 'GV' },
+            { key: 'takeaways', label: 'TK' },
+            { key: 'nzt', label: 'NZT' },
+            { key: 'nztsa', label: 'NZTSA' },
+            { key: 'ozs', label: 'OZS' },
+            { key: 'dzs', label: 'DZS' },
+            { key: 'nzs', label: 'NZS' },
+            { key: 'rush', label: 'RUSH' },
+            { key: 'fc', label: 'FC' }
+        ];
+
+        return (
+            <div className="glass-card overflow-hidden rounded-2xl border border-white/5">
+                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-600/30 scrollbar-track-transparent hover:scrollbar-thumb-gray-500/40" style={{
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(75, 85, 99, 0.3) transparent'
+                }}>
+                    <style>{`
+                        .overflow-x-auto::-webkit-scrollbar {
+                            height: 6px;
+                        }
+                        .overflow-x-auto::-webkit-scrollbar-track {
+                            background: transparent;
+                        }
+                        .overflow-x-auto::-webkit-scrollbar-thumb {
+                            background: rgba(75, 85, 99, 0.3);
+                            border-radius: 3px;
+                            border: 1px solid rgba(255, 255, 255, 0.1);
+                        }
+                        .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+                            background: rgba(75, 85, 99, 0.4);
+                        }
+                    `}</style>
+                    <table className="w-full text-sm min-w-[800px]">
+                        <thead>
+                            <tr className="bg-white/5 border-b border-white/10">
+                                <th className="py-4 px-4 text-center font-display font-bold text-gray-400 sticky left-0 bg-gray-900/80 backdrop-blur-sm z-20 border-r border-white/20 shadow-[2px_0_4px_rgba(0,0,0,0.3)]">PERIOD</th>
+                                <th className="py-4 px-4 text-center font-display font-bold text-gray-400 sticky left-[80px] bg-gray-900/80 backdrop-blur-sm z-20 border-r border-white/20 shadow-[2px_0_4px_rgba(0,0,0,0.3)]">TEAM</th>
+                                {emptyMetrics.map((metric) => (
+                                    <th key={metric.key} className="py-4 px-3 text-center font-display font-bold text-gray-400 whitespace-nowrap">
+                                        {metric.label}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {[1, 2, 3].map((periodNum) => (
+                                <React.Fragment key={periodNum}>
+                                    <tr className="hover:bg-white/5 transition-colors">
+                                        <td className="py-2 px-4 text-center font-mono text-gray-400 font-medium sticky left-0 bg-gray-900/80 backdrop-blur-sm z-20 border-r border-white/20 shadow-[2px_0_4px_rgba(0,0,0,0.3)]" rowSpan={2}>
+                                            {periodNum}
+                                        </td>
+                                        <td className="py-2 px-4 text-center sticky left-[80px] bg-gray-900/80 backdrop-blur-sm z-20 border-r border-white/20 shadow-[2px_0_4px_rgba(0,0,0,0.3)]">
+                                            {awayTeam?.logo ? (
+                                                <img 
+                                                    src={awayTeam.logo} 
+                                                    alt={awayTeam.abbrev || 'AWAY'} 
+                                                    className="w-6 h-6 mx-auto object-contain"
+                                                />
+                                            ) : (
+                                                <span className="font-mono text-xs text-accent-primary font-bold">
+                                                    {awayTeam?.abbrev || 'AWAY'}
+                                                </span>
+                                            )}
+                                        </td>
+                                        {emptyMetrics.map((metric) => (
+                                            <td key={metric.key} className="py-2 px-3 text-center">
+                                                <div className="font-mono text-xs text-text-muted">-</div>
+                                            </td>
+                                        ))}
+                                    </tr>
+                                    <tr className="hover:bg-white/5 transition-colors">
+                                        <td className="py-2 px-4 text-center sticky left-[80px] bg-gray-900/80 backdrop-blur-sm z-20 border-r border-white/20 shadow-[2px_0_4px_rgba(0,0,0,0.3)]">
+                                            {homeTeam?.logo ? (
+                                                <img 
+                                                    src={homeTeam.logo} 
+                                                    alt={homeTeam.abbrev || 'HOME'} 
+                                                    className="w-6 h-6 mx-auto object-contain"
+                                                />
+                                            ) : (
+                                                <span className="font-mono text-xs text-accent-secondary font-bold">
+                                                    {homeTeam?.abbrev || 'HOME'}
+                                                </span>
+                                            )}
+                                        </td>
+                                        {emptyMetrics.map((metric) => (
+                                            <td key={metric.key} className="py-2 px-3 text-center">
+                                                <div className="font-mono text-xs text-text-muted">-</div>
+                                            </td>
+                                        ))}
+                                    </tr>
+                                </React.Fragment>
+                            ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
     }
 
     const metrics = [
-        { key: 'goals', label: 'GF', tooltip: 'Goals For' },
-        { key: 'shots', label: 'S', tooltip: 'Shots on Goal' },
-        { key: 'corsi', label: 'CF%', tooltip: 'Corsi For %' },
-        { key: 'xg', label: 'xG', tooltip: 'Expected Goals' },
-        { key: 'hits', label: 'HITS', tooltip: 'Hits' },
-        { key: 'faceoff_pct', label: 'FO%', tooltip: 'Faceoff Win %' },
-        { key: 'pim', label: 'PIM', tooltip: 'Penalty Minutes' },
-        { key: 'blocked_shots', label: 'BLK', tooltip: 'Blocked Shots' },
-        { key: 'giveaways', label: 'GV', tooltip: 'Giveaways' },
-        { key: 'takeaways', label: 'TK', tooltip: 'Takeaways' },
-        { key: 'nzt', label: 'NZT', tooltip: 'Neutral Zone Turnovers' },
-        { key: 'ozs', label: 'OZS', tooltip: 'Offensive Zone Shots' },
-        { key: 'rush', label: 'RUSH', tooltip: 'Rush Shots' }
+        { key: 'goals', label: 'GF', tooltip: 'Goals For', isPercentage: false, isDecimal: false },
+        { key: 'ga', label: 'GA', tooltip: 'Goals Against', isPercentage: false, isDecimal: false },
+        { key: 'shots', label: 'S', tooltip: 'Shots on Goal', isPercentage: false, isDecimal: false },
+        { key: 'corsi', label: 'CF%', tooltip: 'Corsi For %', isPercentage: true, isDecimal: false },
+        { key: 'xg', label: 'xGF', tooltip: 'Expected Goals For', isPercentage: false, isDecimal: true },
+        { key: 'xga', label: 'xGA', tooltip: 'Expected Goals Against', isPercentage: false, isDecimal: true },
+        { key: 'hits', label: 'HITS', tooltip: 'Hits', isPercentage: false, isDecimal: false },
+        { key: 'faceoff_pct', label: 'FO%', tooltip: 'Faceoff Win %', isPercentage: true, isDecimal: false },
+        { key: 'pim', label: 'PIM', tooltip: 'Penalty Minutes', isPercentage: false, isDecimal: false },
+        { key: 'blocked_shots', label: 'BLK', tooltip: 'Blocked Shots', isPercentage: false, isDecimal: false },
+        { key: 'giveaways', label: 'GV', tooltip: 'Giveaways', isPercentage: false, isDecimal: false },
+        { key: 'takeaways', label: 'TK', tooltip: 'Takeaways', isPercentage: false, isDecimal: false },
+        { key: 'nzt', label: 'NZT', tooltip: 'Neutral Zone Turnovers', isPercentage: false, isDecimal: false },
+        { key: 'nztsa', label: 'NZTSA', tooltip: 'Neutral Zone Turnover Shot Attempts', isPercentage: false, isDecimal: false },
+        { key: 'ozs', label: 'OZS', tooltip: 'Offensive Zone Shots', isPercentage: false, isDecimal: false },
+        { key: 'dzs', label: 'DZS', tooltip: 'Defensive Zone Shots', isPercentage: false, isDecimal: false },
+        { key: 'nzs', label: 'NZS', tooltip: 'Neutral Zone Shots', isPercentage: false, isDecimal: false },
+        { key: 'rush', label: 'RUSH', tooltip: 'Rush Shots on Goal', isPercentage: false, isDecimal: false },
+        { key: 'fc', label: 'FC', tooltip: 'Forecheck Cycle Shots', isPercentage: false, isDecimal: false }
     ];
 
     // Calculate totals safely
@@ -31,7 +148,7 @@ const PeriodStatsTable = ({ periodStats, awayTeam, homeTeam }) => {
         };
 
         // Special handling for percentages (average them)
-        if (['corsi', 'faceoff_pct'].includes(metric.key)) {
+        if (metric.isPercentage) {
             acc[metric.key].away /= periodStats.length;
             acc[metric.key].home /= periodStats.length;
         }
@@ -40,74 +157,134 @@ const PeriodStatsTable = ({ periodStats, awayTeam, homeTeam }) => {
 
     return (
         <div className="glass-card overflow-hidden rounded-2xl border border-white/5">
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-600/30 scrollbar-track-transparent hover:scrollbar-thumb-gray-500/40" style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'rgba(75, 85, 99, 0.3) transparent'
+            }}>
+                <style>{`
+                    .overflow-x-auto::-webkit-scrollbar {
+                        height: 6px;
+                    }
+                    .overflow-x-auto::-webkit-scrollbar-track {
+                        background: transparent;
+                    }
+                    .overflow-x-auto::-webkit-scrollbar-thumb {
+                        background: rgba(75, 85, 99, 0.3);
+                        border-radius: 3px;
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                    }
+                    .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+                        background: rgba(75, 85, 99, 0.4);
+                    }
+                `}</style>
+                <table className="w-full text-sm min-w-[800px]">
                     <thead>
                         <tr className="bg-white/5 border-b border-white/10">
-                            <th className="py-4 px-6 text-left font-display font-bold text-gray-400">METRIC</th>
-                            {periodStats.map((period, idx) => (
-                                <th key={idx} className="py-4 px-4 text-center font-display font-bold text-gray-400">
-                                    {period.period}
+                            <th className="py-4 px-4 text-center font-display font-bold text-gray-400 sticky left-0 bg-gray-900/80 backdrop-blur-sm z-20 border-r border-white/20 shadow-[2px_0_4px_rgba(0,0,0,0.3)]">PERIOD</th>
+                            <th className="py-4 px-4 text-center font-display font-bold text-gray-400 sticky left-[80px] bg-gray-900/80 backdrop-blur-sm z-20 border-r border-white/20 shadow-[2px_0_4px_rgba(0,0,0,0.3)]">TEAM</th>
+                            {metrics.map((metric) => (
+                                <th key={metric.key} className="py-4 px-3 text-center font-display font-bold text-gray-400 whitespace-nowrap" title={metric.tooltip}>
+                                    {metric.label}
                                 </th>
                             ))}
-                            <th className="py-4 px-6 text-center font-display font-bold text-white bg-white/5">TOTAL</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                        {metrics.map((metric) => (
-                            <tr key={metric.key} className="hover:bg-white/5 transition-colors">
-                                <td className="py-3 px-6 font-mono text-gray-400 font-medium" title={metric.tooltip}>
-                                    {metric.label}
-                                </td>
-                                {periodStats.map((period, idx) => {
-                                    const awayVal = parseFloat(period.away_stats[metric.key]) || 0;
-                                    const homeVal = parseFloat(period.home_stats[metric.key]) || 0;
-                                    const isPct = ['corsi', 'faceoff_pct'].includes(metric.key);
-
-                                    return (
-                                        <td key={idx} className="py-3 px-4">
-                                            <div className="flex items-center justify-center gap-3 font-mono text-xs">
-                                                <span className={clsx(awayVal > homeVal ? "text-accent-primary font-bold" : "text-text-muted")}>
-                                                    {isPct ? awayVal.toFixed(1) + '%' : (metric.key === 'xg' ? awayVal.toFixed(2) : awayVal)}
+                        {periodStats.map((period, periodIdx) => {
+                            return (
+                                <React.Fragment key={periodIdx}>
+                                    {/* Away Team Row */}
+                                    <tr className="hover:bg-white/5 transition-colors">
+                                        <td className="py-2 px-4 text-center font-mono text-gray-400 font-medium sticky left-0 bg-gray-900/80 backdrop-blur-sm z-20 border-r border-white/20 shadow-[2px_0_4px_rgba(0,0,0,0.3)]" rowSpan={2}>
+                                            {period.period}
+                                        </td>
+                                        <td className="py-2 px-4 text-center sticky left-[80px] bg-gray-900/80 backdrop-blur-sm z-20 border-r border-white/20 shadow-[2px_0_4px_rgba(0,0,0,0.3)]">
+                                            {awayTeam?.logo ? (
+                                                <img 
+                                                    src={awayTeam.logo} 
+                                                    alt={awayTeam.abbrev || 'AWAY'} 
+                                                    className="w-6 h-6 mx-auto object-contain"
+                                                />
+                                            ) : (
+                                                <span className="font-mono text-xs text-accent-primary font-bold">
+                                                    {awayTeam?.abbrev || 'AWAY'}
                                                 </span>
-                                                <span className="text-text-secondary">|</span>
-                                                <span className={clsx(homeVal > awayVal ? "text-accent-secondary font-bold" : "text-text-muted")}>
-                                                    {isPct ? homeVal.toFixed(1) + '%' : (metric.key === 'xg' ? homeVal.toFixed(2) : homeVal)}
+                                            )}
+                                        </td>
+                                        {metrics.map((metric) => {
+                                            const awayVal = parseFloat(period.away_stats[metric.key]) || 0;
+                                            const homeVal = parseFloat(period.home_stats[metric.key]) || 0;
+                                            const isWinner = awayVal > homeVal;
+                                            
+                                            let displayValue;
+                                            if (metric.isPercentage) {
+                                                displayValue = awayVal.toFixed(1) + '%';
+                                            } else if (metric.isDecimal) {
+                                                displayValue = awayVal.toFixed(2);
+                                            } else {
+                                                displayValue = Math.round(awayVal);
+                                            }
+
+                                            return (
+                                                <td key={metric.key} className="py-2 px-3 text-center">
+                                                    <div className="font-mono text-xs">
+                                                        <span className={clsx(
+                                                            isWinner ? "text-accent-primary font-bold" : "text-text-muted"
+                                                        )}>
+                                                            {displayValue}
                                                 </span>
                                             </div>
                                         </td>
                                     );
                                 })}
-                                <td className="py-3 px-6 bg-white/5">
-                                    <div className="flex items-center justify-center gap-3 font-mono text-xs font-bold">
-                                        <span className="text-accent-primary">
-                                            {['corsi', 'faceoff_pct'].includes(metric.key)
-                                                ? totals[metric.key].away.toFixed(1) + '%'
-                                                : (metric.key === 'xg' ? totals[metric.key].away.toFixed(2) : totals[metric.key].away)}
-                                        </span>
-                                        <span className="text-text-muted">|</span>
-                                        <span className="text-accent-secondary">
-                                            {['corsi', 'faceoff_pct'].includes(metric.key)
-                                                ? totals[metric.key].home.toFixed(1) + '%'
-                                                : (metric.key === 'xg' ? totals[metric.key].home.toFixed(2) : totals[metric.key].home)}
+                                    </tr>
+                                    {/* Home Team Row */}
+                                    <tr className="hover:bg-white/5 transition-colors">
+                                        <td className="py-2 px-4 text-center sticky left-[80px] bg-gray-900/80 backdrop-blur-sm z-20 border-r border-white/20 shadow-[2px_0_4px_rgba(0,0,0,0.3)]">
+                                            {homeTeam?.logo ? (
+                                                <img 
+                                                    src={homeTeam.logo} 
+                                                    alt={homeTeam.abbrev || 'HOME'} 
+                                                    className="w-6 h-6 mx-auto object-contain"
+                                                />
+                                            ) : (
+                                                <span className="font-mono text-xs text-accent-secondary font-bold">
+                                                    {homeTeam?.abbrev || 'HOME'}
+                                                </span>
+                                            )}
+                                        </td>
+                                        {metrics.map((metric) => {
+                                            const awayVal = parseFloat(period.away_stats[metric.key]) || 0;
+                                            const homeVal = parseFloat(period.home_stats[metric.key]) || 0;
+                                            const isWinner = homeVal > awayVal;
+                                            
+                                            let displayValue;
+                                            if (metric.isPercentage) {
+                                                displayValue = homeVal.toFixed(1) + '%';
+                                            } else if (metric.isDecimal) {
+                                                displayValue = homeVal.toFixed(2);
+                                            } else {
+                                                displayValue = Math.round(homeVal);
+                                            }
+
+                                            return (
+                                                <td key={metric.key} className="py-2 px-3 text-center">
+                                                    <div className="font-mono text-xs">
+                                                        <span className={clsx(
+                                                            isWinner ? "text-accent-secondary font-bold" : "text-text-muted"
+                                                        )}>
+                                                            {displayValue}
                                         </span>
                                     </div>
                                 </td>
+                                            );
+                                        })}
                             </tr>
-                        ))}
+                                </React.Fragment>
+                            );
+                        })}
                     </tbody>
                 </table>
-            </div>
-            <div className="bg-white/5 px-6 py-3 border-t border-white/10 flex justify-between items-center text-xs font-mono text-text-muted">
-                <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-accent-primary"></div>
-                    <span>{awayTeam?.abbrev}</span>
-                </div>
-                <span>PERIOD BREAKDOWN</span>
-                <div className="flex items-center gap-2">
-                    <span>{homeTeam?.abbrev}</span>
-                    <div className="w-2 h-2 rounded-full bg-accent-secondary"></div>
-                </div>
             </div>
         </div>
     );

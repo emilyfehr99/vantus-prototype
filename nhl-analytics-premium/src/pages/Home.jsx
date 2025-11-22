@@ -16,7 +16,12 @@ const Home = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const today = new Date().toISOString().split('T')[0];
+                // Get today's date in local timezone (not UTC)
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const today = `${year}-${month}-${day}`;
                 
                 const [standingsResult, scheduleResult, predictionsResult, metricsResult] = await Promise.allSettled([
                     nhlApi.getStandings(today),
@@ -69,7 +74,12 @@ const Home = () => {
         
         // Poll for game updates every 60 seconds to catch games transitioning from FUT -> LIVE -> FINAL
         const interval = setInterval(() => {
-            const today = new Date().toISOString().split('T')[0];
+            // Get today's date in local timezone (not UTC)
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const today = `${year}-${month}-${day}`;
             nhlApi.getSchedule(today)
                 .then(scheduleResult => {
                     const fetchedGames = scheduleResult.gameWeek?.[0]?.games || [];
@@ -146,10 +156,11 @@ const Home = () => {
                     <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent ml-8"></div>
                 </div>
 
-                {games.length > 0 ? (
+                {games && Array.isArray(games) && games.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {games.map((game, index) => {
-                            const predictionKey = `${game.awayTeam.abbrev}_${game.homeTeam.abbrev}`;
+                            if (!game || !game.awayTeam || !game.homeTeam) return null;
+                            const predictionKey = `${game.awayTeam?.abbrev}_${game.homeTeam?.abbrev}`;
                             const prediction = predictions[predictionKey];
 
                             return (

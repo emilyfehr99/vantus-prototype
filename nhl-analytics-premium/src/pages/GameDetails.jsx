@@ -197,118 +197,167 @@ const GameDetailsContent = () => {
     useEffect(() => {
         const fetchGameData = async () => {
             try {
-                const [data, liveGameData] = await Promise.all([
-                    nhlApi.getGameCenter(id),
-                    backendApi.getLiveGame(id).catch(() => null)
-                ]);
+                console.log('Fetching game data for ID:', id);
+                // First, fetch essential game data quickly
+                const data = await nhlApi.getGameCenter(id).catch(err => {
+                    console.error('Error fetching game center:', err);
+                    throw err;
+                });
 
-                setGameData(data);
-                setLiveData(liveGameData);
-
-                // Extract shots from play-by-play data for completed/live games
-                if (data?.playByPlay && data?.boxscore) {
-                    try {
-                        const plays = data.playByPlay.plays || data.playByPlay || [];
-                        const awayTeam = data.boxscore.awayTeam;
-                        const homeTeam = data.boxscore.homeTeam;
-                        const shots = [];
-                        
-                        if (Array.isArray(plays)) {
-                            plays.forEach(play => {
-                                const eventType = play.typeDescKey || play.typeDesc;
-                                if (eventType && ['goal', 'shot-on-goal', 'missed-shot', 'blocked-shot'].includes(eventType)) {
-                                    const details = play.details || {};
-                                    const x = details.xCoord;
-                                    const y = details.yCoord;
-                                    
-                                    if (x !== null && x !== undefined && y !== null && y !== undefined) {
-                                        const teamId = details.eventOwnerTeamId;
-                                        const teamAbbrev = (teamId === awayTeam?.id) ? awayTeam.abbrev : 
-                                                         (teamId === homeTeam?.id) ? homeTeam.abbrev : 
-                                                         (details.eventOwnerTeamId ? 'UNK' : null);
-                                        
-                                        if (teamAbbrev) {
-                                            shots.push({
-                                                x: x,
-                                                y: y,
-                                                type: eventType === 'goal' ? 'GOAL' : 'SHOT',
-                                                team: teamAbbrev,
-                                                period: play.periodDescriptor?.number || play.period || 1,
-                                                time: play.timeInPeriod || play.time || '00:00',
-                                                shooter: details.shootingPlayerId || details.scoringPlayerId || 'Unknown',
-                                                shotType: details.shotType || 'wrist',
-                                                xg: 0.1 // Default xG, could be calculated if needed
-                                            });
-                                        }
-                                    }
-                                }
-                            });
-                        }
-                        
-                        console.log(`Extracted ${shots.length} shots from play-by-play data`);
-                        setShotsFromPbp(shots);
-                    } catch (error) {
-                        console.error('Error extracting shots from play-by-play:', error);
-                        setShotsFromPbp([]);
-                    }
+                console.log('Game data received:', data);
+                
+                if (!data) {
+                    console.error('No game data returned');
+                    setLoading(false);
+                    return;
+                }
+                
+                // Check if data structure is correct
+                if (!data.boxscore) {
+                    console.error('Game data missing boxscore:', data);
+                    setLoading(false);
+                    return;
                 }
 
-                // Fetch team metrics, prediction, and heatmap data for pre-game/post-game
-                if (data?.boxscore) {
-                    const awayAbbr = data.boxscore.awayTeam?.abbrev;
-                    const homeAbbr = data.boxscore.homeTeam?.abbrev;
-                    const gameState = data.boxscore.gameState;
-                    
-                    if (awayAbbr && homeAbbr) {
+                // Set game data immediately so page can render
+                setGameData(data);
+                setLoading(false); // Allow page to render while we fetch additional data
+                
+                // Fetch live data and other non-essential data in background
+                const gameState = data.boxscore.gameState;
+                const awayAbbr = data.boxscore.awayTeam?.abbrev;
+                const homeAbbr = data.boxscore.homeTeam?.abbrev;
+                
+                // Extract shots from play-by-play in background (non-blocking)
+                if (data?.playByPlay && data?.boxscore) {
+                    // Do this in background so it doesn't block page render
+                    setTimeout(() => {
                         try {
-                            const [metrics, gamePrediction, awayHeat, homeHeat] = await Promise.all([
-                                backendApi.getTeamMetrics(),
-                                backendApi.getGamePrediction(id).catch(() => null),
-                                // Fetch heatmap data for pre-game (last 5 games)
-                                (gameState === 'FUT' || gameState === 'PREVIEW') 
-                                    ? backendApi.getTeamHeatmap(awayAbbr).catch(() => null)
-                                    : Promise.resolve(null),
-                                (gameState === 'FUT' || gameState === 'PREVIEW')
-                                    ? backendApi.getTeamHeatmap(homeAbbr).catch(() => null)
-                                    : Promise.resolve(null)
-                            ]);
+                            const plays = data.playByPlay.plays || data.playByPlay || [];
+                            const awayTeam = data.boxscore.awayTeam;
+                            const homeTeam = data.boxscore.homeTeam;
+                            const shots = [];
                             
-                            setTeamMetrics(metrics || {});
-                            setPrediction(gamePrediction);
-                            setAwayHeatmap(awayHeat);
-                            setHomeHeatmap(homeHeat);
-                        } catch (err) {
-                            console.error('Failed to fetch team data:', err);
+                            if (Array.isArray(plays)) {
+                                plays.forEach(play => {
+                                    const eventType = play.typeDescKey || play.typeDesc;
+                                    if (eventType && ['goal', 'shot-on-goal', 'missed-shot', 'blocked-shot'].includes(eventType)) {
+                                        const details = play.details || {};
+                                        const x = details.xCoord;
+                                        const y = details.yCoord;
+                                        
+                                        if (x !== null && x !== undefined && y !== null && y !== undefined) {
+                                            const teamId = details.eventOwnerTeamId;
+                                            const teamAbbrev = (teamId === awayTeam?.id) ? awayTeam.abbrev : 
+                                                             (teamId === homeTeam?.id) ? homeTeam.abbrev : 
+                                                             (details.eventOwnerTeamId ? 'UNK' : null);
+                                            
+                                            if (teamAbbrev) {
+                                                shots.push({
+                                                    x: x,
+                                                    y: y,
+                                                    type: eventType === 'goal' ? 'GOAL' : 'SHOT',
+                                                    team: teamAbbrev,
+                                                    period: play.periodDescriptor?.number || play.period || 1,
+                                                    time: play.timeInPeriod || play.time || '00:00',
+                                                    shooter: details.shootingPlayerId || details.scoringPlayerId || 'Unknown',
+                                                    shotType: details.shotType || 'wrist',
+                                                    xg: 0.1 // Default xG, could be calculated if needed
+                                                });
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                            
+                            console.log(`Extracted ${shots.length} shots from play-by-play data`);
+                            setShotsFromPbp(shots);
+                        } catch (error) {
+                            console.error('Error extracting shots from play-by-play:', error);
+                            setShotsFromPbp([]);
                         }
-                    }
+                    }, 0);
+                }
+                
+                // Fetch live data if game is live
+                if (gameState === 'LIVE' || gameState === 'CRIT') {
+                    backendApi.getLiveGame(id)
+                        .then(liveGameData => {
+                            console.log('Live data received:', liveGameData);
+                setLiveData(liveGameData);
+                        })
+                        .catch(err => console.error('Error fetching live data:', err));
+                }
+
+                // Fetch additional data in background (non-blocking)
+                if (awayAbbr && homeAbbr) {
+                    // Fetch team metrics and prediction in parallel (non-blocking)
+                    Promise.all([
+                        backendApi.getTeamMetrics().catch(() => ({})),
+                        backendApi.getGamePrediction(id).catch(() => null),
+                        // Fetch heatmap data for pre-game only (last 5 games)
+                        (gameState === 'FUT' || gameState === 'PREVIEW') 
+                            ? backendApi.getTeamHeatmap(awayAbbr).catch(() => null)
+                            : Promise.resolve(null),
+                        (gameState === 'FUT' || gameState === 'PREVIEW')
+                            ? backendApi.getTeamHeatmap(homeAbbr).catch(() => null)
+                            : Promise.resolve(null)
+                    ]).then(([metrics, gamePrediction, awayHeat, homeHeat]) => {
+                        setTeamMetrics(metrics || {});
+                        setPrediction(gamePrediction);
+                        setAwayHeatmap(awayHeat);
+                        setHomeHeatmap(homeHeat);
+                    }).catch(err => {
+                        console.error('Failed to fetch additional team data:', err);
+                        // Don't block page render if these fail
+                    });
                 }
             } catch (error) {
                 console.error('Failed to fetch game data:', error);
-            } finally {
+                console.error('Error details:', error.message, error.stack);
                 setLoading(false);
+                // Set error state so we can show a better error message
+                setGameData(null);
             }
         };
 
         fetchGameData();
-        // Poll for live data every 30s if game is live, also refresh team metrics and game data for top performers
+        
+        // Poll for game state changes and live data every 30s
+        // Always poll to catch games transitioning from FUT -> LIVE -> FINAL
         const interval = setInterval(() => {
-            if (gameData?.boxscore?.gameState === 'LIVE' || gameData?.boxscore?.gameState === 'CRIT') {
-                Promise.all([
-                    backendApi.getLiveGame(id).catch(() => null),
-                    backendApi.getTeamMetrics().catch(() => ({})),
-                    nhlApi.getGameCenter(id).catch(() => null) // Refresh game data to get updated boxscore for top performers
-                ]).then(([live, metrics, updatedGameData]) => {
-                    setLiveData(live);
-                    setTeamMetrics(metrics);
+            // Always refresh game data to check for state changes
+            nhlApi.getGameCenter(id)
+                .then(updatedGameData => {
                     if (updatedGameData) {
-                        setGameData(updatedGameData); // Update gameData to refresh top performers
+                        const currentState = updatedGameData?.boxscore?.gameState;
+                        const previousState = gameData?.boxscore?.gameState;
+                        
+                        // Update game data to reflect state changes
+                        setGameData(updatedGameData);
+                        
+                        // If game is live or just became live, fetch live data
+                        if (currentState === 'LIVE' || currentState === 'CRIT') {
+                            Promise.all([
+                                backendApi.getLiveGame(id).catch(() => null),
+                                backendApi.getTeamMetrics().catch(() => ({}))
+                            ]).then(([live, metrics]) => {
+                                setLiveData(live);
+                                setTeamMetrics(metrics);
+                            }).catch(err => console.error('Live data polling error:', err));
+                        }
+                        
+                        // Log state transitions for debugging
+                        if (previousState && previousState !== currentState) {
+                            console.log(`Game state changed: ${previousState} -> ${currentState}`);
+                        }
                     }
-                }).catch(err => console.error('Polling error:', err));
-            }
+                })
+                .catch(err => console.error('Game data polling error:', err));
         }, 30000);
 
         return () => clearInterval(interval);
-    }, [id, gameData?.boxscore?.gameState]);
+    }, [id]); // Remove gameState from dependencies so we always poll
     
     // Extract top performers when gameData changes or when live data updates
     useEffect(() => {
@@ -392,9 +441,28 @@ const GameDetailsContent = () => {
         );
     }
 
-    const { awayTeam, homeTeam, gameState, period, clock, startTimeUTC } = gameData.boxscore || {};
+    // Safely extract boxscore data
+    const boxscore = gameData?.boxscore || {};
+    const { awayTeam, homeTeam, gameState, period, clock, startTimeUTC } = boxscore;
     const isLive = gameState === 'LIVE' || gameState === 'CRIT';
     const isFinal = gameState === 'FINAL' || gameState === 'OFF';
+    
+    // Safety check - if we don't have essential data, show error
+    if (!awayTeam || !homeTeam) {
+        console.error('Missing team data in boxscore:', boxscore);
+        return (
+            <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+                <h2 className="text-2xl font-display font-bold mb-4">Game Data Incomplete</h2>
+                <p className="text-gray-400 mb-4">Unable to load team information.</p>
+                <Link to="/" className="px-6 py-2 rounded-lg bg-accent-primary text-bg-primary font-bold hover:bg-accent-secondary transition-colors">
+                    Back to Dashboard
+                </Link>
+            </div>
+        );
+    }
+    
+    // Ensure topPerformers is always an array
+    const safeTopPerformers = Array.isArray(topPerformers) ? topPerformers : [];
     
     // Format game time from startTimeUTC if available
     let gameTime = null;
@@ -495,9 +563,9 @@ const GameDetailsContent = () => {
                     <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                         {/* Away Team */}
                         <div className="flex flex-col items-center gap-4 flex-1">
-                            <img src={awayTeam.logo} alt={awayTeam.abbrev} className="w-24 h-24 md:w-32 md:h-32 object-contain drop-shadow-2xl" />
+                            <img src={awayTeam?.logo || ''} alt={awayTeam?.abbrev || 'AWAY'} className="w-24 h-24 md:w-32 md:h-32 object-contain drop-shadow-2xl" />
                             <div className="text-center">
-                                <h2 className="text-4xl md:text-5xl font-display font-bold tracking-tighter">{awayTeam.abbrev}</h2>
+                                <h2 className="text-4xl md:text-5xl font-display font-bold tracking-tighter">{awayTeam?.abbrev || 'AWAY'}</h2>
                                 <p className="text-text-muted font-mono mt-1">AWAY</p>
                             </div>
                         </div>
@@ -506,9 +574,9 @@ const GameDetailsContent = () => {
                         <div className="flex flex-col items-center justify-center px-8 py-4 bg-white/5 rounded-2xl backdrop-blur-md border border-white/5 min-w-[200px]">
                             {isLive || isFinal ? (
                                 <div className="flex items-center gap-8">
-                                    <span className="text-6xl md:text-7xl font-display font-bold text-white team-gradient-text" style={{ '--team-primary': 'var(--color-accent-primary)' }}>{awayTeam.score}</span>
+                                    <span className="text-6xl md:text-7xl font-display font-bold text-white team-gradient-text" style={{ '--team-primary': 'var(--color-accent-primary)' }}>{awayTeam?.score ?? 0}</span>
                                     <div className="h-12 w-px bg-white/10"></div>
-                                    <span className="text-6xl md:text-7xl font-display font-bold text-white team-gradient-text" style={{ '--team-primary': 'var(--color-accent-secondary)' }}>{homeTeam.score}</span>
+                                    <span className="text-6xl md:text-7xl font-display font-bold text-white team-gradient-text" style={{ '--team-primary': 'var(--color-accent-secondary)' }}>{homeTeam?.score ?? 0}</span>
                                 </div>
                             ) : (
                                 <div className="text-4xl font-display font-bold text-text-muted">VS</div>
@@ -528,7 +596,9 @@ const GameDetailsContent = () => {
                                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-color-success opacity-75"></span>
                                             <span className="relative inline-flex rounded-full h-2 w-2 bg-color-success"></span>
                                         </span>
-                                        <span className="font-mono text-color-success font-bold">{period} - {clock}</span>
+                                        <span className="font-mono text-color-success font-bold">
+                                            {boxscore?.periodDescriptor?.number || period || '1'} - {clock?.timeRemaining || clock || '20:00'}
+                                        </span>
                                     </>
                                 ) : isFinal ? (
                                     <span className="font-mono text-text-muted">FINAL</span>
@@ -540,9 +610,9 @@ const GameDetailsContent = () => {
 
                         {/* Home Team */}
                         <div className="flex flex-col items-center gap-4 flex-1">
-                            <img src={homeTeam.logo} alt={homeTeam.abbrev} className="w-24 h-24 md:w-32 md:h-32 object-contain drop-shadow-2xl" />
+                            <img src={homeTeam?.logo || ''} alt={homeTeam?.abbrev || 'HOME'} className="w-24 h-24 md:w-32 md:h-32 object-contain drop-shadow-2xl" />
                             <div className="text-center">
-                                <h2 className="text-4xl md:text-5xl font-display font-bold tracking-tighter">{homeTeam.abbrev}</h2>
+                                <h2 className="text-4xl md:text-5xl font-display font-bold tracking-tighter">{homeTeam?.abbrev || 'HOME'}</h2>
                                 <p className="text-text-muted font-mono mt-1">HOME</p>
                             </div>
                         </div>
@@ -555,26 +625,18 @@ const GameDetailsContent = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left Column - Main Stats */}
                 <div className="lg:col-span-2 space-y-8">
-                    {/* Period Stats Table - Only show for LIVE games */}
-                    {isLive && (
+                    {/* Period Stats Table */}
                     <section>
                         <div className="flex items-center gap-3 mb-6">
                             <Clock className="w-6 h-6 text-accent-primary" />
                             <h3 className="text-xl font-display font-bold">PERIOD PERFORMANCE</h3>
                         </div>
-                        {liveData?.period_stats ? (
                             <PeriodStatsTable
-                                periodStats={liveData.period_stats}
+                            periodStats={liveData?.period_stats || []}
                                 awayTeam={awayTeam}
                                 homeTeam={homeTeam}
                             />
-                        ) : (
-                            <div className="glass-card p-6 text-center text-text-muted">
-                                No period stats available yet.
-                            </div>
-                        )}
                     </section>
-                    )}
 
                     {/* Live Team Metrics - Show for LIVE games, updating live */}
                     {isLive && (teamMetrics[awayTeam?.abbrev] || teamMetrics[homeTeam?.abbrev]) && (
@@ -597,20 +659,20 @@ const GameDetailsContent = () => {
                                     </div>
                                     <ComparisonRow
                                         label="EXPECTED GOALS (xG)"
-                                        awayVal={liveData?.advanced_metrics?.xg?.away_total || teamMetrics[awayTeam?.abbrev]?.xg}
-                                        homeVal={liveData?.advanced_metrics?.xg?.home_total || teamMetrics[homeTeam?.abbrev]?.xg}
+                                        awayVal={liveData?.live_metrics?.away_xg || liveData?.advanced_metrics?.xg?.away_total || teamMetrics[awayTeam?.abbrev]?.xg}
+                                        homeVal={liveData?.live_metrics?.home_xg || liveData?.advanced_metrics?.xg?.home_total || teamMetrics[homeTeam?.abbrev]?.xg}
                                         format={(v) => parseFloat(v || 0).toFixed(2)}
                                     />
                                     <ComparisonRow
                                         label="CORSI FOR %"
-                                        awayVal={liveData?.advanced_metrics?.corsi?.away || teamMetrics[awayTeam?.abbrev]?.corsi_pct}
-                                        homeVal={liveData?.advanced_metrics?.corsi?.home || teamMetrics[homeTeam?.abbrev]?.corsi_pct}
+                                        awayVal={liveData?.live_metrics?.away_corsi_pct || liveData?.advanced_metrics?.corsi?.away || teamMetrics[awayTeam?.abbrev]?.corsi_pct}
+                                        homeVal={liveData?.live_metrics?.home_corsi_pct || liveData?.advanced_metrics?.corsi?.home || teamMetrics[homeTeam?.abbrev]?.corsi_pct}
                                         format={(v) => parseFloat(v || 0).toFixed(1) + '%'}
                                     />
                                     <ComparisonRow
                                         label="HIGH DANGER CHANCES"
-                                        awayVal={liveData?.advanced_metrics?.shot_quality?.high_danger_shots?.away || teamMetrics[awayTeam?.abbrev]?.hdc}
-                                        homeVal={liveData?.advanced_metrics?.shot_quality?.high_danger_shots?.home || teamMetrics[homeTeam?.abbrev]?.hdc}
+                                        awayVal={liveData?.live_metrics?.away_hdc || liveData?.advanced_metrics?.shot_quality?.high_danger_shots?.away || teamMetrics[awayTeam?.abbrev]?.hdc}
+                                        homeVal={liveData?.live_metrics?.home_hdc || liveData?.advanced_metrics?.shot_quality?.high_danger_shots?.home || teamMetrics[homeTeam?.abbrev]?.hdc}
                                         format={(v) => parseFloat(v || 0).toFixed(1)}
                                     />
                                 </MetricCard>
@@ -627,24 +689,24 @@ const GameDetailsContent = () => {
                                     </div>
                                     <ComparisonRow
                                         label="OFFENSIVE ZONE SHOTS"
-                                        awayVal={liveData?.advanced_metrics?.pressure?.oz_shots?.away || teamMetrics[awayTeam?.abbrev]?.ozs}
-                                        homeVal={liveData?.advanced_metrics?.pressure?.oz_shots?.home || teamMetrics[homeTeam?.abbrev]?.ozs}
+                                        awayVal={liveData?.live_metrics?.away_ozs ?? liveData?.advanced_metrics?.pressure?.oz_shots?.away ?? 0}
+                                        homeVal={liveData?.live_metrics?.home_ozs ?? liveData?.advanced_metrics?.pressure?.oz_shots?.home ?? 0}
                                     />
                                     <ComparisonRow
                                         label="RUSH CHANCES"
-                                        awayVal={liveData?.advanced_metrics?.pressure?.rush_shots?.away || teamMetrics[awayTeam?.abbrev]?.rush}
-                                        homeVal={liveData?.advanced_metrics?.pressure?.rush_shots?.home || teamMetrics[homeTeam?.abbrev]?.rush}
+                                        awayVal={liveData?.live_metrics?.away_rush ?? liveData?.advanced_metrics?.pressure?.rush_shots?.away ?? 0}
+                                        homeVal={liveData?.live_metrics?.home_rush ?? liveData?.advanced_metrics?.pressure?.rush_shots?.home ?? 0}
                                     />
                                     <ComparisonRow
                                         label="SHOTS ON GOAL"
-                                        awayVal={liveData?.advanced_metrics?.shots?.away || teamMetrics[awayTeam?.abbrev]?.shots}
-                                        homeVal={liveData?.advanced_metrics?.shots?.home || teamMetrics[homeTeam?.abbrev]?.shots}
+                                        awayVal={liveData?.live_metrics?.away_shots ?? liveData?.advanced_metrics?.shots?.away ?? 0}
+                                        homeVal={liveData?.live_metrics?.home_shots ?? liveData?.advanced_metrics?.shots?.home ?? 0}
                                         format={(v) => parseFloat(v || 0).toFixed(1)}
                                     />
                                 </MetricCard>
                             </div>
                         </section>
-                    )}
+                        )}
 
                     {/* Advanced Metrics Grid - Only show for LIVE games */}
                     {isLive && (
@@ -652,70 +714,70 @@ const GameDetailsContent = () => {
                         <MetricCard title="SHOT QUALITY" icon={Crosshair}>
                             <ComparisonRow
                                 label="EXPECTED GOALS (xG)"
-                                awayVal={liveData?.advanced_metrics?.xg?.away_total}
-                                homeVal={liveData?.advanced_metrics?.xg?.home_total}
+                                awayVal={liveData?.live_metrics?.away_xg || liveData?.advanced_metrics?.xg?.away_total}
+                                homeVal={liveData?.live_metrics?.home_xg || liveData?.advanced_metrics?.xg?.home_total}
                                 format={(v) => parseFloat(v || 0).toFixed(2)}
                             />
                             <ComparisonRow
                                 label="HIGH DANGER CHANCES"
-                                awayVal={liveData?.advanced_metrics?.shot_quality?.high_danger_shots?.away}
-                                homeVal={liveData?.advanced_metrics?.shot_quality?.high_danger_shots?.home}
+                                awayVal={liveData?.live_metrics?.away_hdc || liveData?.advanced_metrics?.shot_quality?.high_danger_shots?.away}
+                                homeVal={liveData?.live_metrics?.home_hdc || liveData?.advanced_metrics?.shot_quality?.high_danger_shots?.home}
                             />
                             <ComparisonRow
                                 label="SHOOTING %"
-                                awayVal={liveData?.advanced_metrics?.shot_quality?.shooting_percentage?.away}
-                                homeVal={liveData?.advanced_metrics?.shot_quality?.shooting_percentage?.home}
-                                format={(v) => v + '%'}
+                                awayVal={liveData?.live_metrics?.away_shots > 0 ? ((liveData?.live_metrics?.away_score || 0) / liveData?.live_metrics?.away_shots * 100) : (liveData?.advanced_metrics?.shot_quality?.shooting_percentage?.away || 0)}
+                                homeVal={liveData?.live_metrics?.home_shots > 0 ? ((liveData?.live_metrics?.home_score || 0) / liveData?.live_metrics?.home_shots * 100) : (liveData?.advanced_metrics?.shot_quality?.shooting_percentage?.home || 0)}
+                                format={(v) => parseFloat(v || 0).toFixed(1) + '%'}
                             />
                         </MetricCard>
 
                         <MetricCard title="PRESSURE" icon={Zap}>
                             <ComparisonRow
                                 label="OFFENSIVE ZONE SHOTS"
-                                awayVal={liveData?.advanced_metrics?.pressure?.oz_shots?.away}
-                                homeVal={liveData?.advanced_metrics?.pressure?.oz_shots?.home}
+                                awayVal={liveData?.live_metrics?.away_ozs || liveData?.advanced_metrics?.pressure?.oz_shots?.away}
+                                homeVal={liveData?.live_metrics?.home_ozs || liveData?.advanced_metrics?.pressure?.oz_shots?.home}
                             />
                             <ComparisonRow
                                 label="SUSTAINED PRESSURE"
-                                awayVal={liveData?.advanced_metrics?.pressure?.sustained_pressure?.away}
-                                homeVal={liveData?.advanced_metrics?.pressure?.sustained_pressure?.home}
+                                awayVal={liveData?.live_metrics?.away_fc || liveData?.advanced_metrics?.pressure?.sustained_pressure?.away}
+                                homeVal={liveData?.live_metrics?.home_fc || liveData?.advanced_metrics?.pressure?.sustained_pressure?.home}
                             />
                             <ComparisonRow
                                 label="RUSH CHANCES"
-                                awayVal={liveData?.advanced_metrics?.pressure?.rush_shots?.away}
-                                homeVal={liveData?.advanced_metrics?.pressure?.rush_shots?.home}
+                                awayVal={liveData?.live_metrics?.away_rush || liveData?.advanced_metrics?.pressure?.rush_shots?.away}
+                                homeVal={liveData?.live_metrics?.home_rush || liveData?.advanced_metrics?.pressure?.rush_shots?.home}
                             />
                         </MetricCard>
 
                         <MetricCard title="DEFENSE" icon={Shield}>
                             <ComparisonRow
                                 label="BLOCKED SHOTS"
-                                awayVal={liveData?.advanced_metrics?.defense?.blocked_shots?.away}
-                                homeVal={liveData?.advanced_metrics?.defense?.blocked_shots?.home}
+                                awayVal={liveData?.live_metrics?.away_blocked_shots || liveData?.advanced_metrics?.defense?.blocked_shots?.away}
+                                homeVal={liveData?.live_metrics?.home_blocked_shots || liveData?.advanced_metrics?.defense?.blocked_shots?.home}
                             />
                             <ComparisonRow
                                 label="TAKEAWAYS"
-                                awayVal={liveData?.advanced_metrics?.defense?.takeaways?.away}
-                                homeVal={liveData?.advanced_metrics?.defense?.takeaways?.home}
+                                awayVal={liveData?.live_metrics?.away_takeaways || liveData?.advanced_metrics?.defense?.takeaways?.away}
+                                homeVal={liveData?.live_metrics?.home_takeaways || liveData?.advanced_metrics?.defense?.takeaways?.home}
                             />
                             <ComparisonRow
                                 label="GIVEAWAYS"
-                                awayVal={liveData?.advanced_metrics?.defense?.giveaways?.away}
-                                homeVal={liveData?.advanced_metrics?.defense?.giveaways?.home}
+                                awayVal={liveData?.live_metrics?.away_giveaways || liveData?.advanced_metrics?.defense?.giveaways?.away}
+                                homeVal={liveData?.live_metrics?.home_giveaways || liveData?.advanced_metrics?.defense?.giveaways?.home}
                             />
                         </MetricCard>
 
                         <MetricCard title="MOVEMENT" icon={Activity}>
                             <ComparisonRow
                                 label="LATERAL MOVEMENT"
-                                awayVal={liveData?.advanced_metrics?.movement?.lateral_movement?.away}
-                                homeVal={liveData?.advanced_metrics?.movement?.lateral_movement?.home}
+                                awayVal={liveData?.live_metrics?.away_lateral || liveData?.advanced_metrics?.movement?.lateral_movement?.away}
+                                homeVal={liveData?.live_metrics?.home_lateral || liveData?.advanced_metrics?.movement?.lateral_movement?.home}
                                 format={(v) => parseFloat(v || 0).toFixed(1)}
                             />
                             <ComparisonRow
                                 label="N-S MOVEMENT"
-                                awayVal={liveData?.advanced_metrics?.movement?.longitudinal_movement?.away}
-                                homeVal={liveData?.advanced_metrics?.movement?.longitudinal_movement?.home}
+                                awayVal={liveData?.live_metrics?.away_longitudinal || liveData?.advanced_metrics?.movement?.longitudinal_movement?.away}
+                                homeVal={liveData?.live_metrics?.home_longitudinal || liveData?.advanced_metrics?.movement?.longitudinal_movement?.home}
                                 format={(v) => parseFloat(v || 0).toFixed(1)}
                             />
                         </MetricCard>
@@ -1005,8 +1067,8 @@ const GameDetailsContent = () => {
                         <div className="aspect-[2/1] rounded-xl overflow-hidden relative">
                             <ShotChart
                                 shotsData={liveData?.shots_data || shotsFromPbp || []}
-                                homeTeam={homeTeam.abbrev}
-                                awayTeam={awayTeam.abbrev}
+                                homeTeam={homeTeam?.abbrev || 'HOME'}
+                                awayTeam={awayTeam?.abbrev || 'AWAY'}
                                 awayHeatmap={awayHeatmap}
                                 homeHeatmap={homeHeatmap}
                                 gameState={gameState}
@@ -1021,35 +1083,36 @@ const GameDetailsContent = () => {
                             <h3 className="text-xl font-display font-bold">TOP PERFORMERS</h3>
                         </div>
                         <div className="space-y-4">
-                            {topPerformers.length > 0 ? (
-                                topPerformers.map((player, idx) => (
+                            {safeTopPerformers.length > 0 ? (
+                                safeTopPerformers.map((player, idx) => (
                                 <div key={idx} className="flex items-center gap-4 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
                                     <div className="font-display font-bold text-2xl text-white/20 w-8 text-center">
                                         {idx + 1}
                                     </div>
                                     <div className="w-12 h-12 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center overflow-hidden">
                                         <img 
-                                            src={`https://assets.nhle.com/logos/nhl/svg/${player.team}_light.svg`}
-                                            alt={player.team}
+                                            src={`https://assets.nhle.com/logos/nhl/svg/${player?.team || 'NHL'}_light.svg`}
+                                            alt={player?.team || 'Team'}
                                             className="w-10 h-10 object-contain"
+                                            onError={(e) => { e.target.style.display = 'none'; }}
                                         />
                                     </div>
                                     <div className="flex-1">
                                         <div className="font-bold text-white">
-                                            {player.name}
+                                            {player?.name || 'Unknown Player'}
                                         </div>
                                         <div className="text-xs font-mono text-text-muted flex gap-2">
-                                            <span>{player.team}</span>
+                                            <span>{player?.team || 'N/A'}</span>
                                             <span>•</span>
-                                            <span>{player.position}</span>
+                                            <span>{player?.position || 'N/A'}</span>
                                         </div>
                                     </div>
                                     <div className="text-right">
                                         <div className="font-mono font-bold text-color-success">
-                                            {player.gsPerGame ? player.gsPerGame.toFixed(2) : '0.00'} GS/GP
+                                            {player?.gsPerGame ? player.gsPerGame.toFixed(2) : '0.00'} GS/GP
                                         </div>
                                         <div className="text-xs font-mono text-text-muted">
-                                            {player.points || 0} P ({(player.goals || 0)}G, {(player.assists || 0)}A)
+                                            {player?.points || 0} P ({(player?.goals || 0)}G, {(player?.assists || 0)}A)
                                         </div>
                                     </div>
                                 </div>
@@ -1065,10 +1128,28 @@ const GameDetailsContent = () => {
     );
 };
 
-const GameDetails = () => (
+const GameDetails = () => {
+    try {
+        return (
     <ErrorBoundary>
         <GameDetailsContent />
     </ErrorBoundary>
 );
+    } catch (error) {
+        console.error('Error in GameDetails wrapper:', error);
+        return (
+            <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+                <h2 className="text-2xl font-display font-bold mb-4">Something went wrong</h2>
+                <p className="text-gray-400 mb-4">Unable to load game details.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-6 py-2 rounded-lg bg-accent-primary text-bg-primary font-bold hover:bg-accent-secondary transition-colors"
+                >
+                    Reload Page
+                </button>
+            </div>
+        );
+    }
+};
 
 export default GameDetails;

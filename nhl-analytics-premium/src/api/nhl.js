@@ -4,7 +4,15 @@ const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002'; // 
 export const nhlApi = {
     async getStandings(date) {
         try {
-            const dateStr = date || new Date().toISOString().split('T')[0];
+            // Get today's date in local timezone if not provided
+            let dateStr = date;
+            if (!dateStr) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                dateStr = `${year}-${month}-${day}`;
+            }
             const response = await fetch(`${BASE_URL}/standings/${dateStr}`);
             if (!response.ok) throw new Error('Failed to fetch standings');
             return await response.json();

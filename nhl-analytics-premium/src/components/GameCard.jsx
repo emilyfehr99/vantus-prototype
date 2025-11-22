@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
+import { nhlApi } from '../api/nhl';
 
 // Team primary colors (hex)
 const TEAM_COLORS = {
@@ -16,8 +17,35 @@ const TEAM_COLORS = {
 };
 
 const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
-    const isLive = game.gameState === 'LIVE' || game.gameState === 'CRIT';
-    const isFinal = game.gameState === 'FINAL' || game.gameState === 'OFF';
+    const [liveGameData, setLiveGameData] = useState(null);
+    const isLive = game?.gameState === 'LIVE' || game?.gameState === 'CRIT';
+    const isFinal = game?.gameState === 'FINAL' || game?.gameState === 'OFF';
+    
+    // Poll for live updates if game is live
+    useEffect(() => {
+        if (isLive && game?.id) {
+            // Initial fetch
+            nhlApi.getGameCenter(game.id)
+                .then(data => {
+                    if (data?.boxscore) {
+                        setLiveGameData(data.boxscore);
+                    }
+                })
+                .catch(err => console.error('Error updating game card:', err));
+            
+            const interval = setInterval(() => {
+                nhlApi.getGameCenter(game.id)
+                    .then(data => {
+                        if (data?.boxscore) {
+                            setLiveGameData(data.boxscore);
+                        }
+                    })
+                    .catch(err => console.error('Error updating game card:', err));
+            }, 10000); // Update every 10 seconds
+            
+            return () => clearInterval(interval);
+        }
+    }, [isLive, game?.id]);
 
     // Handle both decimal (0.47) and percentage (47) formats
     const awayProbRaw = prediction?.predicted_away_win_prob || prediction?.calibrated_away_prob || prediction?.away_win_prob || 0;
@@ -54,7 +82,9 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-magenta opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-accent-magenta"></span>
                             </span>
-                            <span className="text-xs font-display font-bold text-accent-magenta tracking-wider">LIVE</span>
+                            <span className="text-xs font-display font-bold text-accent-magenta tracking-wider">
+                                {liveGameData?.periodDescriptor?.number || liveGameData?.period || '1'} - {liveGameData?.clock?.timeRemaining || liveGameData?.clock || '20:00'}
+                            </span>
                         </div>
                     ) : isFinal ? (
                         <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
@@ -85,7 +115,7 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
                             <div className="text-center w-full">
                                 <span className="font-display font-bold text-2xl tracking-tight block">{game?.awayTeam?.abbrev || 'AWAY'}</span>
                                 {isLive || isFinal ? (
-                                    <span className="text-4xl font-display font-bold text-white block mt-1 text-glow-cyan">{game?.awayTeam?.score ?? 0}</span>
+                                    <span className="text-4xl font-display font-bold text-white block mt-1 text-glow-cyan">{liveGameData?.awayTeam?.score ?? game?.awayTeam?.score ?? 0}</span>
                                 ) : (
                                     <span className="text-sm text-gray-400 font-mono mt-1">AWAY</span>
                                 )}
@@ -110,7 +140,7 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
                             <div className="text-center w-full">
                                 <span className="font-display font-bold text-2xl tracking-tight block">{game?.homeTeam?.abbrev || 'HOME'}</span>
                                 {isLive || isFinal ? (
-                                    <span className="text-4xl font-display font-bold text-white block mt-1 text-glow-magenta">{game?.homeTeam?.score ?? 0}</span>
+                                    <span className="text-4xl font-display font-bold text-white block mt-1 text-glow-magenta">{liveGameData?.homeTeam?.score ?? game?.homeTeam?.score ?? 0}</span>
                                 ) : (
                                     <span className="text-sm text-gray-400 font-mono mt-1">HOME</span>
                                 )}
@@ -154,15 +184,15 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
                     {isLive && (
                         <div className="mt-auto grid grid-cols-3 gap-2 text-center text-xs font-mono text-gray-400 bg-white/5 rounded-lg p-2">
                             <div>
-                                <div className="text-white font-bold">{game?.period || '1st'}</div>
+                                <div className="text-white font-bold">{liveGameData?.periodDescriptor?.number || liveGameData?.period || '1st'}</div>
                                 <div className="text-[10px]">PER</div>
                             </div>
                             <div>
-                                <div className="text-white font-bold">{game?.clock || '20:00'}</div>
+                                <div className="text-white font-bold">{liveGameData?.clock?.timeRemaining || liveGameData?.clock || '20:00'}</div>
                                 <div className="text-[10px]">TIME</div>
                             </div>
                             <div>
-                                <div className="text-white font-bold">{(game?.awayTeam?.sog || 0) + (game?.homeTeam?.sog || 0)}</div>
+                                <div className="text-white font-bold">{((liveGameData?.awayTeam?.sog ?? game?.awayTeam?.sog) || 0) + ((liveGameData?.homeTeam?.sog ?? game?.homeTeam?.sog) || 0)}</div>
                                 <div className="text-[10px]">SOG</div>
                             </div>
                         </div>
