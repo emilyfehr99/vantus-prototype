@@ -160,7 +160,7 @@ const PeriodStatsTable = ({ periodStats, awayTeam, homeTeam, currentPeriod }) =>
         { key: 'giveaways', label: 'GV', tooltip: 'Giveaways', isPercentage: false, isDecimal: false },
         { key: 'takeaways', label: 'TK', tooltip: 'Takeaways', isPercentage: false, isDecimal: false },
         { key: 'nzt', label: 'NZT', tooltip: 'Neutral Zone Turnovers', isPercentage: false, isDecimal: false },
-        { key: 'nztsa', label: 'NZTSA', tooltip: 'Neutral Zone Turnover Shot Attempts', isPercentage: false, isDecimal: false },
+        { key: 'nztsa', label: 'NZTSA', tooltip: 'Neutral Zone Turnover Shots Against', isPercentage: false, isDecimal: false },
         { key: 'ozs', label: 'OZS', tooltip: 'Offensive Zone Shots', isPercentage: false, isDecimal: false },
         { key: 'dzs', label: 'DZS', tooltip: 'Defensive Zone Shots', isPercentage: false, isDecimal: false },
         { key: 'nzs', label: 'NZS', tooltip: 'Neutral Zone Shots', isPercentage: false, isDecimal: false },

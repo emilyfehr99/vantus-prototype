@@ -687,6 +687,7 @@ const GameDetailsContent = () => {
                                 <h3 className="text-xl font-display font-bold">LIVE TEAM METRICS</h3>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* LIVE CORE METRICS - Combined from LIVE CORE METRICS + SHOT QUALITY */}
                                 <MetricCard title="LIVE CORE METRICS" icon={Target}>
                                     <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
                                         <div className="flex items-center gap-2">
@@ -717,12 +718,28 @@ const GameDetailsContent = () => {
                                         format={(v) => parseFloat(v || 0).toFixed(1)}
                                     />
                                     <ComparisonRow
+                                        label="SHOOTING %"
+                                        awayVal={(() => {
+                                            const shots = liveData?.live_metrics?.away_shots || liveData?.away_shots || 0;
+                                            const goals = liveData?.live_metrics?.away_score || liveData?.away_score || 0;
+                                            return shots > 0 ? (goals / shots * 100) : (liveData?.advanced_metrics?.shot_quality?.shooting_percentage?.away || 0);
+                                        })()}
+                                        homeVal={(() => {
+                                            const shots = liveData?.live_metrics?.home_shots || liveData?.home_shots || 0;
+                                            const goals = liveData?.live_metrics?.home_score || liveData?.home_score || 0;
+                                            return shots > 0 ? (goals / shots * 100) : (liveData?.advanced_metrics?.shot_quality?.shooting_percentage?.home || 0);
+                                        })()}
+                                        format={(v) => parseFloat(v || 0).toFixed(1) + '%'}
+                                    />
+                                    <ComparisonRow
                                         label="GAME SCORE (GS)"
                                         awayVal={liveData?.live_metrics?.away_gs || liveData?.away_gs || 0}
                                         homeVal={liveData?.live_metrics?.home_gs || liveData?.home_gs || 0}
                                         format={(v) => parseFloat(v || 0).toFixed(2)}
                                     />
                                 </MetricCard>
+
+                                {/* LIVE PRESSURE - Combined from LIVE PRESSURE + PRESSURE */}
                                 <MetricCard title="LIVE PRESSURE" icon={Zap}>
                                     <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
                                         <div className="flex items-center gap-2">
@@ -750,6 +767,11 @@ const GameDetailsContent = () => {
                                         homeVal={liveData?.live_metrics?.home_dzs || liveData?.home_dzs || 0}
                                     />
                                     <ComparisonRow
+                                        label="SUSTAINED PRESSURE"
+                                        awayVal={liveData?.live_metrics?.away_fc || liveData?.away_fc || liveData?.advanced_metrics?.pressure?.sustained_pressure?.away || 0}
+                                        homeVal={liveData?.live_metrics?.home_fc || liveData?.home_fc || liveData?.advanced_metrics?.pressure?.sustained_pressure?.home || 0}
+                                    />
+                                    <ComparisonRow
                                         label="RUSH CHANCES"
                                         awayVal={liveData?.live_metrics?.away_rush || liveData?.away_rush || liveData?.advanced_metrics?.pressure?.rush_shots?.away || 0}
                                         homeVal={liveData?.live_metrics?.home_rush || liveData?.home_rush || liveData?.advanced_metrics?.pressure?.rush_shots?.home || 0}
@@ -761,164 +783,79 @@ const GameDetailsContent = () => {
                                         format={(v) => parseFloat(v || 0).toFixed(1)}
                                     />
                                 </MetricCard>
-                            </div>
-                        </section>
-                    )}
 
-                    {/* Advanced Metrics Grid - Only show for LIVE games */}
-                    {isLive && (
-                    <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <MetricCard title="SHOT QUALITY" icon={Crosshair}>
-                            <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
-                                <div className="flex items-center gap-2">
-                                    <img src={awayTeam?.logo} alt={awayTeam?.abbrev} className="w-6 h-6" />
-                                    <span className="text-accent-primary font-mono text-sm">{awayTeam?.abbrev}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <img src={homeTeam?.logo} alt={homeTeam?.abbrev} className="w-6 h-6" />
-                                    <span className="text-accent-secondary font-mono text-sm">{homeTeam?.abbrev}</span>
-                                </div>
-                            </div>
+                                {/* DEFENSE */}
+                                <MetricCard title="DEFENSE" icon={Shield}>
+                                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
+                                        <div className="flex items-center gap-2">
+                                            <img src={awayTeam?.logo} alt={awayTeam?.abbrev} className="w-6 h-6" />
+                                            <span className="text-accent-primary font-mono text-sm">{awayTeam?.abbrev}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <img src={homeTeam?.logo} alt={homeTeam?.abbrev} className="w-6 h-6" />
+                                            <span className="text-accent-secondary font-mono text-sm">{homeTeam?.abbrev}</span>
+                                        </div>
+                                    </div>
+                                    <ComparisonRow
+                                        label="BLOCKED SHOTS"
+                                        awayVal={liveData?.live_metrics?.away_blocked_shots || liveData?.away_blocked_shots || liveData?.advanced_metrics?.defense?.blocked_shots?.away || 0}
+                                        homeVal={liveData?.live_metrics?.home_blocked_shots || liveData?.home_blocked_shots || liveData?.advanced_metrics?.defense?.blocked_shots?.home || 0}
+                                        format={(v) => parseFloat(v || 0).toFixed(0)}
+                                    />
+                                    <ComparisonRow
+                                        label="TAKEAWAYS"
+                                        awayVal={liveData?.live_metrics?.away_takeaways || liveData?.away_takeaways || liveData?.advanced_metrics?.defense?.takeaways?.away || 0}
+                                        homeVal={liveData?.live_metrics?.home_takeaways || liveData?.home_takeaways || liveData?.advanced_metrics?.defense?.takeaways?.home || 0}
+                                        format={(v) => parseFloat(v || 0).toFixed(0)}
+                                    />
+                                    <ComparisonRow
+                                        label="GIVEAWAYS"
+                                        awayVal={liveData?.live_metrics?.away_giveaways || liveData?.away_giveaways || liveData?.advanced_metrics?.defense?.giveaways?.away || 0}
+                                        homeVal={liveData?.live_metrics?.home_giveaways || liveData?.home_giveaways || liveData?.advanced_metrics?.defense?.giveaways?.home || 0}
+                                        format={(v) => parseFloat(v || 0).toFixed(0)}
+                                        inverse={true}
+                                    />
+                                    <ComparisonRow
+                                        label="NEUTRAL ZONE TURNOVERS"
+                                        awayVal={liveData?.live_metrics?.away_nzt || liveData?.away_nzt || 0}
+                                        homeVal={liveData?.live_metrics?.home_nzt || liveData?.home_nzt || 0}
+                                        format={(v) => parseFloat(v || 0).toFixed(0)}
+                                    />
                             <ComparisonRow
-                                label="EXPECTED GOALS (xG)"
-                                awayVal={liveData?.live_metrics?.away_xg || liveData?.away_xg || liveData?.advanced_metrics?.xg?.away_total || 0}
-                                homeVal={liveData?.live_metrics?.home_xg || liveData?.home_xg || liveData?.advanced_metrics?.xg?.home_total || 0}
-                                format={(v) => parseFloat(v || 0).toFixed(2)}
-                            />
-                            <ComparisonRow
-                                label="HIGH DANGER CHANCES"
-                                awayVal={liveData?.live_metrics?.away_hdc || liveData?.away_hdc || liveData?.advanced_metrics?.shot_quality?.high_danger_shots?.away || 0}
-                                homeVal={liveData?.live_metrics?.home_hdc || liveData?.home_hdc || liveData?.advanced_metrics?.shot_quality?.high_danger_shots?.home || 0}
-                            />
-                            <ComparisonRow
-                                label="SHOOTING %"
-                                awayVal={(() => {
-                                    const shots = liveData?.live_metrics?.away_shots || liveData?.away_shots || 0;
-                                    const goals = liveData?.live_metrics?.away_score || liveData?.away_score || 0;
-                                    return shots > 0 ? (goals / shots * 100) : (liveData?.advanced_metrics?.shot_quality?.shooting_percentage?.away || 0);
-                                })()}
-                                homeVal={(() => {
-                                    const shots = liveData?.live_metrics?.home_shots || liveData?.home_shots || 0;
-                                    const goals = liveData?.live_metrics?.home_score || liveData?.home_score || 0;
-                                    return shots > 0 ? (goals / shots * 100) : (liveData?.advanced_metrics?.shot_quality?.shooting_percentage?.home || 0);
-                                })()}
-                                format={(v) => parseFloat(v || 0).toFixed(1) + '%'}
-                            />
-                            <ComparisonRow
-                                label="GAME SCORE (GS)"
-                                awayVal={liveData?.live_metrics?.away_gs || liveData?.away_gs || 0}
-                                homeVal={liveData?.live_metrics?.home_gs || liveData?.home_gs || 0}
-                                format={(v) => parseFloat(v || 0).toFixed(2)}
-                            />
-                        </MetricCard>
-
-                        <MetricCard title="PRESSURE" icon={Zap}>
-                            <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
-                                <div className="flex items-center gap-2">
-                                    <img src={awayTeam?.logo} alt={awayTeam?.abbrev} className="w-6 h-6" />
-                                    <span className="text-accent-primary font-mono text-sm">{awayTeam?.abbrev}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <img src={homeTeam?.logo} alt={homeTeam?.abbrev} className="w-6 h-6" />
-                                    <span className="text-accent-secondary font-mono text-sm">{homeTeam?.abbrev}</span>
-                                </div>
-                            </div>
-                            <ComparisonRow
-                                label="OFFENSIVE ZONE SHOTS"
-                                awayVal={liveData?.live_metrics?.away_ozs || liveData?.away_ozs || liveData?.advanced_metrics?.pressure?.oz_shots?.away || 0}
-                                homeVal={liveData?.live_metrics?.home_ozs || liveData?.home_ozs || liveData?.advanced_metrics?.pressure?.oz_shots?.home || 0}
-                            />
-                            <ComparisonRow
-                                label="NEUTRAL ZONE SHOTS"
-                                awayVal={liveData?.live_metrics?.away_nzs || liveData?.away_nzs || 0}
-                                homeVal={liveData?.live_metrics?.home_nzs || liveData?.home_nzs || 0}
-                            />
-                            <ComparisonRow
-                                label="DEFENSIVE ZONE SHOTS"
-                                awayVal={liveData?.live_metrics?.away_dzs || liveData?.away_dzs || 0}
-                                homeVal={liveData?.live_metrics?.home_dzs || liveData?.home_dzs || 0}
-                            />
-                            <ComparisonRow
-                                label="SUSTAINED PRESSURE"
-                                awayVal={liveData?.live_metrics?.away_fc || liveData?.away_fc || liveData?.advanced_metrics?.pressure?.sustained_pressure?.away || 0}
-                                homeVal={liveData?.live_metrics?.home_fc || liveData?.home_fc || liveData?.advanced_metrics?.pressure?.sustained_pressure?.home || 0}
-                            />
-                            <ComparisonRow
-                                label="RUSH CHANCES"
-                                awayVal={liveData?.live_metrics?.away_rush || liveData?.away_rush || liveData?.advanced_metrics?.pressure?.rush_shots?.away || 0}
-                                homeVal={liveData?.live_metrics?.home_rush || liveData?.home_rush || liveData?.advanced_metrics?.pressure?.rush_shots?.home || 0}
-                            />
-                        </MetricCard>
-
-                        <MetricCard title="DEFENSE" icon={Shield}>
-                            <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
-                                <div className="flex items-center gap-2">
-                                    <img src={awayTeam?.logo} alt={awayTeam?.abbrev} className="w-6 h-6" />
-                                    <span className="text-accent-primary font-mono text-sm">{awayTeam?.abbrev}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <img src={homeTeam?.logo} alt={homeTeam?.abbrev} className="w-6 h-6" />
-                                    <span className="text-accent-secondary font-mono text-sm">{homeTeam?.abbrev}</span>
-                                </div>
-                            </div>
-                            <ComparisonRow
-                                label="BLOCKED SHOTS"
-                                awayVal={liveData?.live_metrics?.away_blocked_shots || liveData?.away_blocked_shots || liveData?.advanced_metrics?.defense?.blocked_shots?.away || 0}
-                                homeVal={liveData?.live_metrics?.home_blocked_shots || liveData?.home_blocked_shots || liveData?.advanced_metrics?.defense?.blocked_shots?.home || 0}
-                                format={(v) => parseFloat(v || 0).toFixed(0)}
-                            />
-                            <ComparisonRow
-                                label="TAKEAWAYS"
-                                awayVal={liveData?.live_metrics?.away_takeaways || liveData?.away_takeaways || liveData?.advanced_metrics?.defense?.takeaways?.away || 0}
-                                homeVal={liveData?.live_metrics?.home_takeaways || liveData?.home_takeaways || liveData?.advanced_metrics?.defense?.takeaways?.home || 0}
-                                format={(v) => parseFloat(v || 0).toFixed(0)}
-                            />
-                            <ComparisonRow
-                                label="GIVEAWAYS"
-                                awayVal={liveData?.live_metrics?.away_giveaways || liveData?.away_giveaways || liveData?.advanced_metrics?.defense?.giveaways?.away || 0}
-                                homeVal={liveData?.live_metrics?.home_giveaways || liveData?.home_giveaways || liveData?.advanced_metrics?.defense?.giveaways?.home || 0}
-                                format={(v) => parseFloat(v || 0).toFixed(0)}
-                                inverse={true}
-                            />
-                            <ComparisonRow
-                                label="NEUTRAL ZONE TURNOVERS"
-                                awayVal={liveData?.live_metrics?.away_nzt || liveData?.away_nzt || 0}
-                                homeVal={liveData?.live_metrics?.home_nzt || liveData?.home_nzt || 0}
-                                format={(v) => parseFloat(v || 0).toFixed(0)}
-                            />
-                            <ComparisonRow
-                                label="NZ TURNOVER SHOT ATTEMPTS"
+                                label="NZ TURNOVER SHOTS AGAINST"
                                 awayVal={liveData?.live_metrics?.away_nztsa || liveData?.away_nztsa || 0}
                                 homeVal={liveData?.live_metrics?.home_nztsa || liveData?.home_nztsa || 0}
                                 format={(v) => parseFloat(v || 0).toFixed(0)}
                             />
-                        </MetricCard>
+                                </MetricCard>
 
-                        <MetricCard title="MOVEMENT" icon={Activity}>
-                            <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
-                                <div className="flex items-center gap-2">
-                                    <img src={awayTeam?.logo} alt={awayTeam?.abbrev} className="w-6 h-6" />
-                                    <span className="text-accent-primary font-mono text-sm">{awayTeam?.abbrev}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <img src={homeTeam?.logo} alt={homeTeam?.abbrev} className="w-6 h-6" />
-                                    <span className="text-accent-secondary font-mono text-sm">{homeTeam?.abbrev}</span>
-                                </div>
+                                {/* MOVEMENT */}
+                                <MetricCard title="MOVEMENT" icon={Activity}>
+                                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
+                                        <div className="flex items-center gap-2">
+                                            <img src={awayTeam?.logo} alt={awayTeam?.abbrev} className="w-6 h-6" />
+                                            <span className="text-accent-primary font-mono text-sm">{awayTeam?.abbrev}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <img src={homeTeam?.logo} alt={homeTeam?.abbrev} className="w-6 h-6" />
+                                            <span className="text-accent-secondary font-mono text-sm">{homeTeam?.abbrev}</span>
+                                        </div>
+                                    </div>
+                                    <ComparisonRow
+                                        label="LATERAL MOVEMENT"
+                                        awayVal={liveData?.live_metrics?.away_lateral || liveData?.away_lateral || liveData?.advanced_metrics?.movement?.lateral_movement?.away || 0}
+                                        homeVal={liveData?.live_metrics?.home_lateral || liveData?.home_lateral || liveData?.advanced_metrics?.movement?.lateral_movement?.home || 0}
+                                        format={(v) => parseFloat(v || 0).toFixed(1)}
+                                    />
+                                    <ComparisonRow
+                                        label="N-S MOVEMENT"
+                                        awayVal={liveData?.live_metrics?.away_longitudinal || liveData?.away_longitudinal || liveData?.advanced_metrics?.movement?.longitudinal_movement?.away || 0}
+                                        homeVal={liveData?.live_metrics?.home_longitudinal || liveData?.home_longitudinal || liveData?.advanced_metrics?.movement?.longitudinal_movement?.home || 0}
+                                        format={(v) => parseFloat(v || 0).toFixed(1)}
+                                    />
+                                </MetricCard>
                             </div>
-                            <ComparisonRow
-                                label="LATERAL MOVEMENT"
-                                awayVal={liveData?.live_metrics?.away_lateral || liveData?.away_lateral || liveData?.advanced_metrics?.movement?.lateral_movement?.away || 0}
-                                homeVal={liveData?.live_metrics?.home_lateral || liveData?.home_lateral || liveData?.advanced_metrics?.movement?.lateral_movement?.home || 0}
-                                format={(v) => parseFloat(v || 0).toFixed(1)}
-                            />
-                            <ComparisonRow
-                                label="N-S MOVEMENT"
-                                awayVal={liveData?.live_metrics?.away_longitudinal || liveData?.away_longitudinal || liveData?.advanced_metrics?.movement?.longitudinal_movement?.away || 0}
-                                homeVal={liveData?.live_metrics?.home_longitudinal || liveData?.home_longitudinal || liveData?.advanced_metrics?.movement?.longitudinal_movement?.home || 0}
-                                format={(v) => parseFloat(v || 0).toFixed(1)}
-                            />
-                        </MetricCard>
-                    </section>
+                        </section>
                     )}
 
                     {/* Team Metrics Comparison - Show pre-game metrics for FUT games, actual game data for FINAL games */}
