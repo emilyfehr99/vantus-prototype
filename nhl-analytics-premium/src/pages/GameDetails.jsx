@@ -284,6 +284,8 @@ const GameDetailsContent = () => {
                     backendApi.getLiveGame(id)
                         .then(liveGameData => {
                             console.log('Live data received:', liveGameData);
+                            console.log('Period stats in live data:', liveGameData?.period_stats);
+                            console.log('Period stats in live_metrics:', liveGameData?.live_metrics?.period_stats);
                 setLiveData(liveGameData);
                         })
                         .catch(err => console.error('Error fetching live data:', err));
@@ -342,6 +344,9 @@ const GameDetailsContent = () => {
                                 backendApi.getLiveGame(id).catch(() => null),
                                 backendApi.getTeamMetrics().catch(() => ({}))
                             ]).then(([live, metrics]) => {
+                                console.log('📊 Live data from polling:', live);
+                                console.log('📊 Period stats in polling response:', live?.period_stats);
+                                console.log('📊 Period stats in live_metrics:', live?.live_metrics?.period_stats);
                                 setLiveData(live);
                                 setTeamMetrics(metrics);
                             }).catch(err => console.error('Live data polling error:', err));
@@ -632,10 +637,20 @@ const GameDetailsContent = () => {
                             <h3 className="text-xl font-display font-bold">PERIOD PERFORMANCE</h3>
                         </div>
                             <PeriodStatsTable
-                            periodStats={liveData?.period_stats || []}
+                                periodStats={liveData?.period_stats || liveData?.live_metrics?.period_stats || []}
                                 awayTeam={awayTeam}
                                 homeTeam={homeTeam}
                             />
+                            {/* Debug info - remove after testing */}
+                            {process.env.NODE_ENV === 'development' && (
+                                <div className="mt-4 p-4 bg-gray-800 rounded text-xs font-mono">
+                                    <div>liveData exists: {liveData ? 'YES' : 'NO'}</div>
+                                    <div>period_stats (top): {liveData?.period_stats ? `YES (${liveData.period_stats.length})` : 'NO'}</div>
+                                    <div>period_stats (nested): {liveData?.live_metrics?.period_stats ? `YES (${liveData.live_metrics.period_stats.length})` : 'NO'}</div>
+                                    <div>Game State: {gameState}</div>
+                                    <div>Is Live: {isLive ? 'YES' : 'NO'}</div>
+                            </div>
+                        )}
                     </section>
 
                     {/* Live Team Metrics - Show for LIVE games, updating live */}

@@ -315,7 +315,11 @@ class LiveInGamePredictor:
             live_metrics['goalie_stats'] = goalie_stats
             
             # Calculate advanced metrics from play-by-play if available
-            if game_data.get('play_by_play') and away_team_id and home_team_id:
+            # Check both snake_case and camelCase keys
+            play_by_play = game_data.get('play_by_play') or game_data.get('playByPlay')
+            print(f"🔍 Checking for play-by-play data: {bool(play_by_play)}, away_team_id={away_team_id}, home_team_id={home_team_id}")
+            if play_by_play and away_team_id and home_team_id:
+                print(f"✅ Play-by-play data found, calculating period stats...")
                 try:
                     # Calculate xG and HDC
                     away_xg, home_xg = self.report_generator._calculate_xg_from_plays(game_data)
@@ -362,7 +366,9 @@ class LiveInGamePredictor:
                     live_metrics['home_rush'] = sum(home_zone_metrics.get('rush_sog', [0, 0, 0]))
                     
                     # Calculate movement metrics
-                    analyzer = AdvancedMetricsAnalyzer(game_data.get('play_by_play', {}))
+                    # Use the play_by_play variable we already checked, not game_data.get again
+                    pbp_for_analyzer = play_by_play or game_data.get('play_by_play', {})
+                    analyzer = AdvancedMetricsAnalyzer(pbp_for_analyzer)
                     away_movement = analyzer.calculate_pre_shot_movement_metrics(away_team_id)
                     home_movement = analyzer.calculate_pre_shot_movement_metrics(home_team_id)
                     
@@ -372,11 +378,28 @@ class LiveInGamePredictor:
                     live_metrics['home_longitudinal'] = home_movement['longitudinal_movement'].get('avg_delta_x', 0.0)
                     
                     # Calculate period stats
+                    print(f"🔍 Calculating period stats for away_team_id={away_team_id}, home_team_id={home_team_id}")
+                    print(f"🔍 Play-by-play data structure: {type(play_by_play)}, has 'plays' key: {'plays' in play_by_play if isinstance(play_by_play, dict) else 'N/A'}")
+                    if isinstance(play_by_play, dict) and 'plays' in play_by_play:
+                        print(f"🔍 Number of plays: {len(play_by_play.get('plays', []))}")
+                    
+                    # Ensure game_data has play_by_play in the structure _calculate_real_period_stats expects
+                    # The function expects game_data.get('play_by_play') to work
+                    if 'play_by_play' not in game_data:
+                        # Make sure play_by_play is in game_data for the function
+                        game_data['play_by_play'] = play_by_play
+                    
                     away_period_stats = self.report_generator._calculate_real_period_stats(game_data, away_team_id, 'away')
                     home_period_stats = self.report_generator._calculate_real_period_stats(game_data, home_team_id, 'home')
                     
+                    print(f"✅ Period stats calculated - away: {away_period_stats}, home: {home_period_stats}")
+                    print(f"✅ away_period_stats type: {type(away_period_stats)}, keys: {list(away_period_stats.keys()) if isinstance(away_period_stats, dict) else 'N/A'}")
+                    print(f"✅ home_period_stats type: {type(home_period_stats)}, keys: {list(home_period_stats.keys()) if isinstance(home_period_stats, dict) else 'N/A'}")
+                    
+                    # CRITICAL: Store period stats in live_metrics
                     live_metrics['away_period_stats'] = away_period_stats
                     live_metrics['home_period_stats'] = home_period_stats
+                    print(f"✅ Stored period stats in live_metrics - away_period_stats: {'away_period_stats' in live_metrics}, home_period_stats: {'home_period_stats' in live_metrics}")
                     
                     # Calculate Corsi percentage
                     away_corsi_pct = sum(away_period_stats.get('corsi_pct', [50.0])) / max(1, len(away_period_stats.get('corsi_pct', [50.0])))
@@ -408,8 +431,18 @@ class LiveInGamePredictor:
                     away_period_goals, _, _ = self.report_generator._calculate_goals_by_period(game_data, away_team_id)
                     home_period_goals, _, _ = self.report_generator._calculate_goals_by_period(game_data, home_team_id)
                     
+                    # Store period goals arrays for period stats table
+                    live_metrics['away_period_goals'] = away_period_goals
+                    live_metrics['home_period_goals'] = home_period_goals
                     live_metrics['away_third_period_goals'] = away_period_goals[2] if len(away_period_goals) > 2 else 0
                     live_metrics['home_third_period_goals'] = home_period_goals[2] if len(home_period_goals) > 2 else 0
+                    
+                    # Store xG by period arrays for period stats table
+                    live_metrics['away_xg_by_period'] = away_xg_periods
+                    live_metrics['home_xg_by_period'] = home_xg_periods
+                    
+                    print(f"✅ Stored period goals: away={away_period_goals}, home={home_period_goals}")
+                    print(f"✅ Stored xG by period: away={away_xg_periods}, home={home_xg_periods}")
                     
                     goal_diff = abs(away_score - home_score)
                     live_metrics['one_goal_game'] = (goal_diff == 1)
@@ -448,7 +481,15 @@ class LiveInGamePredictor:
                     print(f"⚠️  Error calculating advanced metrics: {e}")
                     import traceback
                     traceback.print_exc()
-                    # Set defaults for advanced metrics
+                    # Still set period stats to empty dicts so structure exists
+                    live_metrics['away_period_stats'] = {'shots': [0, 0, 0], 'corsi_pct': [50, 50, 50], 'hits': [0, 0, 0], 'fo_pct': [50, 50, 50], 'pim': [0, 0, 0], 'bs': [0, 0, 0], 'gv': [0, 0, 0], 'tk': [0, 0, 0]}
+                    live_metrics['home_period_stats'] = {'shots': [0, 0, 0], 'corsi_pct': [50, 50, 50], 'hits': [0, 0, 0], 'fo_pct': [50, 50, 50], 'pim': [0, 0, 0], 'bs': [0, 0, 0], 'gv': [0, 0, 0], 'tk': [0, 0, 0]}
+                    live_metrics['away_period_goals'] = [0, 0, 0]
+                    live_metrics['home_period_goals'] = [0, 0, 0]
+                    live_metrics['away_xg_by_period'] = [0, 0, 0]
+                    live_metrics['home_xg_by_period'] = [0, 0, 0]
+                    
+                    # Set defaults for advanced metrics if not already set
                     for key in ['away_xg', 'home_xg', 'away_hdc', 'home_hdc', 'away_gs', 'home_gs',
                                'away_nzt', 'away_nztsa', 'away_ozs', 'away_nzs', 'away_dzs', 'away_fc', 'away_rush',
                                'home_nzt', 'home_nztsa', 'home_ozs', 'home_nzs', 'home_dzs', 'home_fc', 'home_rush',
@@ -457,6 +498,50 @@ class LiveInGamePredictor:
                                'away_power_play_pct', 'home_power_play_pct']:
                         if key not in live_metrics:
                             live_metrics[key] = 0.0 if 'pct' in key or 'lateral' in key or 'longitudinal' in key else 0
+            else:
+                print(f"⚠️ No play-by-play data or missing team IDs - setting empty period stats")
+                live_metrics['away_period_stats'] = {'shots': [0, 0, 0], 'corsi_pct': [50, 50, 50], 'hits': [0, 0, 0], 'fo_pct': [50, 50, 50], 'pim': [0, 0, 0], 'bs': [0, 0, 0], 'gv': [0, 0, 0], 'tk': [0, 0, 0]}
+                live_metrics['home_period_stats'] = {'shots': [0, 0, 0], 'corsi_pct': [50, 50, 50], 'hits': [0, 0, 0], 'fo_pct': [50, 50, 50], 'pim': [0, 0, 0], 'bs': [0, 0, 0], 'gv': [0, 0, 0], 'tk': [0, 0, 0]}
+                live_metrics['away_period_goals'] = [0, 0, 0]
+                live_metrics['home_period_goals'] = [0, 0, 0]
+                live_metrics['away_xg_by_period'] = [0, 0, 0]
+                live_metrics['home_xg_by_period'] = [0, 0, 0]
+                
+                # Set defaults for advanced metrics
+                for key in ['away_xg', 'home_xg', 'away_hdc', 'home_hdc', 'away_gs', 'home_gs',
+                           'away_nzt', 'away_nztsa', 'away_ozs', 'away_nzs', 'away_dzs', 'away_fc', 'away_rush',
+                           'home_nzt', 'home_nztsa', 'home_ozs', 'home_nzs', 'home_dzs', 'home_fc', 'home_rush',
+                           'away_lateral', 'away_longitudinal', 'home_lateral', 'home_longitudinal',
+                           'away_corsi_pct', 'home_corsi_pct', 'away_faceoff_pct', 'home_faceoff_pct',
+                           'away_power_play_pct', 'home_power_play_pct']:
+                    if key not in live_metrics:
+                        live_metrics[key] = 0.0 if 'pct' in key or 'lateral' in key or 'longitudinal' in key else 0
+            
+            # Set defaults for advanced metrics if not already set (fallback)
+            try:
+                for key in ['away_xg', 'home_xg', 'away_hdc', 'home_hdc', 'away_gs', 'home_gs',
+                           'away_nzt', 'away_nztsa', 'away_ozs', 'away_nzs', 'away_dzs', 'away_fc', 'away_rush',
+                           'home_nzt', 'home_nztsa', 'home_ozs', 'home_nzs', 'home_dzs', 'home_fc', 'home_rush',
+                           'away_lateral', 'away_longitudinal', 'home_lateral', 'home_longitudinal',
+                           'away_corsi_pct', 'home_corsi_pct', 'away_faceoff_pct', 'home_faceoff_pct',
+                           'away_power_play_pct', 'home_power_play_pct']:
+                    if key not in live_metrics:
+                        live_metrics[key] = 0.0 if 'pct' in key or 'lateral' in key or 'longitudinal' in key else 0
+            except Exception as e:
+                print(f"⚠️ Error setting default metrics: {e}")
+            
+            # Set defaults for advanced metrics if not already set
+            try:
+                for key in ['away_xg', 'home_xg', 'away_hdc', 'home_hdc', 'away_gs', 'home_gs',
+                           'away_nzt', 'away_nztsa', 'away_ozs', 'away_nzs', 'away_dzs', 'away_fc', 'away_rush',
+                           'home_nzt', 'home_nztsa', 'home_ozs', 'home_nzs', 'home_dzs', 'home_fc', 'home_rush',
+                           'away_lateral', 'away_longitudinal', 'home_lateral', 'home_longitudinal',
+                           'away_corsi_pct', 'home_corsi_pct', 'away_faceoff_pct', 'home_faceoff_pct',
+                           'away_power_play_pct', 'home_power_play_pct']:
+                    if key not in live_metrics:
+                        live_metrics[key] = 0.0 if 'pct' in key or 'lateral' in key or 'longitudinal' in key else 0
+            except Exception as e:
+                print(f"⚠️ Error setting default metrics: {e}")
             
             # Construct nested objects for frontend compatibility
             live_metrics['stats'] = {
@@ -636,6 +721,15 @@ class LiveInGamePredictor:
             
             # Add all live metrics to the result
             result.update(live_metrics)
+            
+            # DEBUG: Verify period stats are in the result
+            print(f"🔍 predict_live_game result keys (first 25): {list(result.keys())[:25]}")
+            print(f"🔍 Has away_period_stats in result: {'away_period_stats' in result}")
+            print(f"🔍 Has home_period_stats in result: {'home_period_stats' in result}")
+            if 'away_period_stats' in result:
+                print(f"🔍 away_period_stats type: {type(result['away_period_stats'])}, value: {result['away_period_stats']}")
+            if 'home_period_stats' in result:
+                print(f"🔍 home_period_stats type: {type(result['home_period_stats'])}, value: {result['home_period_stats']}")
             
             return result
             
