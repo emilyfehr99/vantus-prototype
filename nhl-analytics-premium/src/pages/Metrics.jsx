@@ -141,10 +141,17 @@ const Metrics = () => {
         return sorted;
     }, [playerStats, playerSortConfig]);
 
-    // Helper to display metric value, showing "—" for zeros
-    const displayMetric = (value) => {
-        if (value === undefined || value === null || value === 0 || value === 0.0 || value === '0.0') {
+    // Helper to display metric value, showing "—" for null/undefined, formatting numbers to 2 decimals
+    const displayMetric = (value, isPercentage = false) => {
+        if (value === undefined || value === null) {
             return '—';
+        }
+        // Don't treat 0 as missing - 0 is a valid value
+        if (typeof value === 'number') {
+            if (isPercentage) {
+                return value.toFixed(1) + '%';
+            }
+            return value.toFixed(2);
         }
         return value;
     };
@@ -253,22 +260,22 @@ const Metrics = () => {
 
         // Shooting
         { key: 'shots', label: 'SOG', align: 'center', advanced: true, tooltip: 'Shots on Goal' },
-        { key: 'goals', label: 'G/G', align: 'center', advanced: true, tooltip: 'Goals per Game' },
+        { key: 'goals_per_game', label: 'G/G', align: 'center', advanced: true, tooltip: 'Goals per Game' },
 
         // Possession
         { key: 'corsi_pct', label: 'CF%', align: 'center', advanced: true, tooltip: 'Corsi For %' },
 
         // Physical
-        { key: 'hits', label: 'HITS', align: 'center', advanced: true, tooltip: 'Hits per Game' },
-        { key: 'blocks', label: 'BLK', align: 'center', advanced: true, tooltip: 'Blocked Shots' },
-        { key: 'giveaways', label: 'GV', align: 'center', advanced: true, tooltip: 'Giveaways' },
-        { key: 'takeaways', label: 'TK', align: 'center', advanced: true, tooltip: 'Takeaways' },
-        { key: 'pim', label: 'PIM', align: 'center', advanced: true, tooltip: 'Penalty Minutes' },
+        { key: 'hits_per_game', label: 'HITS', align: 'center', advanced: true, tooltip: 'Hits per Game' },
+        { key: 'blocks_per_game', label: 'BLK', align: 'center', advanced: true, tooltip: 'Blocked Shots per Game' },
+        { key: 'giveaways_per_game', label: 'GV', align: 'center', advanced: true, tooltip: 'Giveaways per Game' },
+        { key: 'takeaways_per_game', label: 'TK', align: 'center', advanced: true, tooltip: 'Takeaways per Game' },
+        { key: 'pim_per_game', label: 'PIM', align: 'center', advanced: true, tooltip: 'Penalty Minutes per Game' },
 
         // Special Teams
         { key: 'pp_pct', label: 'PP%', align: 'center', advanced: true, tooltip: 'Power Play %' },
         { key: 'pk_pct', label: 'PK%', align: 'center', advanced: true, tooltip: 'Penalty Kill %' },
-        { key: 'fo_pct', label: 'FO%', align: 'center', advanced: true, tooltip: 'Faceoff %' },
+        { key: 'faceoff_pct', label: 'FO%', align: 'center', advanced: true, tooltip: 'Faceoff %' },
     ];
 
     return (
@@ -453,40 +460,40 @@ const Metrics = () => {
                                         {loadingAdvanced ? '...' : displayMetric(team.shots)}
                                     </td>
                                     <td className="p-4 text-center text-text-muted" title="Goals per Game">
-                                        {loadingAdvanced ? '...' : displayMetric(team.goals)}
+                                        {loadingAdvanced ? '...' : displayMetric(team.goals_per_game)}
                                     </td>
 
                                     {/* Possession */}
                                     <td className="p-4 text-center text-text-muted" title="Corsi For %">
-                                        {loadingAdvanced ? '...' : displayMetric(team.corsi_pct)}
+                                        {loadingAdvanced ? '...' : displayMetric(team.corsi_pct, true)}
                                     </td>
 
                                     {/* Physical */}
                                     <td className="p-4 text-center text-text-muted" title="Hits per Game">
-                                        {loadingAdvanced ? '...' : displayMetric(team.hits)}
+                                        {loadingAdvanced ? '...' : displayMetric(team.hits_per_game)}
                                     </td>
-                                    <td className="p-4 text-center text-text-muted" title="Blocked Shots">
-                                        {loadingAdvanced ? '...' : displayMetric(team.blocks)}
+                                    <td className="p-4 text-center text-text-muted" title="Blocked Shots per Game">
+                                        {loadingAdvanced ? '...' : displayMetric(team.blocks_per_game)}
                                     </td>
-                                    <td className="p-4 text-center text-text-muted" title="Giveaways">
-                                        {loadingAdvanced ? '...' : displayMetric(team.giveaways)}
+                                    <td className="p-4 text-center text-text-muted" title="Giveaways per Game">
+                                        {loadingAdvanced ? '...' : displayMetric(team.giveaways_per_game)}
                                     </td>
-                                    <td className="p-4 text-center text-text-muted" title="Takeaways">
-                                        {loadingAdvanced ? '...' : displayMetric(team.takeaways)}
+                                    <td className="p-4 text-center text-text-muted" title="Takeaways per Game">
+                                        {loadingAdvanced ? '...' : displayMetric(team.takeaways_per_game)}
                                     </td>
-                                    <td className="p-4 text-center text-text-muted" title="Penalty Minutes">
-                                        {loadingAdvanced ? '...' : displayMetric(team.pim)}
+                                    <td className="p-4 text-center text-text-muted" title="Penalty Minutes per Game">
+                                        {loadingAdvanced ? '...' : displayMetric(team.pim_per_game)}
                                     </td>
 
                                     {/* Special Teams */}
                                     <td className="p-4 text-center text-text-muted" title="Power Play %">
-                                        {loadingAdvanced ? '...' : displayMetric(team.pp_pct)}
+                                        {loadingAdvanced ? '...' : displayMetric(team.pp_pct, true)}
                                     </td>
                                     <td className="p-4 text-center text-text-muted" title="Penalty Kill %">
-                                        {loadingAdvanced ? '...' : displayMetric(team.pk_pct)}
+                                        {loadingAdvanced ? '...' : displayMetric(team.pk_pct, true)}
                                     </td>
                                     <td className="p-4 text-center text-text-muted" title="Faceoff %">
-                                        {loadingAdvanced ? '...' : displayMetric(team.fo_pct)}
+                                        {loadingAdvanced ? '...' : displayMetric(team.faceoff_pct, true)}
                                     </td>
                                 </motion.tr>
                             ))}

@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { nhlApi } from '../api/nhl';
-import { Users, ArrowLeft, Shield, Crosshair, Goal, Activity, TrendingUp, Zap } from 'lucide-react';
+import { backendApi } from '../api/backend';
+import { Users, ArrowLeft, Shield, Crosshair, Goal, Activity, TrendingUp, Zap, Target } from 'lucide-react';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
+import ShotChart from '../components/ShotChart';
 
 const PlayerCard = ({ player, delay }) => (
     <motion.div
@@ -80,6 +82,7 @@ const TeamDetails = () => {
     const [roster, setRoster] = useState(null);
     const [teamMetrics, setTeamMetrics] = useState(null);
     const [allTeamMetrics, setAllTeamMetrics] = useState({});
+    const [teamHeatmap, setTeamHeatmap] = useState(null);
     const [loading, setLoading] = useState(true);
 
     // Calculate percentile for a metric
@@ -120,18 +123,25 @@ const TeamDetails = () => {
     useEffect(() => {
         const fetchTeamData = async () => {
             try {
-                const [rosterData, metricsResponse] = await Promise.all([
+                const [rosterData, allMetrics, heatmapData] = await Promise.allSettled([
                     nhlApi.getTeamDetails(id),
-                    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5002'}/api/team-metrics`)
+                    backendApi.getTeamMetrics(),
+                    backendApi.getTeamHeatmap(id)
                 ]);
 
-                setRoster(rosterData);
+                if (rosterData.status === 'fulfilled') {
+                    setRoster(rosterData.value);
+                }
 
-                if (metricsResponse.ok) {
-                    const allMetrics = await metricsResponse.json();
-                    setAllTeamMetrics(allMetrics);
-                    const teamMetric = allMetrics[id];
+                if (allMetrics.status === 'fulfilled') {
+                    const metrics = allMetrics.value;
+                    setAllTeamMetrics(metrics);
+                    const teamMetric = metrics[id];
                     setTeamMetrics(teamMetric);
+                }
+
+                if (heatmapData.status === 'fulfilled') {
+                    setTeamHeatmap(heatmapData.value);
                 }
             } catch (error) {
                 console.error('Failed to fetch team details:', error);
@@ -240,21 +250,21 @@ const TeamDetails = () => {
                         />
                         <MetricCard
                             label="GOALS FOR"
-                            value={teamMetrics.goals?.toFixed(2) || '-'}
+                            value={teamMetrics.goals_per_game?.toFixed(2) || teamMetrics.goals?.toFixed(2) || '-'}
                             subLabel="Per game"
                             icon={Goal}
                             colorClass="text-color-success"
-                            percentile={calculatePercentile(teamMetrics.goals, 'goals', true)}
-                            rank={calculateRank(teamMetrics.goals, 'goals', true)}
+                            percentile={calculatePercentile(teamMetrics.goals_per_game || teamMetrics.goals, 'goals_per_game', true)}
+                            rank={calculateRank(teamMetrics.goals_per_game || teamMetrics.goals, 'goals_per_game', true)}
                         />
                         <MetricCard
                             label="GOALS AGAINST"
-                            value={teamMetrics.ga_gp?.toFixed(2) || '-'}
+                            value={teamMetrics.goals_against_per_game?.toFixed(2) || teamMetrics.ga_gp?.toFixed(2) || '-'}
                             subLabel="Per game"
                             icon={Shield}
                             colorClass="text-color-danger"
-                            percentile={calculatePercentile(teamMetrics.ga_gp, 'ga_gp', false)}
-                            rank={calculateRank(teamMetrics.ga_gp, 'ga_gp', false)}
+                            percentile={calculatePercentile(teamMetrics.goals_against_per_game || teamMetrics.ga_gp, 'goals_against_per_game', false)}
+                            rank={calculateRank(teamMetrics.goals_against_per_game || teamMetrics.ga_gp, 'goals_against_per_game', false)}
                         />
                         <MetricCard
                             label="SHOTS"
@@ -366,40 +376,99 @@ const TeamDetails = () => {
                         />
                         <MetricCard
                             label="HITS"
-                            value={teamMetrics.hits?.toFixed(1) || '-'}
+                            value={teamMetrics.hits_per_game?.toFixed(1) || teamMetrics.hits?.toFixed(1) || '-'}
                             subLabel="Per game"
                             icon={Activity}
                             colorClass="text-accent-secondary"
-                            percentile={calculatePercentile(teamMetrics.hits, 'hits', true)}
-                            rank={calculateRank(teamMetrics.hits, 'hits', true)}
+                            percentile={calculatePercentile(teamMetrics.hits_per_game || teamMetrics.hits, 'hits_per_game', true)}
+                            rank={calculateRank(teamMetrics.hits_per_game || teamMetrics.hits, 'hits_per_game', true)}
                         />
                         <MetricCard
                             label="BLOCKS"
-                            value={teamMetrics.blocks?.toFixed(1) || '-'}
+                            value={teamMetrics.blocks_per_game?.toFixed(1) || teamMetrics.blocks?.toFixed(1) || '-'}
                             subLabel="Per game"
                             icon={Shield}
                             colorClass="text-accent-secondary"
-                            percentile={calculatePercentile(teamMetrics.blocks, 'blocks', true)}
-                            rank={calculateRank(teamMetrics.blocks, 'blocks', true)}
+                            percentile={calculatePercentile(teamMetrics.blocks_per_game || teamMetrics.blocks, 'blocks_per_game', true)}
+                            rank={calculateRank(teamMetrics.blocks_per_game || teamMetrics.blocks, 'blocks_per_game', true)}
                         />
                         <MetricCard
                             label="TAKEAWAYS"
-                            value={teamMetrics.takeaways?.toFixed(1) || '-'}
+                            value={teamMetrics.takeaways_per_game?.toFixed(1) || teamMetrics.takeaways?.toFixed(1) || '-'}
                             subLabel="Per game"
                             icon={Zap}
                             colorClass="text-color-success"
-                            percentile={calculatePercentile(teamMetrics.takeaways, 'takeaways', true)}
-                            rank={calculateRank(teamMetrics.takeaways, 'takeaways', true)}
+                            percentile={calculatePercentile(teamMetrics.takeaways_per_game || teamMetrics.takeaways, 'takeaways_per_game', true)}
+                            rank={calculateRank(teamMetrics.takeaways_per_game || teamMetrics.takeaways, 'takeaways_per_game', true)}
                         />
                         <MetricCard
                             label="GIVEAWAYS"
-                            value={teamMetrics.giveaways?.toFixed(1) || '-'}
+                            value={teamMetrics.giveaways_per_game?.toFixed(1) || teamMetrics.giveaways?.toFixed(1) || '-'}
                             subLabel="Per game"
                             icon={Shield}
                             colorClass="text-color-danger"
-                            percentile={calculatePercentile(teamMetrics.giveaways, 'giveaways', false)}
-                            rank={calculateRank(teamMetrics.giveaways, 'giveaways', false)}
+                            percentile={calculatePercentile(teamMetrics.giveaways_per_game || teamMetrics.giveaways, 'giveaways_per_game', false)}
+                            rank={calculateRank(teamMetrics.giveaways_per_game || teamMetrics.giveaways, 'giveaways_per_game', false)}
                         />
+                        <MetricCard
+                            label="PENALTY MINUTES"
+                            value={teamMetrics.pim_per_game?.toFixed(1) || teamMetrics.pim?.toFixed(1) || '-'}
+                            subLabel="Per game"
+                            icon={Shield}
+                            colorClass="text-color-warning"
+                            percentile={calculatePercentile(teamMetrics.pim_per_game || teamMetrics.pim, 'pim_per_game', false)}
+                            rank={calculateRank(teamMetrics.pim_per_game || teamMetrics.pim, 'pim_per_game', false)}
+                        />
+                        <MetricCard
+                            label="POWER PLAY %"
+                            value={teamMetrics.pp_pct ? `${teamMetrics.pp_pct.toFixed(1)}%` : '-'}
+                            subLabel="Success rate"
+                            icon={Zap}
+                            colorClass="text-color-success"
+                            percentile={calculatePercentile(teamMetrics.pp_pct, 'pp_pct', true)}
+                            rank={calculateRank(teamMetrics.pp_pct, 'pp_pct', true)}
+                        />
+                        <MetricCard
+                            label="PENALTY KILL %"
+                            value={teamMetrics.pk_pct ? `${teamMetrics.pk_pct.toFixed(1)}%` : '-'}
+                            subLabel="Success rate"
+                            icon={Shield}
+                            colorClass="text-color-success"
+                            percentile={calculatePercentile(teamMetrics.pk_pct, 'pk_pct', true)}
+                            rank={calculateRank(teamMetrics.pk_pct, 'pk_pct', true)}
+                        />
+                        <MetricCard
+                            label="FACEOFF %"
+                            value={teamMetrics.faceoff_pct ? `${teamMetrics.faceoff_pct.toFixed(1)}%` : '-'}
+                            subLabel="Win percentage"
+                            icon={Activity}
+                            colorClass="text-accent-primary"
+                            percentile={calculatePercentile(teamMetrics.faceoff_pct, 'faceoff_pct', true)}
+                            rank={calculateRank(teamMetrics.faceoff_pct, 'faceoff_pct', true)}
+                        />
+                    </div>
+                </section>
+            )}
+
+            {/* Shot Map */}
+            {teamHeatmap && (
+                <section>
+                    <div className="flex items-center gap-3 mb-6">
+                        <Target className="w-6 h-6 text-accent-secondary" />
+                        <h2 className="text-2xl font-display font-bold tracking-wide text-white">SHOT MAP</h2>
+                        <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                    </div>
+                    <div className="glass-card p-6">
+                        <div className="aspect-[2/1] rounded-xl overflow-hidden relative">
+                            <ShotChart
+                                shotsData={[]}
+                                homeTeam={id}
+                                awayTeam={id}
+                                awayHeatmap={teamHeatmap}
+                                homeHeatmap={teamHeatmap}
+                                gameState="FUT"
+                            />
+                        </div>
                     </div>
                 </section>
             )}

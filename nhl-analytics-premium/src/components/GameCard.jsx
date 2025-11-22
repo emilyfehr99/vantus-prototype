@@ -88,7 +88,8 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
     const awayProb = awayProbRaw > 1 ? parseFloat(awayProbRaw) : parseFloat(awayProbRaw * 100);
     const homeProb = homeProbRaw > 1 ? parseFloat(homeProbRaw) : parseFloat(homeProbRaw * 100);
 
-    const showProb = prediction && (awayProbRaw > 0 || homeProbRaw > 0);
+    // Show probability if we have a prediction and valid probability values
+    const showProb = prediction && (awayProbRaw !== 0 || homeProbRaw !== 0) && (awayProbRaw !== undefined && homeProbRaw !== undefined);
     
     // Get team colors
     const awayColor = TEAM_COLORS[game?.awayTeam?.abbrev] || '#00D4FF';
@@ -186,7 +187,7 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
                     </div>
 
                     {/* Win Probability Bar - Pre-game predictions for upcoming games */}
-                    {showProb && !isLive && !isFinal && (
+                    {showProb && !isLive && !isFinal && prediction && (
                         <div className="mt-4">
                             <div className="flex justify-between text-xs font-mono mb-2 px-1">
                                 <span className="font-bold" style={{ color: awayColor }}>{awayProb.toFixed(1)}%</span>

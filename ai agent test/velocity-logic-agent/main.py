@@ -84,8 +84,10 @@ class VelocityLogicAgent:
             parsed_data = self.llm_service.parse_email_intent(email_body)
             customer_name = parsed_data.get("customer_name", "Customer")
             extracted_items = parsed_data.get("extracted_items", [])
+            confidence = parsed_data.get("confidence", 50)  # Get confidence score
             
             print(f"   ✓ Customer: {customer_name}")
+            print(f"   ✓ Confidence: {confidence}% {'✅' if confidence >= 80 else '⚠️' if confidence >= 60 else '❌'}")
             print(f"   ✓ Services requested: {len(extracted_items)}")
             for item in extracted_items:
                 print(f"      - {item.get('service_requested')} (Qty: {item.get('quantity', 1)})")
@@ -133,7 +135,8 @@ class VelocityLogicAgent:
                     "pdf_path": pdf_path,
                     "draft_id": draft.get('id', 'mock_draft_id'),
                     "email_body": email_body,
-                    "line_items": quote_data['line_items']
+                    "line_items": quote_data['line_items'],
+                    "confidence": confidence  # Add confidence score
                 }
             else:
                 print(f"\n⚠ Draft creation may have failed (check logs)")

@@ -37,6 +37,9 @@ except ImportError as e:
 # Cache for team metrics to avoid recalculating on every request
 _team_metrics_cache = None
 _team_metrics_cache_time = None
+
+# Force cache invalidation for testing - set to True to bypass cache
+FORCE_REFRESH_TEAM_METRICS = False
 _team_metrics_file_mtime = None
 CACHE_DURATION = timedelta(hours=1)  # Cache for 1 hour
 
@@ -89,17 +92,23 @@ def get_team_stats_by_abbrev(team_abbrev):
 
 @app.route('/api/team-metrics', methods=['GET'])
 def get_team_metrics():
-    """Get aggregated team metrics for all teams (for Metrics page)
-    Fetches directly from MoneyPuck teams.csv (updated daily by MoneyPuck).
-    Uses caching to avoid fetching on every request.
+    """Get aggregated team metrics for all teams (for pre-game comparisons)
+    Primary source: season_2025_2026_team_stats.json (created daily with calculated metrics)
+    Supplemented with: MoneyPuck data for additional fields
+    Uses caching to avoid recalculating on every request.
     Cache is invalidated after 1 hour.
     """
-    global _team_metrics_cache, _team_metrics_cache_time
+    global _team_metrics_cache, _team_metrics_cache_time, FORCE_REFRESH_TEAM_METRICS
+    
+    # Allow force refresh via query param
+    if request.args.get('force') == '1':
+        FORCE_REFRESH_TEAM_METRICS = True
     
     current_time = datetime.now()
     
     # Check if cache is valid
     cache_valid = (
+        not FORCE_REFRESH_TEAM_METRICS and
         _team_metrics_cache is not None and
         _team_metrics_cache_time is not None and
         (current_time - _team_metrics_cache_time) < CACHE_DURATION
@@ -109,129 +118,296 @@ def get_team_metrics():
         print(f"Returning cached team metrics (age: {(current_time - _team_metrics_cache_time).seconds}s)")
         return jsonify(_team_metrics_cache)
     
-    print("Fetching fresh team metrics from MoneyPuck...")
+    print("Loading team metrics from season_2025_2026_team_stats.json (primary source)...")
     
-    # Fetch from MoneyPuck teams.csv (situation='all' for overall team stats)
-    # MoneyPuck updates this data daily, so we fetch it on-demand
-    season = request.args.get('season', '2025')
-    game_type = request.args.get('type', 'regular')
-    situation = request.args.get('situation', 'all')  # Use 'all' for overall team metrics
-    
-    url = f"https://moneypuck.com/moneypuck/playerData/seasonSummary/{season}/{game_type}/teams.csv"
-    
+    # PRIMARY SOURCE: Load from season_2025_2026_team_stats.json (created daily)
     try:
-        response = requests.get(url, timeout=15)
+        season_stats = load_json('season_2025_2026_team_stats.json')
+        teams_stats = season_stats.get('teams', season_stats) if isinstance(season_stats, dict) else {}
+        print(f"Loaded {len(teams_stats)} teams from season stats")
         
-        if response.status_code != 200:
-            raise Exception(f"MoneyPuck API returned status {response.status_code}")
-        
-        # Parse MoneyPuck CSV data - include ALL fields
-        content = response.content.decode('utf-8')
-        csv_reader = csv.DictReader(io.StringIO(content))
+        # Debug: Check if CBJ has data
+        if 'CBJ' in teams_stats:
+            cbj_data = teams_stats['CBJ']
+            print(f"DEBUG: CBJ has home: {'home' in cbj_data}, away: {'away' in cbj_data}")
+            if 'home' in cbj_data:
+                home_ozs = cbj_data['home'].get('ozs', [])
+                print(f"DEBUG: CBJ home ozs is list: {isinstance(home_ozs, list)}, length: {len(home_ozs) if isinstance(home_ozs, list) else 'N/A'}")
         
         metrics = {}
         
-        # Helper functions
-        def safe_float(val, default=0.0):
-            try:
-                return float(val) if val else default
-            except:
-                return default
+        # Helper function to calculate average from list
+        def avg_from_list(lst):
+            """Calculate average from list, handling empty lists"""
+            if not lst or not isinstance(lst, list) or len(lst) == 0:
+                return None
+            return sum(lst) / len(lst)
         
-        def safe_int(val, default=0):
-            try:
-                return int(float(val)) if val else default
-            except:
-                return default
+        # Process each team from season stats (primary source)
+        for team_abbr, team_data in teams_stats.items():
+            home_data = team_data.get('home', {})
+            away_data = team_data.get('away', {})
+            
+            # Initialize team metrics
+            team_metrics = {}
+            
+            # Calculate averages from home and away arrays for all metrics
+            if home_data or away_data:
+                # Zone metrics (from calculated play-by-play data)
+                # JSON now stores per-game values directly (already per-game averages)
+                # Each value in the list is already a per-game value (e.g., 11, 12, 4, 8, 18)
+                # So we just need to average them across all games
+                home_ozs_list = home_data.get('ozs', [])
+                home_nzs_list = home_data.get('nzs', [])
+                home_dzs_list = home_data.get('dzs', [])
+                away_ozs_list = away_data.get('ozs', [])
+                away_nzs_list = away_data.get('nzs', [])
+                away_dzs_list = away_data.get('dzs', [])
+                
+                # Calculate per-game averages: sum all games / number of games
+                # Each value in the list is already a per-game value
+                home_games = len(home_ozs_list) if home_ozs_list else 0
+                away_games = len(away_ozs_list) if away_ozs_list else 0
+                total_games = home_games + away_games
+                
+                # Sum all home and away values, then divide by total games to get average per-game value
+                total_ozs = sum(home_ozs_list) + sum(away_ozs_list) if (home_ozs_list and away_ozs_list) else (sum(home_ozs_list) if home_ozs_list else 0) + (sum(away_ozs_list) if away_ozs_list else 0)
+                total_nzs = sum(home_nzs_list) + sum(away_nzs_list) if (home_nzs_list and away_nzs_list) else (sum(home_nzs_list) if home_nzs_list else 0) + (sum(away_nzs_list) if away_nzs_list else 0)
+                total_dzs = sum(home_dzs_list) + sum(away_dzs_list) if (home_dzs_list and away_dzs_list) else (sum(home_dzs_list) if home_dzs_list else 0) + (sum(away_dzs_list) if away_dzs_list else 0)
+                
+                # Average per-game value (values are already per-game, just average them)
+                team_metrics['ozs'] = total_ozs / total_games if total_games > 0 else 0
+                team_metrics['nzs'] = total_nzs / total_games if total_games > 0 else 0
+                team_metrics['dzs'] = total_dzs / total_games if total_games > 0 else 0
+                
+                # Shot generation metrics
+                home_fc = avg_from_list(home_data.get('fc', []))
+                away_fc = avg_from_list(away_data.get('fc', []))
+                team_metrics['fc'] = (home_fc + away_fc) / 2 if (home_fc is not None and away_fc is not None) else (home_fc or away_fc or 0)
+                
+                home_rush = avg_from_list(home_data.get('rush', []))
+                away_rush = avg_from_list(away_data.get('rush', []))
+                team_metrics['rush'] = (home_rush + away_rush) / 2 if (home_rush is not None and away_rush is not None) else (home_rush or away_rush or 0)
+                
+                # Turnover metrics
+                home_nzt = avg_from_list(home_data.get('nzt', []))
+                away_nzt = avg_from_list(away_data.get('nzt', []))
+                team_metrics['nzts'] = (home_nzt + away_nzt) / 2 if (home_nzt is not None and away_nzt is not None) else (home_nzt or away_nzt or 0)
+                
+                home_nztsa = avg_from_list(home_data.get('nztsa', []))
+                away_nztsa = avg_from_list(away_data.get('nztsa', []))
+                team_metrics['nztsa'] = (home_nztsa + away_nztsa) / 2 if (home_nztsa is not None and away_nztsa is not None) else (home_nztsa or away_nztsa or 0)
+                
+                # Movement metrics
+                home_lat = avg_from_list(home_data.get('lat', []))
+                away_lat = avg_from_list(away_data.get('lat', []))
+                team_metrics['lat'] = (home_lat + away_lat) / 2 if (home_lat is not None and away_lat is not None) else (home_lat or away_lat or 0)
+                
+                home_long = avg_from_list(home_data.get('long_movement', []))
+                away_long = avg_from_list(away_data.get('long_movement', []))
+                team_metrics['long_movement'] = (home_long + away_long) / 2 if (home_long is not None and away_long is not None) else (home_long or away_long or 0)
+                
+                # Game Score - JSON now stores per-game team totals directly (e.g., 6.65, 8.65, 4.23)
+                # These are already per-game values, so we just average them
+                home_gs_list = home_data.get('gs', [])
+                away_gs_list = away_data.get('gs', [])
+                home_games_gs = len(home_gs_list) if home_gs_list else 0
+                away_games_gs = len(away_gs_list) if away_gs_list else 0
+                
+                # Average per game (sum of all games / number of games)
+                # Values are already per-game team totals
+                home_gs_per_game = sum(home_gs_list) / home_games_gs if home_games_gs > 0 else 0
+                away_gs_per_game = sum(away_gs_list) / away_games_gs if away_games_gs > 0 else 0
+                
+                # Average home and away to get overall team average per game
+                team_metrics['gs'] = (home_gs_per_game + away_gs_per_game) / 2 if (home_games_gs > 0 and away_games_gs > 0) else (home_gs_per_game or away_gs_per_game or 0)
+                
+                # Basic stats (per game averages)
+                home_goals = avg_from_list(home_data.get('goals', []))
+                away_goals = avg_from_list(away_data.get('goals', []))
+                team_metrics['goals_per_game'] = (home_goals + away_goals) / 2 if (home_goals is not None and away_goals is not None) else (home_goals or away_goals or 0)
+                
+                home_goals_against = avg_from_list(home_data.get('goals_against', []))
+                away_goals_against = avg_from_list(away_data.get('goals_against', []))
+                team_metrics['goals_against_per_game'] = (home_goals_against + away_goals_against) / 2 if (home_goals_against is not None and away_goals_against is not None) else (home_goals_against or away_goals_against or 0)
+                
+                home_shots = avg_from_list(home_data.get('shots', []))
+                away_shots = avg_from_list(away_data.get('shots', []))
+                team_metrics['shots'] = (home_shots + away_shots) / 2 if (home_shots is not None and away_shots is not None) else (home_shots or away_shots or 0)
+                
+                home_hits = avg_from_list(home_data.get('hits', []))
+                away_hits = avg_from_list(away_data.get('hits', []))
+                team_metrics['hits_per_game'] = (home_hits + away_hits) / 2 if (home_hits is not None and away_hits is not None) else (home_hits or away_hits or 0)
+                
+                home_blocks = avg_from_list(home_data.get('blocked_shots', []))
+                away_blocks = avg_from_list(away_data.get('blocked_shots', []))
+                team_metrics['blocks_per_game'] = (home_blocks + away_blocks) / 2 if (home_blocks is not None and away_blocks is not None) else (home_blocks or away_blocks or 0)
+                
+                home_giveaways = avg_from_list(home_data.get('giveaways', []))
+                away_giveaways = avg_from_list(away_data.get('giveaways', []))
+                team_metrics['giveaways_per_game'] = (home_giveaways + away_giveaways) / 2 if (home_giveaways is not None and away_giveaways is not None) else (home_giveaways or away_giveaways or 0)
+                
+                home_takeaways = avg_from_list(home_data.get('takeaways', []))
+                away_takeaways = avg_from_list(away_data.get('takeaways', []))
+                team_metrics['takeaways_per_game'] = (home_takeaways + away_takeaways) / 2 if (home_takeaways is not None and away_takeaways is not None) else (home_takeaways or away_takeaways or 0)
+                
+                home_pim = avg_from_list(home_data.get('penalty_minutes', []))
+                away_pim = avg_from_list(away_data.get('penalty_minutes', []))
+                team_metrics['pim_per_game'] = (home_pim + away_pim) / 2 if (home_pim is not None and away_pim is not None) else (home_pim or away_pim or 0)
+                
+                # Percentages
+                home_corsi = avg_from_list(home_data.get('corsi_pct', []))
+                away_corsi = avg_from_list(away_data.get('corsi_pct', []))
+                team_metrics['corsi_pct'] = (home_corsi + away_corsi) / 2 if (home_corsi is not None and away_corsi is not None) else (home_corsi or away_corsi or 50.0)
+                
+                home_pp = avg_from_list(home_data.get('power_play_pct', []))
+                away_pp = avg_from_list(away_data.get('power_play_pct', []))
+                team_metrics['pp_pct'] = (home_pp + away_pp) / 2 if (home_pp is not None and away_pp is not None) else (home_pp or away_pp or 0.0)
+                
+                home_pk = avg_from_list(home_data.get('penalty_kill_pct', []))
+                away_pk = avg_from_list(away_data.get('penalty_kill_pct', []))
+                team_metrics['pk_pct'] = (home_pk + away_pk) / 2 if (home_pk is not None and away_pk is not None) else (home_pk or away_pk or 0.0)
+                
+                home_fo = avg_from_list(home_data.get('faceoff_pct', []))
+                away_fo = avg_from_list(away_data.get('faceoff_pct', []))
+                team_metrics['faceoff_pct'] = (home_fo + away_fo) / 2 if (home_fo is not None and away_fo is not None) else (home_fo or away_fo or 50.0)
+                
+                # xG and HDC (if available in season stats, otherwise will supplement from MoneyPuck)
+                home_xg = avg_from_list(home_data.get('xg', []))
+                away_xg = avg_from_list(away_data.get('xg', []))
+                if home_xg is not None or away_xg is not None:
+                    team_metrics['xg'] = (home_xg + away_xg) / 2 if (home_xg is not None and away_xg is not None) else (home_xg or away_xg or 0)
+                
+                home_hdc = avg_from_list(home_data.get('hdc', []))
+                away_hdc = avg_from_list(away_data.get('hdc', []))
+                if home_hdc is not None or away_hdc is not None:
+                    team_metrics['hdc'] = (home_hdc + away_hdc) / 2 if (home_hdc is not None and away_hdc is not None) else (home_hdc or away_hdc or 0)
+                
+                home_hdca = avg_from_list(home_data.get('hdca', []))
+                away_hdca = avg_from_list(away_data.get('hdca', []))
+                if home_hdca is not None or away_hdca is not None:
+                    team_metrics['hdca'] = (home_hdca + away_hdca) / 2 if (home_hdca is not None and away_hdca is not None) else (home_hdca or away_hdca or 0)
+            
+            metrics[team_abbr] = team_metrics
         
-        # Process all rows and include ALL fields from MoneyPuck teams.csv
-        for row in csv_reader:
-            if row.get('situation', '').strip() == situation:
-                team_abbr = row.get('team', '').strip()
-                if not team_abbr:
-                    continue
-                
-                # Include ALL fields from MoneyPuck teams.csv
-                team_metrics = {}
-                
-                # Copy all fields, converting types appropriately
-                for key, value in row.items():
-                    if key == 'team':
-                        team_metrics[key] = value
-                    elif key in ['season', 'name', 'position', 'situation']:
-                        team_metrics[key] = value
-                    elif 'percentage' in key.lower() or 'pct' in key.lower():
-                        # Convert percentages (0-1 scale) to 0-100 scale
-                        team_metrics[key] = safe_float(value) * 100
-                    elif key in ['iceTime', 'xGoalsFor', 'xGoalsAgainst', 'xOnGoalFor', 'xOnGoalAgainst',
-                                'xReboundsFor', 'xReboundsAgainst', 'xFreezeFor', 'xFreezeAgainst',
-                                'flurryAdjustedxGoalsFor', 'flurryAdjustedxGoalsAgainst',
-                                'scoreVenueAdjustedxGoalsFor', 'scoreVenueAdjustedxGoalsAgainst',
-                                'flurryScoreVenueAdjustedxGoalsFor', 'flurryScoreVenueAdjustedxGoalsAgainst',
-                                'xGoalsFromxReboundsOfShotsFor', 'xGoalsFromxReboundsOfShotsAgainst',
-                                'xGoalsFromActualReboundsOfShotsFor', 'xGoalsFromActualReboundsOfShotsAgainst',
-                                'reboundxGoalsFor', 'reboundxGoalsAgainst',
-                                'totalShotCreditFor', 'totalShotCreditAgainst',
-                                'scoreAdjustedTotalShotCreditFor', 'scoreAdjustedTotalShotCreditAgainst',
-                                'scoreFlurryAdjustedTotalShotCreditFor', 'scoreFlurryAdjustedTotalShotCreditAgainst',
-                                'lowDangerxGoalsFor', 'mediumDangerxGoalsFor', 'highDangerxGoalsFor',
-                                'lowDangerxGoalsAgainst', 'mediumDangerxGoalsAgainst', 'highDangerxGoalsAgainst',
-                                'scoreAdjustedShotsAttemptsFor', 'scoreAdjustedShotsAttemptsAgainst',
-                                'scoreAdjustedUnblockedShotAttemptsFor', 'scoreAdjustedUnblockedShotAttemptsAgainst']:
-                        team_metrics[key] = safe_float(value)
-                    else:
-                        # Try int first, fall back to float
-                        try:
-                            if value and '.' not in str(value):
-                                team_metrics[key] = safe_int(value)
-                            else:
-                                team_metrics[key] = safe_float(value)
-                        except:
-                            team_metrics[key] = value
-                
-                # Add legacy/compatibility fields
-                team_metrics['xg'] = safe_float(row.get('xGoalsFor'))
-                team_metrics['hdc'] = safe_int(row.get('highDangerShotsFor'))
-                team_metrics['hdca'] = safe_int(row.get('highDangerShotsAgainst'))
-                team_metrics['shots'] = safe_int(row.get('shotsOnGoalFor'))
-                team_metrics['goals'] = safe_int(row.get('goalsFor'))
-                team_metrics['ga_gp'] = safe_int(row.get('goalsAgainst'))
-                team_metrics['corsi_pct'] = safe_float(row.get('corsiPercentage')) * 100
-                team_metrics['hits'] = safe_int(row.get('hitsFor'))
-                team_metrics['blocks'] = safe_int(row.get('blockedShotAttemptsFor'))
-                team_metrics['giveaways'] = safe_int(row.get('giveawaysFor'))
-                team_metrics['takeaways'] = safe_int(row.get('takeawaysFor'))
-                team_metrics['pim'] = safe_int(row.get('penaltyMinutesFor'))
-                
-                metrics[team_abbr] = team_metrics
+        # Debug: Check CBJ metrics after calculation
+        if 'CBJ' in metrics:
+            cbj_metrics = metrics['CBJ']
+            print(f"DEBUG: CBJ metrics after calculation - ozs: {cbj_metrics.get('ozs')}, nzs: {cbj_metrics.get('nzs')}, gs: {cbj_metrics.get('gs')}, fc: {cbj_metrics.get('fc')}")
         
-        print(f"Successfully fetched MoneyPuck team data for {len(metrics)} teams (situation={situation})")
+        print(f"✅ Calculated averages from season stats for {len(metrics)} teams")
+        
+        # SUPPLEMENT with MoneyPuck data for any missing fields
+        print("Supplementing with MoneyPuck data for additional fields...")
+        
+        season = request.args.get('season', '2025')
+        game_type = request.args.get('type', 'regular')
+        situation = request.args.get('situation', 'all')
+        
+        url = f"https://moneypuck.com/moneypuck/playerData/seasonSummary/{season}/{game_type}/teams.csv"
+        
+        try:
+            response = requests.get(url, timeout=15)
+            
+            if response.status_code != 200:
+                raise Exception(f"MoneyPuck API returned status {response.status_code}")
+            
+            # Parse MoneyPuck CSV data
+            content = response.content.decode('utf-8')
+            csv_reader = csv.DictReader(io.StringIO(content))
+            
+            # Helper functions
+            def safe_float(val, default=0.0):
+                try:
+                    return float(val) if val else default
+                except:
+                    return default
+            
+            def safe_int(val, default=0):
+                try:
+                    return int(float(val)) if val else default
+                except:
+                    return default
+            
+            # Supplement existing metrics with MoneyPuck data (only fill in missing fields)
+            moneypuck_count = 0
+            for row in csv_reader:
+                if row.get('situation', '').strip() == situation:
+                    team_abbr = row.get('team', '').strip()
+                    if not team_abbr or team_abbr not in metrics:
+                        continue
+                    
+                    # Only supplement fields that are missing or need updating from MoneyPuck
+                    team_metrics = metrics[team_abbr]
+                    
+                    # Supplement xG if missing
+                    if 'xg' not in team_metrics or team_metrics.get('xg') == 0:
+                        team_metrics['xg'] = safe_float(row.get('xGoalsFor'))
+                    
+                    # Supplement HDC if missing
+                    if 'hdc' not in team_metrics or team_metrics.get('hdc') == 0:
+                        team_metrics['hdc'] = safe_int(row.get('highDangerShotsFor'))
+                    
+                    # Supplement HDCA if missing
+                    if 'hdca' not in team_metrics or team_metrics.get('hdca') == 0:
+                        team_metrics['hdca'] = safe_int(row.get('highDangerShotsAgainst'))
+                    
+                    # Supplement shots if missing
+                    if 'shots' not in team_metrics or team_metrics.get('shots') == 0:
+                        team_metrics['shots'] = safe_int(row.get('shotsOnGoalFor'))
+                    
+                    # Supplement corsi_pct if missing
+                    if 'corsi_pct' not in team_metrics or team_metrics.get('corsi_pct') == 0:
+                        team_metrics['corsi_pct'] = safe_float(row.get('corsiPercentage')) * 100
+                    
+                    # Supplement PP/PK/Faceoff if missing
+                    if 'pp_pct' not in team_metrics or team_metrics.get('pp_pct') == 0:
+                        pp_goals = safe_int(row.get('powerPlayGoalsFor'), 0)
+                        pp_attempts = safe_int(row.get('powerPlayAttemptsFor'), 0)
+                        if pp_attempts > 0:
+                            team_metrics['pp_pct'] = (pp_goals / pp_attempts) * 100
+                    
+                    if 'pk_pct' not in team_metrics or team_metrics.get('pk_pct') == 0:
+                        pk_goals_against = safe_int(row.get('powerPlayGoalsAgainst'), 0)
+                        pk_attempts = safe_int(row.get('powerPlayAttemptsAgainst'), 0)
+                        if pk_attempts > 0:
+                            team_metrics['pk_pct'] = ((pk_attempts - pk_goals_against) / pk_attempts) * 100
+                    
+                    if 'faceoff_pct' not in team_metrics or team_metrics.get('faceoff_pct') == 0:
+                        faceoffs_won = safe_int(row.get('faceOffsWonFor'), 0)
+                        faceoffs_total = faceoffs_won + safe_int(row.get('faceOffsWonAgainst'), 0)
+                        if faceoffs_total > 0:
+                            team_metrics['faceoff_pct'] = (faceoffs_won / faceoffs_total) * 100
+                    
+                    moneypuck_count += 1
+            
+            print(f"✅ Supplemented {moneypuck_count} teams with MoneyPuck data")
+            
+            # Debug: Check CBJ metrics after MoneyPuck supplement
+            if 'CBJ' in metrics:
+                cbj_metrics = metrics['CBJ']
+                print(f"DEBUG: CBJ metrics after MoneyPuck - ozs: {cbj_metrics.get('ozs')}, nzs: {cbj_metrics.get('nzs')}, gs: {cbj_metrics.get('gs')}, fc: {cbj_metrics.get('fc')}")
+        
+        except Exception as moneypuck_error:
+            print(f"⚠️ Warning: Could not fetch MoneyPuck data (non-critical): {moneypuck_error}")
+            # Continue without MoneyPuck data - season stats are primary source
+        
+        # Debug: Final check before caching
+        if 'CBJ' in metrics:
+            cbj_metrics = metrics['CBJ']
+            print(f"DEBUG: Final CBJ metrics before cache - ozs: {cbj_metrics.get('ozs')}, nzs: {cbj_metrics.get('nzs')}, gs: {cbj_metrics.get('gs')}, fc: {cbj_metrics.get('fc')}, rush: {cbj_metrics.get('rush')}, lat: {cbj_metrics.get('lat')}")
         
         # Cache the results
         _team_metrics_cache = metrics
         _team_metrics_cache_time = current_time
-        
         return jsonify(metrics)
     
     except Exception as e:
-        print(f"Error fetching MoneyPuck team data: {e}")
+        print(f"Error loading team metrics: {e}")
         import traceback
         traceback.print_exc()
-        # Fallback to local file - return empty dict if fallback fails
-        try:
-            filename = 'season_2025_2026_team_stats.json'
-            data = load_json(filename)
-            teams = data.get('teams', data)
-            # Return simplified fallback
-            metrics = {}
-            for team_abbrev, team_data in teams.items():
-                metrics[team_abbrev] = team_data if isinstance(team_data, dict) else {}
-            _team_metrics_cache = metrics
-            _team_metrics_cache_time = current_time
-            return jsonify(metrics)
-        except Exception as fallback_error:
-            print(f"Fallback also failed: {fallback_error}")
-            return jsonify({})
+        # Return empty dict if primary source fails
+        return jsonify({})
 
 @app.route('/api/team-heatmap/<team_abbr>', methods=['GET'])
 def get_team_heatmap(team_abbr):
@@ -1069,7 +1245,7 @@ def get_live_game_data(game_id):
         
         if not prediction:
             return jsonify({"error": "Could not generate prediction"}), 500
-        
+            
         # CRITICAL: Preserve original live_metrics physical stats IMMEDIATELY after predict_live_game
         # predict_live_game might overwrite or not preserve these values, so we force them back
         if 'live_metrics' not in prediction:
@@ -1344,8 +1520,13 @@ def get_live_game_data(game_id):
                 # Get period goals - these should now be in live_data
                 away_period_goals = live_data.get('away_period_goals', [0, 0, 0])
                 home_period_goals = live_data.get('home_period_goals', [0, 0, 0])
+                away_ot_goals = live_data.get('away_ot_goals', 0)
+                home_ot_goals = live_data.get('home_ot_goals', 0)
+                away_so_goals = live_data.get('away_so_goals', 0)
+                home_so_goals = live_data.get('home_so_goals', 0)
                 print(f"   away_period_goals: {away_period_goals}")
                 print(f"   home_period_goals: {home_period_goals}")
+                print(f"   OT/SO goals - away: OT={away_ot_goals}, SO={away_so_goals}, home: OT={home_ot_goals}, SO={home_so_goals}")
                 
                 # Get xG by period
                 away_xg_by_period = live_data.get('away_xg_by_period', [0, 0, 0])
@@ -1355,9 +1536,24 @@ def get_live_game_data(game_id):
                 away_zone_metrics = live_data.get('away_zone_metrics', {})
                 home_zone_metrics = live_data.get('home_zone_metrics', {})
                 
-                # Build period stats array
+                # Check if game has OT/SO periods
+                # If OT/SO goals exist, then those periods occurred
+                has_ot = (away_ot_goals > 0 or home_ot_goals > 0)
+                has_so = (away_so_goals > 0 or home_so_goals > 0)
+                # Also check if current_period >= 4 (indicates OT is active/completed)
+                if current_period >= 4:
+                    has_ot = True
+                
+                # Get current period to determine which periods to show
+                current_period = live_data.get('current_period', 1)
+                print(f"   Current period: {current_period}, has_ot: {has_ot}, has_so: {has_so}")
+                
+                # Build period stats array - only include periods that are active or completed
                 period_stats_array = []
                 for period_num in range(1, 4):  # Periods 1, 2, 3
+                    # Only show period if it's completed or currently active
+                    if period_num > current_period:
+                        continue  # Skip future periods
                     period_idx = period_num - 1
                     
                     # Get zone metrics per period if available
@@ -1430,6 +1626,144 @@ def get_live_game_data(game_id):
                             'fc': home_fc_period
                         }
                     })
+                
+                # Add OT period if it occurred and is active/completed
+                if has_ot and (current_period >= 4 or live_data.get('game_state') in ['FINAL', 'OFF']):
+                    # Get OT stats using the report generator
+                    # Try to get game_data from live_metrics or fetch it if needed
+                    try:
+                        from pdf_report_generator import PostGameReportGenerator
+                        from nhl_api_client import NHLAPIClient
+                        report_gen = PostGameReportGenerator()
+                        # Try to get game_data from various sources
+                        game_data_ot = prediction.get('game_data') or live_data.get('game_data') or live_metrics.get('game_data')
+                        # If not available, try to fetch it
+                        if not game_data_ot:
+                            try:
+                                api_client = NHLAPIClient()
+                                game_data_ot = api_client.get_comprehensive_game_data(game_id)
+                            except:
+                                pass
+                        if game_data_ot:
+                            away_ot_stats = report_gen._calculate_ot_so_stats(game_data_ot, live_data.get('away_team_id') or prediction.get('away_team_id'), 'away', 'OT')
+                            home_ot_stats = report_gen._calculate_ot_so_stats(game_data_ot, live_data.get('home_team_id') or prediction.get('home_team_id'), 'home', 'OT')
+                            
+                            period_stats_array.append({
+                                'period': 'OT',
+                                'away_stats': {
+                                    'goals': away_ot_goals,
+                                    'ga': home_ot_goals,
+                                    'shots': away_ot_stats.get('shots', 0),
+                                    'corsi': away_ot_stats.get('corsi_pct', 50.0),
+                                    'xg': away_ot_stats.get('xg', 0.0),
+                                    'xga': home_ot_stats.get('xg', 0.0),
+                                    'hits': away_ot_stats.get('hits', 0),
+                                    'faceoff_pct': away_ot_stats.get('fo_pct', None),
+                                    'pim': away_ot_stats.get('pim', 0),
+                                    'blocked_shots': away_ot_stats.get('bs', 0),
+                                    'giveaways': away_ot_stats.get('gv', 0),
+                                    'takeaways': away_ot_stats.get('tk', 0),
+                                    'nzt': away_ot_stats.get('nz_turnovers', 0),
+                                    'nztsa': away_ot_stats.get('nz_turnovers_to_shots', 0),
+                                    'ozs': away_ot_stats.get('oz_originating_shots', 0),
+                                    'dzs': away_ot_stats.get('dz_originating_shots', 0),
+                                    'nzs': away_ot_stats.get('nz_originating_shots', 0),
+                                    'rush': away_ot_stats.get('rush_sog', 0),
+                                    'fc': away_ot_stats.get('fc_cycle_sog', 0)
+                                },
+                                'home_stats': {
+                                    'goals': home_ot_goals,
+                                    'ga': away_ot_goals,
+                                    'shots': home_ot_stats.get('shots', 0),
+                                    'corsi': home_ot_stats.get('corsi_pct', 50.0),
+                                    'xg': home_ot_stats.get('xg', 0.0),
+                                    'xga': away_ot_stats.get('xg', 0.0),
+                                    'hits': home_ot_stats.get('hits', 0),
+                                    'faceoff_pct': home_ot_stats.get('fo_pct', None),
+                                    'pim': home_ot_stats.get('pim', 0),
+                                    'blocked_shots': home_ot_stats.get('bs', 0),
+                                    'giveaways': home_ot_stats.get('gv', 0),
+                                    'takeaways': home_ot_stats.get('tk', 0),
+                                    'nzt': home_ot_stats.get('nz_turnovers', 0),
+                                    'nztsa': home_ot_stats.get('nz_turnovers_to_shots', 0),
+                                    'ozs': home_ot_stats.get('oz_originating_shots', 0),
+                                    'dzs': home_ot_stats.get('dz_originating_shots', 0),
+                                    'nzs': home_ot_stats.get('nz_originating_shots', 0),
+                                    'rush': home_ot_stats.get('rush_sog', 0),
+                                    'fc': home_ot_stats.get('fc_cycle_sog', 0)
+                                }
+                            })
+                            print(f"✅ Added OT period to period_stats")
+                    except Exception as e:
+                        print(f"⚠️ Error calculating OT stats: {e}")
+                
+                # Add SO period if it occurred (only show if game is final)
+                if has_so and live_data.get('game_state') in ['FINAL', 'OFF']:
+                    try:
+                        from pdf_report_generator import PostGameReportGenerator
+                        from nhl_api_client import NHLAPIClient
+                        report_gen = PostGameReportGenerator()
+                        # Try to get game_data from various sources
+                        game_data_so = prediction.get('game_data') or live_data.get('game_data') or live_metrics.get('game_data')
+                        # If not available, try to fetch it
+                        if not game_data_so:
+                            try:
+                                api_client = NHLAPIClient()
+                                game_data_so = api_client.get_comprehensive_game_data(game_id)
+                            except:
+                                pass
+                        if game_data_so:
+                            away_so_stats = report_gen._calculate_ot_so_stats(game_data_so, live_data.get('away_team_id') or prediction.get('away_team_id'), 'away', 'SO')
+                            home_so_stats = report_gen._calculate_ot_so_stats(game_data_so, live_data.get('home_team_id') or prediction.get('home_team_id'), 'home', 'SO')
+                            
+                            period_stats_array.append({
+                                'period': 'SO',
+                                'away_stats': {
+                                    'goals': away_so_goals,
+                                    'ga': home_so_goals,
+                                    'shots': away_so_stats.get('shots', 0),
+                                    'corsi': away_so_stats.get('corsi_pct', 50.0),
+                                    'xg': away_so_stats.get('xg', 0.0),
+                                    'xga': home_so_stats.get('xg', 0.0),
+                                    'hits': away_so_stats.get('hits', 0),
+                                    'faceoff_pct': away_so_stats.get('fo_pct', None),
+                                    'pim': away_so_stats.get('pim', 0),
+                                    'blocked_shots': away_so_stats.get('bs', 0),
+                                    'giveaways': away_so_stats.get('gv', 0),
+                                    'takeaways': away_so_stats.get('tk', 0),
+                                    'nzt': away_so_stats.get('nz_turnovers', 0),
+                                    'nztsa': away_so_stats.get('nz_turnovers_to_shots', 0),
+                                    'ozs': away_so_stats.get('oz_originating_shots', 0),
+                                    'dzs': away_so_stats.get('dz_originating_shots', 0),
+                                    'nzs': away_so_stats.get('nz_originating_shots', 0),
+                                    'rush': away_so_stats.get('rush_sog', 0),
+                                    'fc': away_so_stats.get('fc_cycle_sog', 0)
+                                },
+                                'home_stats': {
+                                    'goals': home_so_goals,
+                                    'ga': away_so_goals,
+                                    'shots': home_so_stats.get('shots', 0),
+                                    'corsi': home_so_stats.get('corsi_pct', 50.0),
+                                    'xg': home_so_stats.get('xg', 0.0),
+                                    'xga': away_so_stats.get('xg', 0.0),
+                                    'hits': home_so_stats.get('hits', 0),
+                                    'faceoff_pct': home_so_stats.get('fo_pct', None),
+                                    'pim': home_so_stats.get('pim', 0),
+                                    'blocked_shots': home_so_stats.get('bs', 0),
+                                    'giveaways': home_so_stats.get('gv', 0),
+                                    'takeaways': home_so_stats.get('tk', 0),
+                                    'nzt': home_so_stats.get('nz_turnovers', 0),
+                                    'nztsa': home_so_stats.get('nz_turnovers_to_shots', 0),
+                                    'ozs': home_so_stats.get('oz_originating_shots', 0),
+                                    'dzs': home_so_stats.get('dz_originating_shots', 0),
+                                    'nzs': home_so_stats.get('nz_originating_shots', 0),
+                                    'rush': home_so_stats.get('rush_sog', 0),
+                                    'fc': home_so_stats.get('fc_cycle_sog', 0)
+                                }
+                            })
+                            print(f"✅ Added SO period to period_stats")
+                    except Exception as e:
+                        print(f"⚠️ Error calculating SO stats: {e}")
                 
                 # CRITICAL: Set period_stats at top level AND in live_metrics for frontend
                 prediction['period_stats'] = period_stats_array
@@ -1923,7 +2257,7 @@ if __name__ == '__main__':
     print(f"  GET /api/historical-stats/<season>")
     print(f"  POST /api/notify/discord")
     print("=" * 50)
-    port = int(os.environ.get('PORT', 5002))
+    port = int(os.environ.get('PORT', 5400))
     print(f"Starting server on http://localhost:{port}")
     print()
     

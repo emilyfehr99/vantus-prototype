@@ -604,9 +604,21 @@ class LiveInGamePredictor:
                 if 'rosterSpots' in play_by_play:
                     for player in play_by_play['rosterSpots']:
                         player_id = player.get('playerId')
-                        first_name = player.get('firstName', {}).get('default', '')
-                        last_name = player.get('lastName', {}).get('default', '')
-                        player_names[player_id] = f"{first_name} {last_name}".strip()
+                        if player_id:
+                            # Handle both dict and direct string formats
+                            first_name_obj = player.get('firstName', {})
+                            first_name = first_name_obj.get('default', '') if isinstance(first_name_obj, dict) else (first_name_obj or '')
+                            last_name_obj = player.get('lastName', {})
+                            last_name = last_name_obj.get('default', '') if isinstance(last_name_obj, dict) else (last_name_obj or '')
+                            full_name = f"{first_name} {last_name}".strip()
+                            if full_name:
+                                player_names[player_id] = full_name
+                                # Also store with string key in case IDs are strings
+                                player_names[str(player_id)] = full_name
+                
+                print(f"📋 Built player_names map with {len(player_names)} entries")
+                if len(player_names) == 0:
+                    print(f"⚠️ WARNING: No player names found in rosterSpots! Available keys: {list(play_by_play.keys())}")
                 
                 plays = play_by_play.get('plays', []) or []
                 for play in plays:
@@ -662,7 +674,10 @@ class LiveInGamePredictor:
             # Extract Shot Data for Charts
             shots_data = []
             try:
-                plays = game_data.get('play_by_play', {}).get('plays', []) or []
+                # Use the same play_by_play reference that was used to build player_names
+                plays = play_by_play.get('plays', []) or []
+                print(f"📊 Processing {len(plays)} plays for shots_data, player_names has {len(player_names)} entries")
+                
                 for play in plays:
                     event_type = play.get('typeDescKey')
                     if event_type in ['goal', 'shot-on-goal', 'missed-shot', 'blocked-shot']:
@@ -681,18 +696,56 @@ class LiveInGamePredictor:
                             # Get actual shot type (wrist, slap, snap, etc.)
                             actual_shot_type = details.get('shotType', 'wrist')
                             
-                            # Get shooter name
+                            # Get shooter name - use same method as team heatmap endpoint
                             shooter_id = details.get('shootingPlayerId') or details.get('scoringPlayerId')
-                            shooter_name = player_names.get(shooter_id, 'Unknown')
+                            shooter_name = 'Unknown'
                             
-                            # Calculate xG using the report generator's method
+                            if shooter_id:
+                                # Try both int and string key in player_names dict
+                                shooter_name = player_names.get(shooter_id) or player_names.get(str(shooter_id))
+                                
+                                # If not found in player_names, try looking up in rosterSpots directly
+                                if not shooter_name or shooter_name == 'Unknown' or shooter_name == '':
+                                    if 'rosterSpots' in play_by_play:
+                                        for spot in play_by_play['rosterSpots']:
+                                            spot_id = spot.get('playerId')
+                                            if spot_id == shooter_id or str(spot_id) == str(shooter_id):
+                                                first_name_obj = spot.get('firstName', {})
+                                                first_name = first_name_obj.get('default', '') if isinstance(first_name_obj, dict) else (first_name_obj or '')
+                                                last_name_obj = spot.get('lastName', {})
+                                                last_name = last_name_obj.get('default', '') if isinstance(last_name_obj, dict) else (last_name_obj or '')
+                                                shooter_name = f"{first_name} {last_name}".strip()
+                                                if shooter_name:
+                                                    # Update player_names for future lookups
+                                                    player_names[shooter_id] = shooter_name
+                                                    player_names[str(shooter_id)] = shooter_name
+                                                    print(f"✅ Found player name: {shooter_name} for ID {shooter_id}")
+                                                    break
+                                
+                                # Last resort fallback
+                                if not shooter_name or shooter_name == 'Unknown' or shooter_name == '':
+                                    shooter_name = f"Player #{shooter_id}"
+                                    print(f"⚠️ Could not find name for player_id {shooter_id}, using fallback: {shooter_name}")
+                            
+                            # Calculate xG using the EXACT same method as auto post reports
                             xg_value = 0.0
                             try:
+                                # Use the same _calculate_improved_xg method from pdf_report_generator
                                 xg_value = self.report_generator._calculate_improved_xg(x, y, actual_shot_type)
-                            except:
-                                # Fallback simple xG based on distance
+                                # The method already caps at 0.95, but ensure it's never 0
+                                if xg_value <= 0:
+                                    print(f"⚠️ xG calculated as {xg_value} for shot at ({x}, {y}), using minimum 0.01")
+                                    xg_value = 0.01
+                            except Exception as e:
+                                # Fallback simple xG based on distance (should rarely happen)
                                 distance = ((x ** 2) + (y ** 2)) ** 0.5
                                 xg_value = max(0.01, 0.15 - (distance * 0.001))
+                                print(f"❌ xG calculation error for shot at ({x}, {y}) with type {actual_shot_type}: {e}, using fallback: {xg_value}")
+                            
+                            # Ensure shooter_name is actually a name, not an ID
+                            if shooter_name and (str(shooter_name).isdigit() or (isinstance(shooter_name, int))):
+                                print(f"❌ ERROR: shooter_name is still an ID ({shooter_name}) for player_id {shooter_id}, forcing fallback")
+                                shooter_name = f"Player #{shooter_id}"
                             
                             shots_data.append({
                                 'x': x,
@@ -702,10 +755,15 @@ class LiveInGamePredictor:
                                 'period': play.get('periodDescriptor', {}).get('number', 0),
                                 'time': play.get('timeInPeriod', '00:00'),
                                 'player_id': shooter_id,
-                                'shooter': shooter_name,
+                                'shooter': shooter_name,  # This MUST be the player name, not ID
+                                'shooterName': shooter_name,  # Also include as shooterName for compatibility
                                 'shotType': actual_shot_type,
                                 'xg': round(xg_value, 3)
                             })
+                            
+                            # Debug: log if we're still getting IDs instead of names
+                            if shooter_name and (str(shooter_name).isdigit() or shooter_name.startswith('Player #')):
+                                print(f"⚠️ WARNING: shooter_name is still ID-like: {shooter_name} for player_id {shooter_id}")
             except Exception as e:
                 print(f"Error extracting shot data: {e}")
             
@@ -877,13 +935,17 @@ class LiveInGamePredictor:
                         live_metrics['home_power_play_pct'] = None
                         print(f"⚠️ Period stats: Setting home_power_play_pct to None (goals={home_pp_goals}, attempts={home_pp_attempts})", flush=True)
                     
-                    # Calculate clutch metrics
-                    away_period_goals, _, _ = self.report_generator._calculate_goals_by_period(game_data, away_team_id)
-                    home_period_goals, _, _ = self.report_generator._calculate_goals_by_period(game_data, home_team_id)
+                    # Calculate clutch metrics (including OT and SO goals)
+                    away_period_goals, away_ot_goals, away_so_goals = self.report_generator._calculate_goals_by_period(game_data, away_team_id)
+                    home_period_goals, home_ot_goals, home_so_goals = self.report_generator._calculate_goals_by_period(game_data, home_team_id)
                     
                     # Store period goals arrays for period stats table
                     live_metrics['away_period_goals'] = away_period_goals
                     live_metrics['home_period_goals'] = home_period_goals
+                    live_metrics['away_ot_goals'] = away_ot_goals
+                    live_metrics['home_ot_goals'] = home_ot_goals
+                    live_metrics['away_so_goals'] = away_so_goals
+                    live_metrics['home_so_goals'] = home_so_goals
                     live_metrics['away_third_period_goals'] = away_period_goals[2] if len(away_period_goals) > 2 else 0
                     live_metrics['home_third_period_goals'] = home_period_goals[2] if len(home_period_goals) > 2 else 0
                     

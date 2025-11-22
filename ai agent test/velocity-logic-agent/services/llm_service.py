@@ -39,41 +39,59 @@ class LLMService:
         Returns:
             Dictionary with customer_name, service_requested, and quantity
         """
-        system_prompt = """You are an HVAC estimator assistant. Your job is to extract key information from customer emails.
+        system_prompt = """You are an intelligent estimating assistant for blue-collar businesses across all trades (construction, electrical, plumbing, HVAC, auto parts, landscaping, etc.).
+
+Your job is to extract key information from customer quote requests and match them to the business's service catalog.
 
 Return a JSON object with the following structure:
 {
     "customer_name": "Customer's name if mentioned, otherwise 'Customer'",
-    "service_requested": "The main service or product requested (e.g., 'Furnace Installation', 'AC Repair', 'Service Call')",
-    "quantity": 1
+    "service_requested": "The main service or product requested (be as specific as possible based on the email)",
+    "quantity": 1,
+    "confidence": 95
 }
 
-If multiple services are requested, return an array of items:
+If multiple services/items are requested, return an array:
 {
     "customer_name": "Customer's name",
+    "confidence": 90,
     "items": [
         {
-            "service_requested": "Service 1",
+            "service_requested": "Service/Product 1",
             "quantity": 1
         },
         {
-            "service_requested": "Service 2",
-            "quantity": 1
+            "service_requested": "Service/Product 2",
+            "quantity": 2
         }
     ]
 }
 
-Be specific with service names. Common services include:
-- Furnace Installation
-- AC Installation
-- Service Call
-- Furnace Repair
-- AC Repair
-- Ductwork Installation
-- Thermostat Installation
-- Air Filter Replacement
-- Refrigerant Recharge
-- Emergency Service
+CONFIDENCE SCORING (0-100):
+- **95-100**: Extremely clear request with specific details (e.g., "I need 3 GFCI outlets installed in bathrooms")
+- **80-94**: Clear request with minor ambiguity (e.g., "Need new furnace")
+- **60-79**: Somewhat vague but interpretable (e.g., "AC not working")
+- **40-59**: Very vague, multiple interpretations possible (e.g., "Need help with my house")
+- **0-39**: Cannot confidently extract meaningful information
+
+EXTRACTION RULES:
+1. **Be Specific**: Extract exact product names, model numbers, or service types when mentioned
+2. **Preserve Industry Terms**: Keep technical terms (e.g., "2x4 lumber", "200-amp panel", "R-13 insulation")
+3. **Extract Quantities**: Look for numbers, counts, measurements (e.g., "10 sheets", "500 sq ft", "3 units")
+4. **Default to 1**: If no quantity mentioned, assume 1
+5. **Multiple Items**: If customer lists multiple items, create separate entries
+6. **Be Conservative**: If the request is vague, use general terms like "Consultation", "Quote Request", or "Service Call"
+7. **Lower Confidence**: If you're unsure, reduce confidence score accordingly
+
+COMMON PATTERNS:
+- Construction: "lumber", "concrete", "framing", "drywall", "roofing materials"
+- Electrical: "panel upgrade", "wiring", "outlet installation", "lighting"
+- Plumbing: "water heater", "pipe repair", "fixture installation"
+- HVAC: "furnace", "AC unit", "ductwork", "thermostat"
+- Auto Parts: "brake pads", "oil filter", "battery", "alternator"
+- Landscaping: "mulch", "pavers", "tree trimming", "lawn care"
+
+Extract the service/product name EXACTLY as the customer describes it. The system will use fuzzy matching to find it in the pricing database.
 
 Always return valid JSON only, no additional text."""
 
@@ -91,6 +109,9 @@ Always return valid JSON only, no additional text."""
             content = response.choices[0].message.content
             parsed_data = json.loads(content)
             
+            # Extract confidence score (default to 50 if not provided)
+            confidence = parsed_data.get("confidence", 50)
+            
             # Normalize the response format
             if "items" in parsed_data:
                 # Multiple items format
@@ -106,7 +127,8 @@ Always return valid JSON only, no additional text."""
             
             return {
                 "customer_name": customer_name,
-                "extracted_items": extracted_items
+                "extracted_items": extracted_items,
+                "confidence": confidence  # Add confidence to return value
             }
             
         except json.JSONDecodeError as e:

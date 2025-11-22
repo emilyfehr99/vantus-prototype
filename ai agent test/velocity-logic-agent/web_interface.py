@@ -149,7 +149,8 @@ def process_email():
                 "pdf_url": f"/api/pdf/{os.path.basename(result['pdf_path'])}",
                 "created_at": datetime.now().isoformat(),
                 "status": "PENDING_APPROVAL",
-                "line_items": result['line_items']
+                "line_items": result['line_items'],
+                "confidence": result.get('confidence', 50)  # AI confidence score
             }
             
             drafts = load_drafts()

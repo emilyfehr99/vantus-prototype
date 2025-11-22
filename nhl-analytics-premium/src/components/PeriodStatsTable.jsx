@@ -1,9 +1,26 @@
 import React from 'react';
 import clsx from 'clsx';
 
-const PeriodStatsTable = ({ periodStats, awayTeam, homeTeam }) => {
+const PeriodStatsTable = ({ periodStats, awayTeam, homeTeam, currentPeriod }) => {
     // Show empty table structure when no data
     const hasData = periodStats && Array.isArray(periodStats) && periodStats.length > 0;
+    
+    // Filter periods to only show active/completed periods
+    // If currentPeriod is provided, only show periods <= currentPeriod
+    // Also always show OT/SO if they exist (they're marked as 'OT' or 'SO' strings)
+    const filteredPeriodStats = hasData ? periodStats.filter(period => {
+        const periodNum = period.period;
+        // Always show OT and SO if they exist
+        if (periodNum === 'OT' || periodNum === 'SO') {
+            return true;
+        }
+        // For numeric periods, only show if <= currentPeriod
+        const periodInt = parseInt(periodNum);
+        if (!isNaN(periodInt)) {
+            return currentPeriod ? periodInt <= currentPeriod : true;
+        }
+        return true;
+    }) : [];
     
     // If no data, show empty table structure
     if (!hasData) {
@@ -140,17 +157,17 @@ const PeriodStatsTable = ({ periodStats, awayTeam, homeTeam }) => {
         { key: 'fc', label: 'FC', tooltip: 'Forecheck Cycle Shots', isPercentage: false, isDecimal: false }
     ];
 
-    // Calculate totals safely
+    // Calculate totals safely (using filtered periods)
     const totals = metrics.reduce((acc, metric) => {
         acc[metric.key] = {
-            away: periodStats.reduce((sum, p) => sum + (parseFloat(p?.away_stats?.[metric.key]) || 0), 0),
-            home: periodStats.reduce((sum, p) => sum + (parseFloat(p?.home_stats?.[metric.key]) || 0), 0)
+            away: filteredPeriodStats.reduce((sum, p) => sum + (parseFloat(p?.away_stats?.[metric.key]) || 0), 0),
+            home: filteredPeriodStats.reduce((sum, p) => sum + (parseFloat(p?.home_stats?.[metric.key]) || 0), 0)
         };
 
         // Special handling for percentages (average them)
-        if (metric.isPercentage) {
-            acc[metric.key].away /= periodStats.length;
-            acc[metric.key].home /= periodStats.length;
+        if (metric.isPercentage && filteredPeriodStats.length > 0) {
+            acc[metric.key].away /= filteredPeriodStats.length;
+            acc[metric.key].home /= filteredPeriodStats.length;
         }
         return acc;
     }, {});
@@ -190,7 +207,7 @@ const PeriodStatsTable = ({ periodStats, awayTeam, homeTeam }) => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                        {periodStats.map((period, periodIdx) => {
+                        {filteredPeriodStats.map((period, periodIdx) => {
                             return (
                                 <React.Fragment key={periodIdx}>
                                     {/* Away Team Row */}

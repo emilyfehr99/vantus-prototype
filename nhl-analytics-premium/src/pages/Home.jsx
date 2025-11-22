@@ -46,10 +46,14 @@ const Home = () => {
                 setGames(fetchedGames);
 
                 if (predictionsResult.status === 'fulfilled') {
-                    // Create a map of predictions by game ID or team matchup
+                    // Create a map of predictions by game ID and team matchup
                     const predMap = {};
                     const preds = predictionsResult.value || [];
                     preds.forEach(pred => {
+                        // Map by both game_id and team matchup for flexibility
+                        if (pred.game_id) {
+                            predMap[pred.game_id] = pred;
+                        }
                         const key = `${pred.away_team}_${pred.home_team}`;
                         predMap[key] = pred;
                     });
@@ -160,8 +164,11 @@ const Home = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {games.map((game, index) => {
                             if (!game || !game.awayTeam || !game.homeTeam) return null;
-                            const predictionKey = `${game.awayTeam?.abbrev}_${game.homeTeam?.abbrev}`;
-                            const prediction = predictions[predictionKey];
+                            // Try game_id first, then team matchup
+                            const prediction = predictions[game.id] || predictions[`${game.awayTeam?.abbrev}_${game.homeTeam?.abbrev}`];
+                            if (!prediction && Object.keys(predictions).length > 0) {
+                                console.log(`No prediction found for game ${game.id} (${game.awayTeam?.abbrev} @ ${game.homeTeam?.abbrev})`);
+                            }
 
                             return (
                                 <motion.div

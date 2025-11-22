@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { getTeamLogo } from '../utils/teamLogos';
 
 /**
@@ -14,6 +15,12 @@ import { getTeamLogo } from '../utils/teamLogos';
  */
 const ShotChart = ({ shotsData = [], awayTeam, homeTeam, awayHeatmap = null, homeHeatmap = null, gameState = 'FUT' }) => {
     const [tooltip, setTooltip] = useState(null);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
 
     // Rink dimensions (NHL standard in feet)
     const RINK_WIDTH = 200; // -100 to 100
@@ -44,18 +51,93 @@ const ShotChart = ({ shotsData = [], awayTeam, homeTeam, awayHeatmap = null, hom
 
     // Handle mouse enter on shot/goal
     const handleMouseEnter = (event, shot) => {
-        const rect = event.currentTarget.getBoundingClientRect();
-        setTooltip({
-            x: rect.left + rect.width / 2,
-            y: rect.top - 10,
-            shooter: shot.shooter || 'Unknown',
-            shotType: shot.shotType || 'Wrist',
-            xg: shot.xg,
-            isGoal: shot.type === 'GOAL'
-        });
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const elementRect = event.currentTarget.getBoundingClientRect();
+        
+        // Calculate position relative to viewport (center of the element)
+        let x = elementRect.left + (elementRect.width / 2);
+        let y = elementRect.top;
+        
+        // Constrain to viewport bounds to prevent horizontal scrolling
+        // Use a safe approach that works even if window is not available
+        if (typeof window !== 'undefined') {
+            const tooltipWidth = 250; // Approximate tooltip width
+            const tooltipHeight = 100; // Approximate tooltip height
+            const padding = 10;
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            // Ensure tooltip doesn't go off the left or right edge
+            if (x < tooltipWidth / 2 + padding) {
+                x = tooltipWidth / 2 + padding;
+            } else if (x > viewportWidth - tooltipWidth / 2 - padding) {
+                x = viewportWidth - tooltipWidth / 2 - padding;
+            }
+            
+            // Ensure tooltip doesn't go off the top edge
+            if (y < tooltipHeight + padding) {
+                y = tooltipHeight + padding;
+            }
+        }
+        
+        // Get shooter name - prioritize 'shooter' field from backend (has proper names)
+        // Backend should provide 'shooter' with player name, not ID
+        let shooterName = shot.shooter || shot.shooterName || shot.player || 'Unknown';
+        
+        // Only use player_id as fallback if shooter is not available
+        if ((!shooterName || shooterName === 'Unknown') && shot.player_id) {
+            shooterName = `Player #${shot.player_id}`;
+        }
+        
+        // If it's still a numeric ID (shouldn't happen if backend is working), format it
+        if (typeof shooterName === 'number' || (typeof shooterName === 'string' && /^\d+$/.test(shooterName))) {
+            shooterName = `Player #${shooterName}`;
+        }
+        
+        console.log('Shot data:', { shooter: shot.shooter, shooterName: shot.shooterName, player_id: shot.player_id, finalName: shooterName });
+        
+        // Get shot type - normalize to title case
+        const shotType = shot.shotType ? shot.shotType.charAt(0).toUpperCase() + shot.shotType.slice(1).toLowerCase() : 'Wrist';
+        
+        // Get xG - handle different formats
+        let xgValue = shot.xg;
+        if (xgValue === undefined || xgValue === null) {
+            xgValue = null;
+        } else if (typeof xgValue === 'string') {
+            xgValue = parseFloat(xgValue);
+            if (isNaN(xgValue) || xgValue === 0) {
+                xgValue = null; // Will trigger fallback calculation
+            }
+        }
+        
+        // If xG is 0, null, or NaN, calculate a simple distance-based xG as fallback
+        if (xgValue === null || xgValue === undefined || isNaN(xgValue) || xgValue === 0) {
+            // Calculate distance from center of rink (0, 0) to shot location
+            const distance = Math.sqrt((shot.x || 0) ** 2 + (shot.y || 0) ** 2);
+            // Simple xG model: closer shots have higher xG
+            // Max distance is about 89 feet (rink is 200x85 feet), so normalize
+            const normalizedDistance = Math.min(distance / 89, 1); // Normalize to 0-1
+            xgValue = Math.max(0.01, 0.25 * (1 - normalizedDistance)); // Range from 0.01 to 0.25
+        }
+        
+        const tooltipData = {
+            x: x,
+            y: y,
+            shooter: shooterName,
+            shotType: shotType,
+            xg: xgValue,
+            isGoal: shot.type === 'GOAL' || shot.type === 'goal' || shot.isGoal
+        };
+        
+        console.log('Setting tooltip:', tooltipData, 'Element rect:', elementRect);
+        setTooltip(tooltipData);
     };
 
-    const handleMouseLeave = () => {
+    const handleMouseLeave = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
         setTooltip(null);
     };
 
@@ -142,7 +224,7 @@ const ShotChart = ({ shotsData = [], awayTeam, homeTeam, awayHeatmap = null, hom
     const homeColor = getTeamColor(homeTeam);
 
     return (
-        <div className="relative w-full rounded-xl overflow-hidden">
+        <div className="relative w-full rounded-xl overflow-visible">
             {/* Rink Image Background */}
             <div className="relative w-full" style={{ paddingBottom: '42.5%' }}>
                 <img
@@ -156,6 +238,7 @@ const ShotChart = ({ shotsData = [], awayTeam, homeTeam, awayHeatmap = null, hom
                     viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
                     className="absolute inset-0 w-full h-full"
                     preserveAspectRatio="xMidYMid meet"
+                    style={{ pointerEvents: 'all' }}
                 >
                     {/* Team Logos - Always show */}
                     <>
@@ -216,10 +299,10 @@ const ShotChart = ({ shotsData = [], awayTeam, homeTeam, awayHeatmap = null, hom
                             stroke="black"
                             strokeWidth="0.8"
                             opacity="0.85"
-                            style={{ cursor: 'pointer' }}
+                            style={{ cursor: 'pointer', pointerEvents: 'all' }}
                             className="hover:opacity-100 hover:stroke-white transition-all"
                             onMouseEnter={(e) => handleMouseEnter(e, shot)}
-                            onMouseLeave={handleMouseLeave}
+                            onMouseLeave={(e) => handleMouseLeave(e)}
                         />
                     ))}
 
@@ -227,10 +310,10 @@ const ShotChart = ({ shotsData = [], awayTeam, homeTeam, awayHeatmap = null, hom
                     {awayGoals.map((goal, idx) => (
                         <g
                             key={`away-goal-${idx}`}
-                            style={{ cursor: 'pointer' }}
+                            style={{ cursor: 'pointer', pointerEvents: 'all' }}
                             className="hover:opacity-100 transition-all"
                             onMouseEnter={(e) => handleMouseEnter(e, goal)}
-                            onMouseLeave={handleMouseLeave}
+                            onMouseLeave={(e) => handleMouseLeave(e)}
                         >
                             <circle
                                 cx={toSVGX(goal.x)}
@@ -269,10 +352,10 @@ const ShotChart = ({ shotsData = [], awayTeam, homeTeam, awayHeatmap = null, hom
                             stroke="black"
                             strokeWidth="0.8"
                             opacity="0.85"
-                            style={{ cursor: 'pointer' }}
+                            style={{ cursor: 'pointer', pointerEvents: 'all' }}
                             className="hover:opacity-100 hover:stroke-white transition-all"
                             onMouseEnter={(e) => handleMouseEnter(e, shot)}
-                            onMouseLeave={handleMouseLeave}
+                            onMouseLeave={(e) => handleMouseLeave(e)}
                         />
                     ))}
 
@@ -280,10 +363,10 @@ const ShotChart = ({ shotsData = [], awayTeam, homeTeam, awayHeatmap = null, hom
                     {homeGoals.map((goal, idx) => (
                         <g
                             key={`home-goal-${idx}`}
-                            style={{ cursor: 'pointer' }}
+                            style={{ cursor: 'pointer', pointerEvents: 'all' }}
                             className="hover:opacity-100 transition-all"
                             onMouseEnter={(e) => handleMouseEnter(e, goal)}
-                            onMouseLeave={handleMouseLeave}
+                            onMouseLeave={(e) => handleMouseLeave(e)}
                         >
                             <circle
                                 cx={toSVGX(goal.x)}
@@ -313,29 +396,33 @@ const ShotChart = ({ shotsData = [], awayTeam, homeTeam, awayHeatmap = null, hom
                 </svg>
             </div>
 
-            {/* Custom Tooltip */}
-            {tooltip && (
+            {/* Custom Tooltip - Render via Portal to avoid overflow issues */}
+            {tooltip && mounted && typeof document !== 'undefined' && document.body && createPortal(
                 <div
-                    className="fixed z-50 pointer-events-none"
+                    className="fixed pointer-events-none"
                     style={{
                         left: `${tooltip.x}px`,
                         top: `${tooltip.y}px`,
-                        transform: 'translate(-50%, -100%)'
+                        transform: 'translate(-50%, calc(-100% - 12px))',
+                        zIndex: 10000,
+                        maxWidth: '250px',
+                        width: 'max-content'
                     }}
                 >
-                    <div className="bg-black/90 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-xl border border-white/20">
+                    <div className="bg-black/95 backdrop-blur-sm text-white px-3 py-2 rounded-lg shadow-2xl border border-white/30">
                         <div className="text-xs font-mono space-y-1">
                             {tooltip.isGoal && <div className="text-yellow-400 font-bold">🎯 GOAL</div>}
-                            <div className="font-semibold">{tooltip.shooter}</div>
-                            <div className="text-gray-300">{tooltip.shotType} Shot</div>
-                            {tooltip.xg !== undefined && (
-                                <div className="text-blue-400">
-                                    xG: {(tooltip.xg * 100).toFixed(1)}%
+                            <div className="font-semibold text-white whitespace-nowrap">{tooltip.shooter}</div>
+                            <div className="text-gray-300 whitespace-nowrap">{tooltip.shotType} Shot</div>
+                            {tooltip.xg !== undefined && tooltip.xg !== null && (
+                                <div className="text-blue-400 whitespace-nowrap">
+                                    xG: {typeof tooltip.xg === 'number' ? (tooltip.xg * 100).toFixed(1) + '%' : tooltip.xg}
                                 </div>
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
         </div>
