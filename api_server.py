@@ -542,11 +542,14 @@ def get_team_heatmap(team_abbr):
                             print(f"xG model error: {e}")
                     
                     # Fallback distance-based xG
+                    # IMPORTANT: Use RAW coordinates (x, y), not normalized
+                    # NHL coordinates: Goals at x=89 and x=-89
                     import math
-                    distance = math.sqrt(x**2 + y**2)
+                    goal_x = 89 if x >= 0 else -89
+                    distance_from_goal = math.sqrt((goal_x - x)**2 + y**2)
                     if event_type == 'goal':
-                        return max(0.1, min(0.8, 1.0 - (distance / 100)))
-                    return max(0.01, min(0.5, 1.0 - (distance / 100)))
+                        return max(0.1, min(0.8, 1.0 - (distance_from_goal / 100)))
+                    return max(0.01, min(0.5, 1.0 - (distance_from_goal / 100)))
 
                 # Common point data
                 shooter_name = None

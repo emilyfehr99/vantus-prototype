@@ -113,13 +113,44 @@ const ShotChart = ({ shotsData = [], awayTeam, homeTeam, awayHeatmap = null, hom
         }
         
         // If xG is 0, null, or NaN, calculate a simple distance-based xG as fallback
+        // IMPORTANT: Coordinates are normalized (each team shoots from their own side)
+        // Away team shoots from right (positive x), Home team shoots from left (negative x)
+        // Goals are at x=89 (right) and x=-89 (left) in NHL coordinates
+        // But after normalization, we need to calculate from the appropriate goal
         if (xgValue === null || xgValue === undefined || isNaN(xgValue) || xgValue === 0) {
-            // Calculate distance from center of rink (0, 0) to shot location
-            const distance = Math.sqrt((shot.x || 0) ** 2 + (shot.y || 0) ** 2);
-            // Simple xG model: closer shots have higher xG
-            // Max distance is about 89 feet (rink is 200x85 feet), so normalize
-            const normalizedDistance = Math.min(distance / 89, 1); // Normalize to 0-1
-            xgValue = Math.max(0.01, 0.25 * (1 - normalizedDistance)); // Range from 0.01 to 0.25
+            const shotX = shot.x || 0;
+            const shotY = shot.y || 0;
+            
+            // Determine which goal based on normalized x coordinate
+            // Positive x = shooting toward right goal (x=89 in raw coords)
+            // Negative x = shooting toward left goal (x=-89 in raw coords)
+            // After normalization, goal is at x=89 for positive shots, x=-89 for negative shots
+            const goalX = shotX >= 0 ? 89 : -89;
+            
+            // Calculate distance from the appropriate goal (not from center!)
+            const distanceFromGoal = Math.sqrt((goalX - shotX) ** 2 + shotY ** 2);
+            
+            // Simple xG model based on distance from goal
+            // Closer shots have higher xG
+            if (distanceFromGoal < 20) {
+                xgValue = 0.15;
+            } else if (distanceFromGoal < 35) {
+                xgValue = 0.08;
+            } else if (distanceFromGoal < 50) {
+                xgValue = 0.04;
+            } else {
+                xgValue = 0.02;
+            }
+            
+            // Apply angle adjustment (shots from wider angles have lower xG)
+            const angleRatio = Math.abs(shotY) / Math.max(distanceFromGoal, 1);
+            if (angleRatio > 0.6) {
+                xgValue *= 0.8; // Wide angle
+            } else if (angleRatio < 0.3) {
+                xgValue *= 1.2; // Good angle (slot)
+            }
+            
+            xgValue = Math.max(0.01, Math.min(xgValue, 0.95));
         }
         
         const tooltipData = {

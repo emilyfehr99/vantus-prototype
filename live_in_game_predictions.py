@@ -747,19 +747,22 @@ class LiveInGamePredictor:
                                     shooter_name = f"Player #{shooter_id}"
                                     print(f"⚠️ Could not find name for player_id {shooter_id}, using fallback: {shooter_name}")
                             
-                            # Calculate xG using the EXACT same method as auto post reports
+                            # Calculate xG for LIVE GAMES (not post-game reports)
                             xg_value = 0.0
                             try:
-                                # Use the same _calculate_improved_xg method from pdf_report_generator
-                                xg_value = self.report_generator._calculate_improved_xg(x, y, actual_shot_type)
+                                # Use the live-specific xG method (fixed for coordinate normalization)
+                                xg_value = self.report_generator._calculate_improved_xg_live(x, y, actual_shot_type)
                                 # The method already caps at 0.95, but ensure it's never 0
                                 if xg_value <= 0:
                                     print(f"⚠️ xG calculated as {xg_value} for shot at ({x}, {y}), using minimum 0.01")
                                     xg_value = 0.01
                             except Exception as e:
-                                # Fallback simple xG based on distance (should rarely happen)
-                                distance = ((x ** 2) + (y ** 2)) ** 0.5
-                                xg_value = max(0.01, 0.15 - (distance * 0.001))
+                                # Fallback simple xG based on distance from goal (should rarely happen)
+                                # NHL coordinates: Goals at x=89 and x=-89
+                                import math
+                                goal_x = 89 if x >= 0 else -89
+                                distance_from_goal = math.sqrt((goal_x - x)**2 + y**2)
+                                xg_value = max(0.01, 0.15 - (distance_from_goal * 0.001))
                                 print(f"❌ xG calculation error for shot at ({x}, {y}) with type {actual_shot_type}: {e}, using fallback: {xg_value}")
                             
                             # Ensure shooter_name is actually a name, not an ID
@@ -894,10 +897,10 @@ class LiveInGamePredictor:
                                 elif is_home:
                                     home_hdc_cumulative += 1
                             
-                            # Calculate xG for this shot
+                            # Calculate xG for this shot (LIVE GAMES ONLY)
                             try:
                                 shot_type = details.get('shotType', 'wrist')
-                                xg_value = self.report_generator._calculate_improved_xg(x, y, shot_type) if x and y else 0.0
+                                xg_value = self.report_generator._calculate_improved_xg_live(x, y, shot_type) if x and y else 0.0
                                 if is_away:
                                     away_xg_cumulative += xg_value
                                 elif is_home:
