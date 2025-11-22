@@ -396,11 +396,11 @@ def get_team_metrics():
         if 'CBJ' in metrics:
             cbj_metrics = metrics['CBJ']
             print(f"DEBUG: Final CBJ metrics before cache - ozs: {cbj_metrics.get('ozs')}, nzs: {cbj_metrics.get('nzs')}, gs: {cbj_metrics.get('gs')}, fc: {cbj_metrics.get('fc')}, rush: {cbj_metrics.get('rush')}, lat: {cbj_metrics.get('lat')}")
-    
-    # Cache the results
-    _team_metrics_cache = metrics
-    _team_metrics_cache_time = current_time
-    return jsonify(metrics)
+        
+        # Cache the results
+        _team_metrics_cache = metrics
+        _team_metrics_cache_time = current_time
+        return jsonify(metrics)
     
     except Exception as e:
         print(f"Error loading team metrics: {e}")

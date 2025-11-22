@@ -34,9 +34,12 @@ def init_agent():
         print(f"✗ Error initializing agent: {e}")
         agent = None
 
-# Initialize agent and register auth routes
+# Initialize agent and register routes
 init_agent()
 app.register_blueprint(auth_bp)
+
+from routes.analytics_routes import analytics_bp
+app.register_blueprint(analytics_bp)
 
 # ============================================
 # Helper Functions  
