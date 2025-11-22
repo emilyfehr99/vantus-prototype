@@ -676,7 +676,14 @@ class LiveInGamePredictor:
             try:
                 # Use the same play_by_play reference that was used to build player_names
                 plays = play_by_play.get('plays', []) or []
-                print(f"📊 Processing {len(plays)} plays for shots_data, player_names has {len(player_names)} entries")
+                print(f"📊 Processing {len(plays)} plays for shots_data, player_names has {len(player_names)} entries", flush=True)
+                if len(player_names) == 0:
+                    print(f"⚠️⚠️⚠️ CRITICAL: player_names dictionary is EMPTY! This will cause shooter to be IDs!", flush=True)
+                    print(f"   play_by_play keys: {list(play_by_play.keys())}", flush=True)
+                    if 'rosterSpots' in play_by_play:
+                        print(f"   rosterSpots exists with {len(play_by_play['rosterSpots'])} entries", flush=True)
+                    else:
+                        print(f"   ⚠️ rosterSpots NOT FOUND in play_by_play!", flush=True)
                 
                 for play in plays:
                     event_type = play.get('typeDescKey')
