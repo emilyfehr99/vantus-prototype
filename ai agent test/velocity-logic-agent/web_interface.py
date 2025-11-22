@@ -9,6 +9,7 @@ import os
 import json
 from datetime import datetime
 from main import VelocityLogicAgent
+from services.polling_service import PollingService
 import threading
 import time
 
@@ -18,6 +19,7 @@ app.config['UPLOAD_FOLDER'] = 'output'
 
 # Initialize agent
 agent = None
+polling_service = PollingService(check_interval=60)  # Check every 60 seconds
 agent_status = {
     "running": False,
     "last_check": None,
@@ -335,6 +337,57 @@ def upload_pricing():
             return jsonify({"success": False, "error": f"Error reloading pricing: {str(e)}"}), 500
             
     return jsonify({"success": False, "error": "Invalid file type"}), 400
+
+# ============================================
+# Polling API Endpoints
+# ============================================
+
+@app.route('/api/polling/status', methods=['GET'])
+def get_polling_status():
+    """Get current polling status."""
+    status = polling_service.get_status()
+    return jsonify(status)
+
+@app.route('/api/polling/start', methods=['POST'])
+def start_polling():
+    """Start automatic email polling."""
+    global agent
+    
+    if not agent:
+        return jsonify({"success": False, "error": "Agent not initialized"}), 500
+    
+    if polling_service.is_running:
+        return jsonify({"success": False, "error": "Polling already running"}), 400
+    
+    try:
+        # Start polling in background
+        polling_service.start(
+            gmail_service=agent.gmail_service,
+            agent=agent,
+            process_callback=lambda result: log_activity(
+                "Draft Created (Auto)",
+                f"Quote #{result['quote_number']} for {result['customer_name']}"
+            )
+        )
+        
+        return jsonify({
+            "success": True,
+            "message": f"Polling started (every {polling_service.check_interval}s)"
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/polling/stop', methods=['POST'])
+def stop_polling():
+    """Stop automatic email polling."""
+    if not polling_service.is_running:
+        return jsonify({"success": False, "error": "Polling not running"}), 400
+    
+    try:
+        polling_service.stop()
+        return jsonify({"success": True, "message": "Polling stopped"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
     print("=" * 60)
