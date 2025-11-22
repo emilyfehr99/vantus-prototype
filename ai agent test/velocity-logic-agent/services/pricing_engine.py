@@ -74,24 +74,27 @@ class PricingEngine:
         # Find best match
         best_match = None
         best_score = 0
+        best_idx = None
         
         for idx, text in search_texts:
             # Use partial ratio for better matching of substrings
             score = max(
+                fuzz.ratio(service_request.lower(), text.lower()),
                 fuzz.partial_ratio(service_request.lower(), text.lower()),
-                fuzz.ratio(service_request.lower(), text.lower())
+                fuzz.token_sort_ratio(service_request.lower(), text.lower())
             )
             
-            if score > best_score and score >= threshold:
+            if score > best_score:
                 best_score = score
-                best_match = idx
+                best_idx = idx
         
-        if best_match is not None:
-            matched_row = self.df.iloc[best_match].to_dict()
-            matched_row["match_score"] = best_score
+        # Return best match if above threshold
+        if best_score >= threshold and best_idx is not None:
+            matched_row = self.df.loc[best_idx].to_dict()
+            matched_row['match_score'] = best_score  # Add match score to result
             return matched_row
         
-        return None
+        return None  # No match found
     
     def calculate_quote(self, extracted_items: List[Dict[str, Any]], tax_rate: float = 0.10) -> Dict[str, Any]:
         """
@@ -111,44 +114,47 @@ class PricingEngine:
         subtotal = 0.0
         
         for item in extracted_items:
-            service_requested = item.get("service_requested", "").strip()
-            quantity = item.get("quantity", 1)
+            service_request = item.get("service_requested", "")
+            quantity = int(item.get("quantity", 1))
             
-            if not service_requested:
+            if not service_request:
                 continue
             
-            # Try to match the service
-            matched_service = self._fuzzy_match_service(service_requested)
+            # Find matching service in pricing data
+            matched_service = self._fuzzy_match_service(service_request)
             
             if matched_service:
+                service_name = matched_service.get("Service Name", service_request)
                 unit_price = float(matched_service.get("Unit Price", 0))
+                unit = matched_service.get("Unit", "Each")
+                description = matched_service.get("Description", "")
+                match_score = matched_service.get("match_score", 0)  # Get match score
+                
                 line_total = unit_price * quantity
                 
-                line_item = {
-                    "service_name": matched_service.get("Service Name", service_requested),
-                    "description": matched_service.get("Description", ""),
-                    "quantity": quantity,
+                line_items.append({
+                    "service_name": service_name,
+                    "description": description,
                     "unit_price": unit_price,
-                    "unit": matched_service.get("Unit", "Each"),
+                    "quantity": quantity,
+                    "unit": unit,
                     "line_total": line_total,
-                    "match_score": matched_service.get("match_score", 0)
-                }
+                    "match_score": match_score  # Include match score in line item
+                })
                 
-                line_items.append(line_item)
                 subtotal += line_total
             else:
-                # If no match found, add as unknown item with zero price
-                print(f"⚠ Warning: Could not match service '{service_requested}'")
-                line_item = {
-                    "service_name": service_requested,
+                # No match found - add with warning
+                print(f"   ⚠ No pricing match for: {service_request}")
+                line_items.append({
+                    "service_name": service_request,
                     "description": "Service not found in pricing database",
-                    "quantity": quantity,
                     "unit_price": 0.0,
+                    "quantity": quantity,
                     "unit": "Each",
                     "line_total": 0.0,
-                    "match_score": 0
-                }
-                line_items.append(line_item)
+                    "match_score": 0  # No match = 0 score
+                })
         
         tax = subtotal * tax_rate
         total = subtotal + tax
