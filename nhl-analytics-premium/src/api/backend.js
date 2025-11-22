@@ -1,5 +1,5 @@
 // Backend API client for pre-calculated metrics
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5400';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
 export const backendApi = {
     /**

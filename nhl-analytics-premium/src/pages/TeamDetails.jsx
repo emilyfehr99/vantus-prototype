@@ -376,6 +376,7 @@ const TeamDetails = () => {
                         />
                         <MetricCard
                             label="HITS"
+
                             value={teamMetrics.hits_per_game?.toFixed(1) || teamMetrics.hits?.toFixed(1) || '-'}
                             subLabel="Per game"
                             icon={Activity}

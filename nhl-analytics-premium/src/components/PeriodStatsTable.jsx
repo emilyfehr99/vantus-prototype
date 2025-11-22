@@ -2,6 +2,17 @@ import React from 'react';
 import clsx from 'clsx';
 
 const PeriodStatsTable = ({ periodStats, awayTeam, homeTeam, currentPeriod }) => {
+    // Debug logging
+    React.useEffect(() => {
+        console.log('PeriodStatsTable received:', {
+            periodStats,
+            isArray: Array.isArray(periodStats),
+            length: periodStats?.length,
+            firstPeriod: periodStats?.[0],
+            currentPeriod
+        });
+    }, [periodStats, currentPeriod]);
+    
     // Show empty table structure when no data
     const hasData = periodStats && Array.isArray(periodStats) && periodStats.length > 0;
     

@@ -134,7 +134,7 @@ def get_team_metrics():
                 home_ozs = cbj_data['home'].get('ozs', [])
                 print(f"DEBUG: CBJ home ozs is list: {isinstance(home_ozs, list)}, length: {len(home_ozs) if isinstance(home_ozs, list) else 'N/A'}")
         
-    metrics = {}
+        metrics = {}
         
         # Helper function to calculate average from list
         def avg_from_list(lst):
@@ -396,7 +396,7 @@ def get_team_metrics():
         if 'CBJ' in metrics:
             cbj_metrics = metrics['CBJ']
             print(f"DEBUG: Final CBJ metrics before cache - ozs: {cbj_metrics.get('ozs')}, nzs: {cbj_metrics.get('nzs')}, gs: {cbj_metrics.get('gs')}, fc: {cbj_metrics.get('fc')}, rush: {cbj_metrics.get('rush')}, lat: {cbj_metrics.get('lat')}")
-        
+    
         # Cache the results
         _team_metrics_cache = metrics
         _team_metrics_cache_time = current_time
@@ -1471,10 +1471,6 @@ def get_live_game_data(game_id):
                         prediction['live_metrics']['home_shots'] = int(boxscore_physical['homeTeam']['sog'])
                         prediction['home_shots'] = prediction['live_metrics']['home_shots']
                     print(f"✅✅✅ FINAL PHYSICAL EXTRACTION: away_hits={prediction['live_metrics']['away_hits']}, blocked={prediction['live_metrics']['away_blocked_shots']}, gv={prediction['live_metrics']['away_giveaways']}", flush=True)
-                elif stat in prediction:
-                    prediction['live_metrics'][stat] = prediction[stat]
-                elif stat in live_data:
-                    prediction['live_metrics'][stat] = live_data[stat]
             
             # Also add shots_data if available
             if 'shots_data' in live_data:
@@ -1551,6 +1547,58 @@ def get_live_game_data(game_id):
                 away_zone_metrics = live_data.get('away_zone_metrics', {})
                 home_zone_metrics = live_data.get('home_zone_metrics', {})
                 
+                # Get current period to determine which periods to show (MUST be before OT check)
+                current_period = live_data.get('current_period', 1)
+                game_state = live_data.get('game_state', '')
+                
+                # CRITICAL: Dynamically determine current_period from play-by-play if available
+                # This ensures we show the active period even if it just started
+                if game_state not in ['FINAL', 'OFF']:
+                    # Fetch play-by-play data directly from NHL API to get the most accurate current period
+                    try:
+                        from nhl_api_client import NHLAPIClient
+                        api_client = NHLAPIClient()
+                        play_by_play = api_client.get_play_by_play(game_id)
+                        if play_by_play:
+                            plays = play_by_play.get('plays', []) if play_by_play else []
+                            if plays:
+                                # Get the most recent play's period - this is the ACTIVE period
+                                last_play = plays[-1]
+                                last_play_period = last_play.get('periodDescriptor', {}).get('number', current_period)
+                                if last_play_period and last_play_period > 0:
+                                    current_period = last_play_period
+                                    print(f"   ✅ Dynamically determined current_period from play-by-play: {current_period} (was {live_data.get('current_period', 1)})")
+                                    # CRITICAL: Update current_period in live_data and prediction so frontend receives it
+                                    live_data['current_period'] = current_period
+                                    prediction['current_period'] = current_period
+                                    if 'live_metrics' in prediction:
+                                        prediction['live_metrics']['current_period'] = current_period
+                    except Exception as e:
+                        print(f"   ⚠️ Could not get current_period from play-by-play: {e}")
+                        import traceback
+                        traceback.print_exc()
+                
+                # CRITICAL: For completed games (FINAL/OFF), always show all 3 periods
+                # Also check if we have period stats with data for all 3 periods (indicates game is complete)
+                if game_state in ['FINAL', 'OFF']:
+                    current_period = 3  # Force show all periods for completed games
+                    print(f"   ✅ Game is FINAL/OFF, showing all 3 periods")
+                elif away_period_stats and home_period_stats:
+                    # If we have period stats with data for all periods, show all periods
+                    away_shots_list = away_period_stats.get('shots', [])
+                    home_shots_list = home_period_stats.get('shots', [])
+                    # Check if we have data for period 3 (game is likely complete)
+                    if len(away_shots_list) >= 3 and len(home_shots_list) >= 3:
+                        # If period 3 has any shots, the game is complete
+                        if away_shots_list[2] > 0 or home_shots_list[2] > 0:
+                            current_period = 3  # Game is complete, show all periods
+                            print(f"   ✅ Period 3 has data, showing all 3 periods")
+                    # Also check if we have period goals for period 3
+                    if len(away_period_goals) >= 3 and len(home_period_goals) >= 3:
+                        if away_period_goals[2] > 0 or home_period_goals[2] > 0:
+                            current_period = 3
+                            print(f"   ✅ Period 3 has goals, showing all 3 periods")
+                
                 # Check if game has OT/SO periods
                 # If OT/SO goals exist, then those periods occurred
                 has_ot = (away_ot_goals > 0 or home_ot_goals > 0)
@@ -1559,16 +1607,29 @@ def get_live_game_data(game_id):
                 if current_period >= 4:
                     has_ot = True
                 
-                # Get current period to determine which periods to show
-                current_period = live_data.get('current_period', 1)
-                print(f"   Current period: {current_period}, has_ot: {has_ot}, has_so: {has_so}")
+                # Also try to check using report generator if game_data is available
+                try:
+                    game_data_check = prediction.get('game_data') or live_data.get('game_data') or live_metrics.get('game_data')
+                    if game_data_check:
+                        from pdf_report_generator import PostGameReportGenerator
+                        report_gen_check = PostGameReportGenerator()
+                        has_ot_from_check = report_gen_check._check_for_ot_period(game_data_check)
+                        if has_ot_from_check:
+                            has_ot = True
+                except:
+                    pass  # Non-critical, continue with existing logic
+                
+                print(f"   Current period: {current_period}, game_state: {game_state}, has_ot: {has_ot}, has_so: {has_so}")
                 
                 # Build period stats array - only include periods that are active or completed
                 period_stats_array = []
                 for period_num in range(1, 4):  # Periods 1, 2, 3
                     # Only show period if it's completed or currently active
-                    if period_num > current_period:
-                        continue  # Skip future periods
+                    # For completed games (FINAL/OFF), always show all periods
+                    # For live games, show periods <= current_period (including the active period)
+                    if game_state not in ['FINAL', 'OFF'] and period_num > current_period:
+                        continue  # Skip future periods for live games
+                    # Always include the current_period (active period) even if it just started
                     period_idx = period_num - 1
                     
                     # Get zone metrics per period if available
@@ -2037,17 +2098,32 @@ def get_live_game_data(game_id):
         # Use deep copy to avoid reference issues
         import copy
         final_response = copy.deepcopy(prediction)
-        if 'period_stats' not in final_response or not final_response.get('period_stats'):
-            print(f"⚠️ WARNING: period_stats missing in final response, setting empty array")
+        
+        # CRITICAL: Ensure period_stats exists at top level
+        if 'period_stats' not in final_response:
             final_response['period_stats'] = []
+        elif not isinstance(final_response.get('period_stats'), list):
+            print(f"⚠️ WARNING: period_stats is not a list, converting")
+            final_response['period_stats'] = []
+        
         # CRITICAL: Don't overwrite live_metrics if it exists - it has the extracted values!
         if 'live_metrics' not in final_response:
             final_response['live_metrics'] = {}
         elif not isinstance(final_response.get('live_metrics'), dict):
             # Only recreate if it's not a dict
             final_response['live_metrics'] = {}
+        
+        # CRITICAL: Ensure period_stats is also in live_metrics
         if 'period_stats' not in final_response['live_metrics']:
+            # Use period_stats from top level if available, otherwise empty array
             final_response['live_metrics']['period_stats'] = final_response.get('period_stats', [])
+        
+        # CRITICAL: Ensure period_stats is always an array and sync between top level and live_metrics
+        if not isinstance(final_response['live_metrics'].get('period_stats'), list):
+            final_response['live_metrics']['period_stats'] = []
+        # Sync: if live_metrics has period_stats, ensure top level also has it
+        if final_response['live_metrics'].get('period_stats'):
+            final_response['period_stats'] = final_response['live_metrics']['period_stats']
         
         # Physical stats will be extracted in the single final block before return
         
@@ -2278,7 +2354,7 @@ if __name__ == '__main__':
     print(f"  GET /api/historical-stats/<season>")
     print(f"  POST /api/notify/discord")
     print("=" * 50)
-    port = int(os.environ.get('PORT', 5400))
+    port = int(os.environ.get('PORT', 5000))
     print(f"Starting server on http://localhost:{port}")
     print()
     

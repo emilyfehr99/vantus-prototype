@@ -216,6 +216,19 @@ class LiveInGamePredictor:
             period_info = boxscore.get('periodInfo', {}) or boxscore.get('periodDescriptor', {})
             current_period = period_info.get('currentPeriod', 1) or period_info.get('number', 1)
             
+            # CRITICAL: For live games, dynamically determine current period from play-by-play data
+            # This ensures we show the active period even if boxscore hasn't updated yet
+            if game_state not in ['OFF', 'FINAL']:
+                play_by_play = game_data.get('playByPlay', {}) or game_data.get('play_by_play', {})
+                plays = play_by_play.get('plays', []) if play_by_play else []
+                if plays:
+                    # Get the most recent play's period - this is the ACTIVE period
+                    last_play = plays[-1]
+                    last_play_period = last_play.get('periodDescriptor', {}).get('number', current_period)
+                    if last_play_period and last_play_period > 0:
+                        current_period = last_play_period
+                        print(f"✅ Dynamically determined current_period from play-by-play: {current_period}")
+            
             # For completed games (OFF/FINAL), time_remaining should be '00:00' or empty
             # For live games, get actual time remaining
             clock = boxscore.get('clock', {})
@@ -886,18 +899,22 @@ class LiveInGamePredictor:
                     live_metrics['home_lateral'] = home_movement['lateral_movement'].get('avg_delta_y', 0.0)
                     live_metrics['home_longitudinal'] = home_movement['longitudinal_movement'].get('avg_delta_x', 0.0)
                     
-                    # Calculate period stats
-                    print(f"🔍 Calculating period stats for away_team_id={away_team_id}, home_team_id={home_team_id}")
+                    # Calculate period stats from play-by-play data
+                    print(f"🔍 Calculating period stats from play-by-play for away_team_id={away_team_id}, home_team_id={home_team_id}")
                     print(f"🔍 Play-by-play data structure: {type(play_by_play)}, has 'plays' key: {'plays' in play_by_play if isinstance(play_by_play, dict) else 'N/A'}")
                     if isinstance(play_by_play, dict) and 'plays' in play_by_play:
                         print(f"🔍 Number of plays: {len(play_by_play.get('plays', []))}")
                     
-                    # Ensure game_data has play_by_play in the structure _calculate_real_period_stats expects
+                    # CRITICAL: Ensure game_data has play_by_play in the structure _calculate_real_period_stats expects
                     # The function expects game_data.get('play_by_play') to work
                     if 'play_by_play' not in game_data:
                         # Make sure play_by_play is in game_data for the function
                         game_data['play_by_play'] = play_by_play
+                        print(f"✅ Added play_by_play to game_data for period stats calculation")
                     
+                    # CRITICAL: Always calculate period stats from play-by-play data
+                    # This is the source of truth for live metrics
+                    print(f"✅ Calculating period stats from play-by-play data...")
                     away_period_stats = self.report_generator._calculate_real_period_stats(game_data, away_team_id, 'away')
                     home_period_stats = self.report_generator._calculate_real_period_stats(game_data, home_team_id, 'home')
                     
@@ -1011,13 +1028,19 @@ class LiveInGamePredictor:
                     live_metrics['period_breakdown'] = period_breakdown
                     
                 except Exception as e:
-                    print(f"⚠️  Error calculating advanced metrics: {e}")
+                    print(f"⚠️  Error calculating advanced metrics from play-by-play: {e}")
                     import traceback
                     traceback.print_exc()
                     # Still set period stats to empty dicts so structure exists
                     live_metrics['away_period_stats'] = {'shots': [0, 0, 0], 'corsi_pct': [0, 0, 0], 'hits': [0, 0, 0], 'fo_pct': [None, None, None], 'pim': [0, 0, 0], 'bs': [0, 0, 0], 'gv': [0, 0, 0], 'tk': [0, 0, 0]}
                     live_metrics['home_period_stats'] = {'shots': [0, 0, 0], 'corsi_pct': [0, 0, 0], 'hits': [0, 0, 0], 'fo_pct': [None, None, None], 'pim': [0, 0, 0], 'bs': [0, 0, 0], 'gv': [0, 0, 0], 'tk': [0, 0, 0]}
                     live_metrics['away_period_goals'] = [0, 0, 0]
+            else:
+                print(f"⚠️  No play-by-play data available - live metrics will be limited to boxscore data only")
+                # Initialize empty period stats if play-by-play is not available
+                live_metrics['away_period_stats'] = {'shots': [0, 0, 0], 'corsi_pct': [50.0, 50.0, 50.0], 'hits': [0, 0, 0], 'fo_pct': [None, None, None], 'pim': [0, 0, 0], 'bs': [0, 0, 0], 'gv': [0, 0, 0], 'tk': [0, 0, 0]}
+                live_metrics['home_period_stats'] = {'shots': [0, 0, 0], 'corsi_pct': [50.0, 50.0, 50.0], 'hits': [0, 0, 0], 'fo_pct': [None, None, None], 'pim': [0, 0, 0], 'bs': [0, 0, 0], 'gv': [0, 0, 0], 'tk': [0, 0, 0]}
+                live_metrics['away_period_goals'] = [0, 0, 0]
                     live_metrics['home_period_goals'] = [0, 0, 0]
                     live_metrics['away_xg_by_period'] = [0, 0, 0]
                     live_metrics['home_xg_by_period'] = [0, 0, 0]
