@@ -610,10 +610,79 @@ class LiveInGamePredictor:
             # Extract Scoring Summary
             scoring_summary = []
             try:
-                # Get roster from play_by_play (rosterSpots) like PDF generator
-                play_by_play = game_data.get('play_by_play', {})
+                # BUILD player_names dictionary - PRIMARY SOURCE: NHL API Roster Endpoint
+                # This is the most reliable method (same approach as user suggested)
                 player_names = {}
                 
+                # PRIMARY SOURCE: NHL API Roster Endpoint (most reliable)
+                if away_abbrev and home_abbrev:
+                    print(f"📋 Fetching rosters from NHL API for {away_abbrev} and {home_abbrev}...", flush=True)
+                    for team_abbrev in [away_abbrev, home_abbrev]:
+                        try:
+                            roster_data = self.api.get_team_roster_by_abbrev(team_abbrev, season='20252026')
+                            if roster_data:
+                                # Roster API returns: {'forwards': [...], 'defensemen': [...], 'goalies': [...]}
+                                for position_group in ['forwards', 'defensemen', 'goalies']:
+                                    players = roster_data.get(position_group, [])
+                                    for player in players:
+                                        player_id = player.get('id')
+                                        if not player_id:
+                                            continue
+                                        
+                                        # Get name from roster API structure
+                                        first_name_obj = player.get('firstName', {})
+                                        first_name = first_name_obj.get('default', '') if isinstance(first_name_obj, dict) else (first_name_obj or '')
+                                        last_name_obj = player.get('lastName', {})
+                                        last_name = last_name_obj.get('default', '') if isinstance(last_name_obj, dict) else (last_name_obj or '')
+                                        full_name = f"{first_name} {last_name}".strip()
+                                        
+                                        # CRITICAL: Only store if full_name is actually a name (not empty, not an ID)
+                                        if full_name and not full_name.isdigit() and not isinstance(full_name, int):
+                                            player_names[player_id] = full_name
+                                            player_names[str(player_id)] = full_name
+                                        
+                                print(f"✅ Loaded {len([p for p in roster_data.get('forwards', []) + roster_data.get('defensemen', []) + roster_data.get('goalies', [])])} players from {team_abbrev} roster", flush=True)
+                        except Exception as e:
+                            print(f"⚠️ Error fetching roster for {team_abbrev}: {e}", flush=True)
+                
+                # FALLBACK 1: boxscore.playerByGameStats (same method as top performers endpoint)
+                if len(player_names) == 0:
+                    print(f"⚠️ No player names from roster API, trying boxscore.playerByGameStats...", flush=True)
+                    raw_boxscore_for_names = game_data.get('boxscore', {})
+                    if raw_boxscore_for_names:
+                        player_by_game_stats = raw_boxscore_for_names.get('playerByGameStats', {})
+                        if player_by_game_stats:
+                            for team_key in ['awayTeam', 'homeTeam']:
+                                team_players = player_by_game_stats.get(team_key, {})
+                                for position_group in ['forwards', 'defense', 'goalies']:
+                                    players = team_players.get(position_group, [])
+                                    for player in players:
+                                        # Try multiple possible ID fields (same as top performers)
+                                        player_id = player.get('playerId') or player.get('id') or player.get('playerID')
+                                        if not player_id:
+                                            continue
+                                        
+                                        # Get name - EXACT SAME METHOD AS TOP PERFORMERS (lines 1128-1139 in api_server.py)
+                                        name = ''
+                                        name_field = player.get('name', '')
+                                        if isinstance(name_field, dict):
+                                            name = name_field.get('default', '')
+                                        elif isinstance(name_field, str):
+                                            name = name_field
+                                        
+                                        if not name:
+                                            firstName = player.get('firstName', {}).get('default', '') if isinstance(player.get('firstName'), dict) else player.get('firstName', '')
+                                            lastName = player.get('lastName', {}).get('default', '') if isinstance(player.get('lastName'), dict) else player.get('lastName', '')
+                                            name = f"{firstName} {lastName}".strip()
+                                        
+                                        if name:
+                                            player_names[player_id] = name
+                                            player_names[str(player_id)] = name
+                
+                # FALLBACK 2: Get roster from play_by_play (rosterSpots) if both above failed
+                if len(player_names) == 0:
+                    print(f"⚠️ No player names from boxscore, trying rosterSpots...", flush=True)
+                    play_by_play = game_data.get('play_by_play', {})
                 if 'rosterSpots' in play_by_play:
                     for player in play_by_play['rosterSpots']:
                         player_id = player.get('playerId')
@@ -624,14 +693,18 @@ class LiveInGamePredictor:
                             last_name_obj = player.get('lastName', {})
                             last_name = last_name_obj.get('default', '') if isinstance(last_name_obj, dict) else (last_name_obj or '')
                             full_name = f"{first_name} {last_name}".strip()
-                            if full_name:
+                                # CRITICAL: Only store if full_name is actually a name (not empty, not an ID)
+                                if full_name and not full_name.isdigit() and not isinstance(full_name, int):
                                 player_names[player_id] = full_name
                                 # Also store with string key in case IDs are strings
                                 player_names[str(player_id)] = full_name
+                                else:
+                                    print(f"⚠️ Skipping invalid player name for ID {player_id}: '{full_name}'", flush=True)
                 
-                print(f"📋 Built player_names map with {len(player_names)} entries")
+                print(f"📋 Built player_names map with {len(player_names)} entries (primary: NHL API roster)", flush=True)
                 if len(player_names) == 0:
-                    print(f"⚠️ WARNING: No player names found in rosterSpots! Available keys: {list(play_by_play.keys())}")
+                    play_by_play = game_data.get('play_by_play', {})
+                    print(f"⚠️ WARNING: No player names found! Available keys in play_by_play: {list(play_by_play.keys()) if play_by_play else 'None'}", flush=True)
                 
                 plays = play_by_play.get('plays', []) or []
                 for play in plays:
@@ -687,16 +760,36 @@ class LiveInGamePredictor:
             # Extract Shot Data for Charts
             shots_data = []
             try:
-                # Use the same play_by_play reference that was used to build player_names
-                plays = play_by_play.get('plays', []) or []
-                print(f"📊 Processing {len(plays)} plays for shots_data, player_names has {len(player_names)} entries", flush=True)
-                if len(player_names) == 0:
-                    print(f"⚠️⚠️⚠️ CRITICAL: player_names dictionary is EMPTY! This will cause shooter to be IDs!", flush=True)
-                    print(f"   play_by_play keys: {list(play_by_play.keys())}", flush=True)
-                    if 'rosterSpots' in play_by_play:
-                        print(f"   rosterSpots exists with {len(play_by_play['rosterSpots'])} entries", flush=True)
+                # Get play_by_play data - ensure we have the right reference
+                play_by_play_for_shots = game_data.get('play_by_play', {}) or game_data.get('playByPlay', {})
+                plays = play_by_play_for_shots.get('plays', []) or []
+                
+                # REBUILD player_names if it's empty or if we have a different play_by_play reference
+                if len(player_names) == 0 or 'rosterSpots' not in play_by_play_for_shots:
+                    print(f"⚠️ Rebuilding player_names from play_by_play_for_shots...", flush=True)
+                    player_names = {}
+                    if 'rosterSpots' in play_by_play_for_shots:
+                        for player in play_by_play_for_shots['rosterSpots']:
+                            player_id = player.get('playerId')
+                            if player_id:
+                                first_name_obj = player.get('firstName', {})
+                                first_name = first_name_obj.get('default', '') if isinstance(first_name_obj, dict) else (first_name_obj or '')
+                                last_name_obj = player.get('lastName', {})
+                                last_name = last_name_obj.get('default', '') if isinstance(last_name_obj, dict) else (last_name_obj or '')
+                                full_name = f"{first_name} {last_name}".strip()
+                                if full_name:
+                                    player_names[player_id] = full_name
+                                    player_names[str(player_id)] = full_name
+                        print(f"✅ Rebuilt player_names with {len(player_names)} entries", flush=True)
                     else:
-                        print(f"   ⚠️ rosterSpots NOT FOUND in play_by_play!", flush=True)
+                        print(f"⚠️ rosterSpots NOT FOUND in play_by_play_for_shots! Keys: {list(play_by_play_for_shots.keys())}", flush=True)
+                
+                print(f"📊 Processing {len(plays)} plays for shots_data, player_names has {len(player_names)} entries", flush=True)
+                if len(player_names) > 0:
+                    sample_ids = list(player_names.keys())[:3]
+                    print(f"📊 Sample player_names entries: {[(k, player_names[k]) for k in sample_ids]}", flush=True)
+                    else:
+                    print(f"⚠️⚠️⚠️ WARNING: player_names is EMPTY! Cannot look up player names!", flush=True)
                 
                 for play in plays:
                     event_type = play.get('typeDescKey')
@@ -718,16 +811,44 @@ class LiveInGamePredictor:
                             
                             # Get shooter name - use same method as team heatmap endpoint
                             shooter_id = details.get('shootingPlayerId') or details.get('scoringPlayerId')
-                            shooter_name = 'Unknown'
+                            shooter_name = None  # Start with None, not 'Unknown'
+                            
+                            # CRITICAL: Never allow shooter_name to be set to shooter_id
+                            # If shooter_id is used as shooter_name anywhere, that's a bug
                             
                             if shooter_id:
+                                # CRITICAL: Never use shooter_id as shooter_name - always look it up
+                                # Ensure shooter_id is not accidentally used as name
+                                if isinstance(shooter_id, str) and shooter_id.isdigit():
+                                    shooter_id = int(shooter_id)
+                                
                                 # Try both int and string key in player_names dict
-                                shooter_name = player_names.get(shooter_id) or player_names.get(str(shooter_id))
+                                potential_name = player_names.get(shooter_id) or player_names.get(str(shooter_id))
+                                
+                                # CRITICAL VALIDATION: Ensure what we got from player_names is actually a name, not an ID
+                                if potential_name:
+                                    # Check if it's an integer (definitely wrong)
+                                    if isinstance(potential_name, int):
+                                        print(f"⚠️ WARNING: player_names dict contains INT ID for {shooter_id}: {potential_name}", flush=True)
+                                        shooter_name = None
+                                    # Check if it's a numeric string (definitely wrong)
+                                    elif isinstance(potential_name, str) and potential_name.isdigit():
+                                        print(f"⚠️ WARNING: player_names dict contains STRING ID for {shooter_id}: '{potential_name}'", flush=True)
+                                        shooter_name = None
+                                    # Check if it equals the shooter_id (definitely wrong)
+                                    elif potential_name == shooter_id or str(potential_name) == str(shooter_id):
+                                        print(f"⚠️ WARNING: player_names dict contains ID value for {shooter_id}: '{potential_name}'", flush=True)
+                                        shooter_name = None
+                                    else:
+                                        # It's a valid name
+                                        shooter_name = potential_name
+                                else:
+                                    shooter_name = None
                                 
                                 # If not found in player_names, try looking up in rosterSpots directly
                                 if not shooter_name or shooter_name == 'Unknown' or shooter_name == '':
-                                    if 'rosterSpots' in play_by_play:
-                                        for spot in play_by_play['rosterSpots']:
+                                    if 'rosterSpots' in play_by_play_for_shots:
+                                        for spot in play_by_play_for_shots['rosterSpots']:
                                             spot_id = spot.get('playerId')
                                             if spot_id == shooter_id or str(spot_id) == str(shooter_id):
                                                 first_name_obj = spot.get('firstName', {})
@@ -741,6 +862,80 @@ class LiveInGamePredictor:
                                                     player_names[str(shooter_id)] = shooter_name
                                                     print(f"✅ Found player name: {shooter_name} for ID {shooter_id}")
                                                     break
+                                
+                                # Fallback: Try to get from NHL API roster endpoint
+                                if (not shooter_name or shooter_name == 'Unknown' or shooter_name == '') and shooter_id:
+                                    try:
+                                        # Get roster for both teams to find the player
+                                        away_roster = self.api.get_team_roster_by_abbrev(away_team['abbrev'])
+                                        home_roster = self.api.get_team_roster_by_abbrev(home_team['abbrev'])
+                                        
+                                        for roster in [away_roster, home_roster]:
+                                            if not roster:
+                                                continue
+                                            # Roster structure: {'forwards': [...], 'defense': [...], 'goalies': [...]}
+                                            for position_group in ['forwards', 'defense', 'goalies']:
+                                                players = roster.get(position_group, [])
+                                                for player in players:
+                                                    p_id = player.get('playerId') or player.get('id')
+                                                    if p_id == shooter_id or str(p_id) == str(shooter_id):
+                                                        # Get name from roster
+                                                        first_name = player.get('firstName', {}).get('default', '') if isinstance(player.get('firstName'), dict) else player.get('firstName', '')
+                                                        last_name = player.get('lastName', {}).get('default', '') if isinstance(player.get('lastName'), dict) else player.get('lastName', '')
+                                                        shooter_name = f"{first_name} {last_name}".strip()
+                                                        if shooter_name:
+                                                            player_names[shooter_id] = shooter_name
+                                                            player_names[str(shooter_id)] = shooter_name
+                                                            print(f"✅ Found player name from roster API: {shooter_name} for ID {shooter_id}", flush=True)
+                                                            break
+                                                    if shooter_name and shooter_name != 'Unknown':
+                                                        break
+                                                if shooter_name and shooter_name != 'Unknown':
+                                                    break
+                                            if shooter_name and shooter_name != 'Unknown':
+                                                break
+                                    except Exception as e:
+                                        print(f"⚠️ Error looking up player in roster API: {e}", flush=True)
+                                
+                                # Fallback: Try to get from boxscore playerByGameStats (SAME METHOD AS TOP PERFORMERS)
+                                if (not shooter_name or shooter_name == 'Unknown' or shooter_name == '') and raw_boxscore_direct:
+                                    try:
+                                        player_stats = raw_boxscore_direct.get('playerByGameStats', {})
+                                        for team_key in ['awayTeam', 'homeTeam']:
+                                            team_players = player_stats.get(team_key, {})
+                                            for position_group in ['forwards', 'defense', 'goalies']:
+                                                players = team_players.get(position_group, [])
+                                                for player in players:
+                                                    # Try multiple possible ID fields (same as top performers)
+                                                    p_id = player.get('playerId') or player.get('id') or player.get('playerID')
+                                                    if p_id == shooter_id or str(p_id) == str(shooter_id):
+                                                        # Get name - EXACT SAME METHOD AS TOP PERFORMERS (lines 1128-1139 in api_server.py)
+                                                        name = ''
+                                                        name_field = player.get('name', '')
+                                                        if isinstance(name_field, dict):
+                                                            name = name_field.get('default', '')
+                                                        elif isinstance(name_field, str):
+                                                            name = name_field
+                                                        
+                                                        if not name:
+                                                            firstName = player.get('firstName', {}).get('default', '') if isinstance(player.get('firstName'), dict) else player.get('firstName', '')
+                                                            lastName = player.get('lastName', {}).get('default', '') if isinstance(player.get('lastName'), dict) else player.get('lastName', '')
+                                                            name = f"{firstName} {lastName}".strip()
+                                                        
+                                                        if name:
+                                                            shooter_name = name
+                                                            player_names[shooter_id] = shooter_name
+                                                            player_names[str(shooter_id)] = shooter_name
+                                                            print(f"✅ Found player name from boxscore (top performers method): {shooter_name} for ID {shooter_id}", flush=True)
+                                                            break
+                                                    if shooter_name and shooter_name != 'Unknown':
+                                                        break
+                                                if shooter_name and shooter_name != 'Unknown':
+                                                    break
+                                            if shooter_name and shooter_name != 'Unknown':
+                                                break
+                                    except Exception as e:
+                                        print(f"⚠️ Error looking up player in boxscore: {e}", flush=True)
                                 
                                 # Last resort fallback
                                 if not shooter_name or shooter_name == 'Unknown' or shooter_name == '':
@@ -765,17 +960,158 @@ class LiveInGamePredictor:
                                 xg_value = max(0.01, 0.15 - (distance_from_goal * 0.001))
                                 print(f"❌ xG calculation error for shot at ({x}, {y}) with type {actual_shot_type}: {e}, using fallback: {xg_value}")
                             
-                            # Ensure shooter_name is actually a name, not an ID
-                            if shooter_name and (str(shooter_name).isdigit() or (isinstance(shooter_name, int))):
-                                print(f"❌ ERROR: shooter_name is still an ID ({shooter_name}) for player_id {shooter_id}, forcing fallback", flush=True)
+                            # FINAL VALIDATION: Ensure shooter_name is actually a name, not an ID
+                            if not shooter_name or shooter_name == 'Unknown' or shooter_name == '':
+                                shooter_name = f"Player #{shooter_id}"
+                                print(f"⚠️ Using fallback name format for player_id {shooter_id}: {shooter_name}", flush=True)
+                            elif isinstance(shooter_name, int) or (isinstance(shooter_name, str) and shooter_name.isdigit()):
+                                print(f"❌ ERROR: shooter_name is an ID ({shooter_name}) for player_id {shooter_id}, forcing fallback", flush=True)
                                 shooter_name = f"Player #{shooter_id}"
                             
-                            # FINAL CHECK: Make absolutely sure shooter is never an ID
+                            # ABSOLUTE FINAL CHECK: Make absolutely sure shooter is never an ID
                             if isinstance(shooter_name, int) or (isinstance(shooter_name, str) and shooter_name.isdigit()):
                                 print(f"❌❌❌ CRITICAL ERROR: shooter_name is STILL an ID after all checks: {shooter_name} (type: {type(shooter_name).__name__})", flush=True)
                                 shooter_name = f"Player #{shooter_id}"
                             
-                            shots_data.append({
+                            # Log the final shooter_name for debugging
+                            if shooter_id:
+                                print(f"🔍 Final shooter_name for ID {shooter_id}: '{shooter_name}' (type: {type(shooter_name).__name__})", flush=True)
+                            
+                            # ABSOLUTE FINAL VALIDATION before adding to shots_data
+                            final_shooter_name = shooter_name
+                            
+                            # Check if final_shooter_name is an ID (int or numeric string)
+                            if isinstance(final_shooter_name, int) or (isinstance(final_shooter_name, str) and final_shooter_name.isdigit()):
+                                final_shooter_name = f"Player #{shooter_id}"
+                                print(f"❌❌❌ LAST CHANCE FIX: shooter_name was ID, changed to: {final_shooter_name}", flush=True)
+                            
+                            # Check if final_shooter_name equals shooter_id (should never happen)
+                            if final_shooter_name == shooter_id or str(final_shooter_name) == str(shooter_id):
+                                final_shooter_name = f"Player #{shooter_id}"
+                                print(f"❌❌❌ LAST CHANCE FIX: shooter_name equals shooter_id ({shooter_id}), changed to: {final_shooter_name}", flush=True)
+                            
+                            # Final sanity check - ensure it's not empty or None
+                            if not final_shooter_name or final_shooter_name == 'Unknown' or final_shooter_name == '':
+                                final_shooter_name = f"Player #{shooter_id}"
+                                print(f"❌❌❌ LAST CHANCE FIX: shooter_name was empty/None, changed to: {final_shooter_name}", flush=True)
+                            
+                            # ABSOLUTE FINAL CHECK: Ensure final_shooter_name is NEVER an ID before appending
+                            # This is the last line of defense - if it's still an ID here, something is very wrong
+                            if isinstance(final_shooter_name, int):
+                                print(f"❌❌❌ CRITICAL: final_shooter_name is INT ID {final_shooter_name} right before append! Forcing to Player # format", flush=True)
+                                final_shooter_name = f"Player #{shooter_id}"
+                            elif isinstance(final_shooter_name, str) and final_shooter_name.isdigit():
+                                print(f"❌❌❌ CRITICAL: final_shooter_name is STRING ID '{final_shooter_name}' right before append! Forcing to Player # format", flush=True)
+                                final_shooter_name = f"Player #{shooter_id}"
+                            elif final_shooter_name == shooter_id or str(final_shooter_name) == str(shooter_id):
+                                print(f"❌❌❌ CRITICAL: final_shooter_name equals shooter_id {shooter_id} right before append! Forcing to Player # format", flush=True)
+                                final_shooter_name = f"Player #{shooter_id}"
+                            
+                            # ABSOLUTE FINAL CHECK RIGHT BEFORE APPEND - if it's still an ID, force it
+                            if isinstance(final_shooter_name, int):
+                                print(f"❌❌❌ FINAL CHECK FAILED: final_shooter_name is INT {final_shooter_name} right before append!", flush=True)
+                                final_shooter_name = f"Player #{shooter_id}"
+                            elif isinstance(final_shooter_name, str) and final_shooter_name.isdigit():
+                                print(f"❌❌❌ FINAL CHECK FAILED: final_shooter_name is STRING ID '{final_shooter_name}' right before append!", flush=True)
+                                final_shooter_name = f"Player #{shooter_id}"
+                            elif final_shooter_name == shooter_id or str(final_shooter_name) == str(shooter_id):
+                                print(f"❌❌❌ FINAL CHECK FAILED: final_shooter_name equals shooter_id {shooter_id} right before append!", flush=True)
+                                final_shooter_name = f"Player #{shooter_id}"
+                            
+                            # LAST RESORT: If we still don't have a valid name, try roster API lookup on-the-fly
+                            if not final_shooter_name or final_shooter_name == 'Unknown' or final_shooter_name == '' or isinstance(final_shooter_name, int) or (isinstance(final_shooter_name, str) and final_shooter_name.isdigit()):
+                                try:
+                                    # Try to get player name from roster API on-the-fly
+                                    player_info = self.api.get_player_info(shooter_id)
+                                    if player_info:
+                                        first_name = player_info.get('firstName', {}).get('default', '') if isinstance(player_info.get('firstName'), dict) else player_info.get('firstName', '')
+                                        last_name = player_info.get('lastName', {}).get('default', '') if isinstance(player_info.get('lastName'), dict) else player_info.get('lastName', '')
+                                        on_the_fly_name = f"{first_name} {last_name}".strip()
+                                        if on_the_fly_name:
+                                            final_shooter_name = on_the_fly_name
+                                            print(f"✅ Got player name from API on-the-fly: {final_shooter_name} for ID {shooter_id}", flush=True)
+                                except Exception as e:
+                                    print(f"⚠️ On-the-fly API lookup failed: {e}", flush=True)
+                                
+                                # If still no name, use fallback
+                                if not final_shooter_name or isinstance(final_shooter_name, int) or (isinstance(final_shooter_name, str) and final_shooter_name.isdigit()):
+                                    final_shooter_name = f"Player #{shooter_id}"
+                            
+                            # ONE MORE ABSOLUTE CHECK - if it's STILL an integer, force it (this should never happen)
+                            if isinstance(final_shooter_name, int):
+                                final_shooter_name = f"Player #{shooter_id}"
+                            
+                            # Get shooter name DIRECTLY from boxscore.playerByGameStats (SAME METHOD AS TOP PERFORMERS)
+                            # This is the exact same approach that works in get_team_top_performers
+                            shooter_name_for_dict = None
+                            if shooter_id:
+                                # Get boxscore from game_data (same structure as top performers uses)
+                                boxscore_for_lookup = game_data.get('boxscore', {})
+                                # If boxscore not at top level, try game_center.boxscore (like top performers does)
+                                if not boxscore_for_lookup:
+                                    game_center = game_data.get('game_center', {})
+                                    boxscore_for_lookup = game_center.get('boxscore', {}) if game_center else {}
+                                
+                                if not boxscore_for_lookup:
+                                    print(f"⚠️ No boxscore found for shooter_id {shooter_id}", flush=True)
+                                else:
+                                    player_by_game_stats = boxscore_for_lookup.get('playerByGameStats', {})
+                                    
+                                    if not player_by_game_stats:
+                                        print(f"⚠️ No playerByGameStats found for shooter_id {shooter_id}", flush=True)
+                                    else:
+                                        # Search through both teams (same as top performers)
+                                        for team_key in ['awayTeam', 'homeTeam']:
+                                            team_players = player_by_game_stats.get(team_key, {})
+                                            for position_group in ['forwards', 'defense', 'goalies']:
+                                                players = team_players.get(position_group, [])
+                                                for player in players:
+                                                    # Try multiple possible ID fields (same as top performers)
+                                                    player_id = player.get('playerId') or player.get('id') or player.get('playerID')
+                                                    if player_id == shooter_id or str(player_id) == str(shooter_id):
+                                                        # Get name - EXACT SAME METHOD AS TOP PERFORMERS (lines 1128-1139 in api_server.py)
+                                                        name = ''
+                                                        name_field = player.get('name', '')
+                                                        if isinstance(name_field, dict):
+                                                            name = name_field.get('default', '')
+                                                        elif isinstance(name_field, str):
+                                                            name = name_field
+                                                        
+                                                        if not name:
+                                                            firstName = player.get('firstName', {}).get('default', '') if isinstance(player.get('firstName'), dict) else player.get('firstName', '')
+                                                            lastName = player.get('lastName', {}).get('default', '') if isinstance(player.get('lastName'), dict) else player.get('lastName', '')
+                                                            name = f"{firstName} {lastName}".strip()
+                                                        
+                                                        if name:
+                                                            shooter_name_for_dict = name
+                                                            print(f"✅ Found name for {shooter_id}: '{name}'", flush=True)
+                                                            break
+                                                if shooter_name_for_dict:
+                                                    break
+                                            if shooter_name_for_dict:
+                                                break
+                            
+                            # If still no name, use fallback
+                            if not shooter_name_for_dict:
+                                shooter_name_for_dict = f"Player #{shooter_id}"
+                                print(f"⚠️ Using fallback for {shooter_id}: '{shooter_name_for_dict}'", flush=True)
+                            
+                            # CRITICAL: Ensure it's always a string (never an integer)
+                            shooter_name_for_dict = str(shooter_name_for_dict)
+                            
+                            # Final check - if it's still just digits, force fallback
+                            if shooter_name_for_dict.isdigit() or shooter_name_for_dict == str(shooter_id):
+                                shooter_name_for_dict = f"Player #{shooter_id}"
+                                print(f"❌ Forced fallback for {shooter_id} (was: '{shooter_name_for_dict}')", flush=True)
+                            
+                            # ABSOLUTE FINAL CHECK: Make absolutely sure shooter_name_for_dict is a string, never an integer
+                            if isinstance(shooter_name_for_dict, int):
+                                shooter_name_for_dict = f"Player #{shooter_id}"
+                            shooter_name_for_dict = str(shooter_name_for_dict)
+                            if shooter_name_for_dict.isdigit():
+                                shooter_name_for_dict = f"Player #{shooter_id}"
+                            
+                            shot_dict = {
                                 'x': x,
                                 'y': y,
                                 'type': event_shot_type,
@@ -783,26 +1119,135 @@ class LiveInGamePredictor:
                                 'period': play.get('periodDescriptor', {}).get('number', 0),
                                 'time': play.get('timeInPeriod', '00:00'),
                                 'player_id': shooter_id,
-                                'shooter': shooter_name,  # This MUST be the player name, not ID
-                                'shooterName': shooter_name,  # Also include as shooterName for compatibility
+                                'shooter': shooter_name_for_dict,  # Always a string name, never an integer
+                                'shooterName': shooter_name_for_dict,  # Also include as shooterName for compatibility
                                 'shotType': actual_shot_type,
                                 'xg': round(xg_value, 3)
-                            })
+                            }
+                            
+                            # ONE MORE CHECK: If shooter is somehow still an integer in the dict, force it
+                            if isinstance(shot_dict.get('shooter'), int):
+                                shot_dict['shooter'] = f"Player #{shooter_id}"
+                                shot_dict['shooterName'] = f"Player #{shooter_id}"
+                                print(f"❌❌❌ EMERGENCY: shooter was INT in dict! Fixed to: {shot_dict['shooter']}", flush=True)
+                            
+                            # ABSOLUTE FINAL CHECK: Convert shooter to string if it's still an integer (should never happen)
+                            if isinstance(shot_dict['shooter'], int):
+                                shot_dict['shooter'] = str(shot_dict['shooter'])
+                                if shot_dict['shooter'].isdigit():
+                                    shot_dict['shooter'] = f"Player #{shot_dict['shooter']}"
+                                shot_dict['shooterName'] = shot_dict['shooter']
+                                print(f"❌❌❌ CRITICAL FIX: Converted shooter from INT to string: {shot_dict['shooter']}", flush=True)
+                            
+                            shots_data.append(shot_dict)
                             
                             # Debug: log if we're still getting IDs instead of names
-                            if shooter_name and (str(shooter_name).isdigit() or shooter_name.startswith('Player #')):
-                                print(f"⚠️ WARNING: shooter_name is still ID-like: {shooter_name} for player_id {shooter_id}", flush=True)
+                            if final_shooter_name and (str(final_shooter_name).isdigit() or (isinstance(final_shooter_name, str) and final_shooter_name.replace('Player #', '').isdigit())):
+                                print(f"⚠️ WARNING: Final shooter_name is still ID-like: {final_shooter_name} for player_id {shooter_id}", flush=True)
             except Exception as e:
                 print(f"❌ Error extracting shot data: {e}", flush=True)
                 import traceback
                 traceback.print_exc()
             
             print(f"✅ Created {len(shots_data)} shots in shots_data", flush=True)
+            
+            # POST-PROCESSING: Convert any integer shooter IDs to names using DIRECT boxscore lookup (same as top performers)
+            # This is the absolute final safety net - convert integers to names
+            boxscore_for_post = game_data.get('boxscore', {})
+            player_by_game_stats_post = boxscore_for_post.get('playerByGameStats', {})
+            
+            for shot in shots_data:
+                if 'shooter' in shot:
+                    shooter_val = shot['shooter']
+                    player_id = shot.get('player_id')
+                    
+                    # If it's an integer, look it up directly from boxscore (same method as top performers)
+                    if isinstance(shooter_val, int):
+                        shooter_id_to_lookup = shooter_val
+                        name_found = None
+                        
+                        # Search through both teams (same as top performers)
+                        for team_key in ['awayTeam', 'homeTeam']:
+                            team_players = player_by_game_stats_post.get(team_key, {})
+                            for position_group in ['forwards', 'defense', 'goalies']:
+                                players = team_players.get(position_group, [])
+                                for player in players:
+                                    p_id = player.get('playerId') or player.get('id') or player.get('playerID')
+                                    if p_id == shooter_id_to_lookup or str(p_id) == str(shooter_id_to_lookup):
+                                        # Get name - EXACT SAME METHOD AS TOP PERFORMERS
+                                        name = ''
+                                        name_field = player.get('name', '')
+                                        if isinstance(name_field, dict):
+                                            name = name_field.get('default', '')
+                                        elif isinstance(name_field, str):
+                                            name = name_field
+                                        
+                                        if not name:
+                                            firstName = player.get('firstName', {}).get('default', '') if isinstance(player.get('firstName'), dict) else player.get('firstName', '')
+                                            lastName = player.get('lastName', {}).get('default', '') if isinstance(player.get('lastName'), dict) else player.get('lastName', '')
+                                            name = f"{firstName} {lastName}".strip()
+                                        
+                                        if name:
+                                            name_found = name
+                                            break
+                                if name_found:
+                                    break
+                            if name_found:
+                                break
+                        
+                        if name_found:
+                            shot['shooter'] = name_found
+                            shot['shooterName'] = name_found
+                            print(f"✅ POST-PROCESS: Converted INT {shooter_val} to name '{name_found}'", flush=True)
+                        else:
+                            shot['shooter'] = f"Player #{shooter_val}"
+                            shot['shooterName'] = shot['shooter']
+                            print(f"⚠️ POST-PROCESS: INT {shooter_val} not found in boxscore, using fallback", flush=True)
+                    # If it's a string that's just digits, convert it
+                    elif isinstance(shooter_val, str) and shooter_val.isdigit():
+                        shooter_id_int = int(shooter_val)
+                        name_found = None
+                        
+                        # Same lookup as above
+                        for team_key in ['awayTeam', 'homeTeam']:
+                            team_players = player_by_game_stats_post.get(team_key, {})
+                            for position_group in ['forwards', 'defense', 'goalies']:
+                                players = team_players.get(position_group, [])
+                                for player in players:
+                                    p_id = player.get('playerId') or player.get('id') or player.get('playerID')
+                                    if p_id == shooter_id_int or str(p_id) == str(shooter_id_int):
+                                        name = ''
+                                        name_field = player.get('name', '')
+                                        if isinstance(name_field, dict):
+                                            name = name_field.get('default', '')
+                                        elif isinstance(name_field, str):
+                                            name = name_field
+                                        
+                                        if not name:
+                                            firstName = player.get('firstName', {}).get('default', '') if isinstance(player.get('firstName'), dict) else player.get('firstName', '')
+                                            lastName = player.get('lastName', {}).get('default', '') if isinstance(player.get('lastName'), dict) else player.get('lastName', '')
+                                            name = f"{firstName} {lastName}".strip()
+                                        
+                                        if name:
+                                            name_found = name
+                                            break
+                                if name_found:
+                                    break
+                            if name_found:
+                                break
+                        
+                        if name_found:
+                            shot['shooter'] = name_found
+                            shot['shooterName'] = name_found
+                            print(f"✅ POST-PROCESS: Converted STRING ID '{shooter_val}' to name '{name_found}'", flush=True)
+                        else:
+                            shot['shooter'] = f"Player #{shooter_val}"
+                            shot['shooterName'] = shot['shooter']
+                            print(f"⚠️ POST-PROCESS: STRING ID '{shooter_val}' not found in boxscore, using fallback", flush=True)
+            
             if shots_data:
                 sample = shots_data[0]
-                print(f"   Sample shot - shooter: {sample.get('shooter')} (type: {type(sample.get('shooter')).__name__})", flush=True)
-                if isinstance(sample.get('shooter'), int):
-                    print(f"   ❌❌❌ CRITICAL: Sample shot has shooter as INT ID!", flush=True)
+                print(f"📊 Sample shot after post-processing: shooter='{sample.get('shooter')}' (type: {type(sample.get('shooter')).__name__})", flush=True)
             
             live_metrics['shots_data'] = shots_data
             
@@ -1236,7 +1681,7 @@ class LiveInGamePredictor:
                 # Initialize empty period stats if play-by-play is not available
                 live_metrics['away_period_stats'] = {'shots': [0, 0, 0], 'corsi_pct': [50.0, 50.0, 50.0], 'hits': [0, 0, 0], 'fo_pct': [None, None, None], 'pim': [0, 0, 0], 'bs': [0, 0, 0], 'gv': [0, 0, 0], 'tk': [0, 0, 0]}
                 live_metrics['home_period_stats'] = {'shots': [0, 0, 0], 'corsi_pct': [50.0, 50.0, 50.0], 'hits': [0, 0, 0], 'fo_pct': [None, None, None], 'pim': [0, 0, 0], 'bs': [0, 0, 0], 'gv': [0, 0, 0], 'tk': [0, 0, 0]}
-                live_metrics['away_period_goals'] = [0, 0, 0]
+                    live_metrics['away_period_goals'] = [0, 0, 0]
                     live_metrics['home_period_goals'] = [0, 0, 0]
                     live_metrics['away_xg_by_period'] = [0, 0, 0]
                     live_metrics['home_xg_by_period'] = [0, 0, 0]
@@ -1463,6 +1908,14 @@ class LiveInGamePredictor:
                         live_metrics['home_giveaways'] = sum(p.get('giveaways', 0) for p in home_pl_final)
                         live_metrics['home_takeaways'] = sum(p.get('takeaways', 0) for p in home_pl_final)
                     print(f"✅✅✅ ABSOLUTE FINAL in get_live_game_data: Set away_hits={live_metrics['away_hits']}, blocked={live_metrics['away_blocked_shots']}, gv={live_metrics['away_giveaways']}", flush=True)
+            
+            # FINAL FINAL CHECK: Ensure shots_data shooters are strings before returning
+            if 'shots_data' in live_metrics and live_metrics['shots_data']:
+                for shot in live_metrics['shots_data']:
+                    if 'shooter' in shot and isinstance(shot['shooter'], int):
+                        shot['shooter'] = f"Player #{shot.get('player_id', 'Unknown')}"
+                        shot['shooterName'] = shot['shooter']
+                        print(f"❌❌❌ FINAL RETURN FIX: Fixed shooter from INT to '{shot['shooter']}'", flush=True)
             
             return live_metrics
         except Exception as e:

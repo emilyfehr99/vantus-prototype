@@ -128,7 +128,15 @@ def get_team_metrics():
     
     print("Loading team metrics from season_2025_2026_team_stats.json (primary source)...")
     
+    # Helper function to calculate average from list
+    def avg_from_list(lst):
+        """Calculate average from list, handling empty lists"""
+        if not lst or not isinstance(lst, list) or len(lst) == 0:
+            return None
+        return sum(lst) / len(lst)
+    
     # PRIMARY SOURCE: Load from season_2025_2026_team_stats.json (created daily)
+    metrics = {}
     try:
         season_stats = load_json('season_2025_2026_team_stats.json')
         teams_stats = season_stats.get('teams', season_stats) if isinstance(season_stats, dict) else {}
@@ -141,15 +149,6 @@ def get_team_metrics():
             if 'home' in cbj_data:
                 home_ozs = cbj_data['home'].get('ozs', [])
                 print(f"DEBUG: CBJ home ozs is list: {isinstance(home_ozs, list)}, length: {len(home_ozs) if isinstance(home_ozs, list) else 'N/A'}")
-        
-        metrics = {}
-        
-        # Helper function to calculate average from list
-        def avg_from_list(lst):
-            """Calculate average from list, handling empty lists"""
-            if not lst or not isinstance(lst, list) or len(lst) == 0:
-                return None
-            return sum(lst) / len(lst)
         
         # Process each team from season stats (primary source)
         for team_abbr, team_data in teams_stats.items():
@@ -310,99 +309,99 @@ def get_team_metrics():
         skip_moneypuck = request.args.get('skip_moneypuck', '0') == '1'
         
         if not skip_moneypuck:
-            print("Supplementing with MoneyPuck data for additional fields...")
+        print("Supplementing with MoneyPuck data for additional fields...")
+        
+        season = request.args.get('season', '2025')
+        game_type = request.args.get('type', 'regular')
+        situation = request.args.get('situation', 'all')
+        
+        url = f"https://moneypuck.com/moneypuck/playerData/seasonSummary/{season}/{game_type}/teams.csv"
+        
+        try:
+            response = requests.get(url, timeout=15)
             
-            season = request.args.get('season', '2025')
-            game_type = request.args.get('type', 'regular')
-            situation = request.args.get('situation', 'all')
+            if response.status_code != 200:
+                raise Exception(f"MoneyPuck API returned status {response.status_code}")
             
-            url = f"https://moneypuck.com/moneypuck/playerData/seasonSummary/{season}/{game_type}/teams.csv"
+            # Parse MoneyPuck CSV data
+            content = response.content.decode('utf-8')
+            csv_reader = csv.DictReader(io.StringIO(content))
             
-            try:
-                response = requests.get(url, timeout=15)
-                
-                if response.status_code != 200:
-                    raise Exception(f"MoneyPuck API returned status {response.status_code}")
-                
-                # Parse MoneyPuck CSV data
-                content = response.content.decode('utf-8')
-                csv_reader = csv.DictReader(io.StringIO(content))
-                
-                # Helper functions
-                def safe_float(val, default=0.0):
-                    try:
-                        return float(val) if val else default
-                    except:
-                        return default
-                
-                def safe_int(val, default=0):
-                    try:
-                        return int(float(val)) if val else default
-                    except:
-                        return default
-                
-                # Supplement existing metrics with MoneyPuck data (only fill in missing fields)
-                moneypuck_count = 0
-                for row in csv_reader:
-                    if row.get('situation', '').strip() == situation:
-                        team_abbr = row.get('team', '').strip()
-                        if not team_abbr or team_abbr not in metrics:
-                            continue
-                        
-                        # Only supplement fields that are missing or need updating from MoneyPuck
-                        team_metrics = metrics[team_abbr]
-                        
-                        # Supplement xG if missing
-                        if 'xg' not in team_metrics or team_metrics.get('xg') == 0:
-                            team_metrics['xg'] = safe_float(row.get('xGoalsFor'))
-                        
-                        # Supplement HDC if missing
-                        if 'hdc' not in team_metrics or team_metrics.get('hdc') == 0:
-                            team_metrics['hdc'] = safe_int(row.get('highDangerShotsFor'))
-                        
-                        # Supplement HDCA if missing
-                        if 'hdca' not in team_metrics or team_metrics.get('hdca') == 0:
-                            team_metrics['hdca'] = safe_int(row.get('highDangerShotsAgainst'))
-                        
-                        # Supplement shots if missing
-                        if 'shots' not in team_metrics or team_metrics.get('shots') == 0:
-                            team_metrics['shots'] = safe_int(row.get('shotsOnGoalFor'))
-                        
-                        # Supplement corsi_pct if missing
-                        if 'corsi_pct' not in team_metrics or team_metrics.get('corsi_pct') == 0:
-                            team_metrics['corsi_pct'] = safe_float(row.get('corsiPercentage')) * 100
-                        
-                        # Supplement PP/PK/Faceoff if missing
-                        if 'pp_pct' not in team_metrics or team_metrics.get('pp_pct') == 0:
-                            pp_goals = safe_int(row.get('powerPlayGoalsFor'), 0)
-                            pp_attempts = safe_int(row.get('powerPlayAttemptsFor'), 0)
-                            if pp_attempts > 0:
-                                team_metrics['pp_pct'] = (pp_goals / pp_attempts) * 100
-                        
-                        if 'pk_pct' not in team_metrics or team_metrics.get('pk_pct') == 0:
-                            pk_goals_against = safe_int(row.get('powerPlayGoalsAgainst'), 0)
-                            pk_attempts = safe_int(row.get('powerPlayAttemptsAgainst'), 0)
-                            if pk_attempts > 0:
-                                team_metrics['pk_pct'] = ((pk_attempts - pk_goals_against) / pk_attempts) * 100
-                        
-                        if 'faceoff_pct' not in team_metrics or team_metrics.get('faceoff_pct') == 0:
-                            faceoffs_won = safe_int(row.get('faceOffsWonFor'), 0)
-                            faceoffs_total = faceoffs_won + safe_int(row.get('faceOffsWonAgainst'), 0)
-                            if faceoffs_total > 0:
-                                team_metrics['faceoff_pct'] = (faceoffs_won / faceoffs_total) * 100
-                        
-                        moneypuck_count += 1
-                
-                print(f"✅ Supplemented {moneypuck_count} teams with MoneyPuck data")
-                
-                # Debug: Check CBJ metrics after MoneyPuck supplement
-                if 'CBJ' in metrics:
-                    cbj_metrics = metrics['CBJ']
-                    print(f"DEBUG: CBJ metrics after MoneyPuck - ozs: {cbj_metrics.get('ozs')}, nzs: {cbj_metrics.get('nzs')}, gs: {cbj_metrics.get('gs')}, fc: {cbj_metrics.get('fc')}")
+            # Helper functions
+            def safe_float(val, default=0.0):
+                try:
+                    return float(val) if val else default
+                except:
+                    return default
             
-            except Exception as moneypuck_error:
-                print(f"⚠️ Warning: Could not fetch MoneyPuck data (non-critical): {moneypuck_error}")
-                # Continue without MoneyPuck data - season stats are primary source
+            def safe_int(val, default=0):
+                try:
+                    return int(float(val)) if val else default
+                except:
+                    return default
+            
+            # Supplement existing metrics with MoneyPuck data (only fill in missing fields)
+            moneypuck_count = 0
+            for row in csv_reader:
+                if row.get('situation', '').strip() == situation:
+                    team_abbr = row.get('team', '').strip()
+                    if not team_abbr or team_abbr not in metrics:
+                        continue
+                    
+                    # Only supplement fields that are missing or need updating from MoneyPuck
+                    team_metrics = metrics[team_abbr]
+                    
+                    # Supplement xG if missing
+                    if 'xg' not in team_metrics or team_metrics.get('xg') == 0:
+                        team_metrics['xg'] = safe_float(row.get('xGoalsFor'))
+                    
+                    # Supplement HDC if missing
+                    if 'hdc' not in team_metrics or team_metrics.get('hdc') == 0:
+                        team_metrics['hdc'] = safe_int(row.get('highDangerShotsFor'))
+                    
+                    # Supplement HDCA if missing
+                    if 'hdca' not in team_metrics or team_metrics.get('hdca') == 0:
+                        team_metrics['hdca'] = safe_int(row.get('highDangerShotsAgainst'))
+                    
+                    # Supplement shots if missing
+                    if 'shots' not in team_metrics or team_metrics.get('shots') == 0:
+                        team_metrics['shots'] = safe_int(row.get('shotsOnGoalFor'))
+                    
+                    # Supplement corsi_pct if missing
+                    if 'corsi_pct' not in team_metrics or team_metrics.get('corsi_pct') == 0:
+                        team_metrics['corsi_pct'] = safe_float(row.get('corsiPercentage')) * 100
+                    
+                    # Supplement PP/PK/Faceoff if missing
+                    if 'pp_pct' not in team_metrics or team_metrics.get('pp_pct') == 0:
+                        pp_goals = safe_int(row.get('powerPlayGoalsFor'), 0)
+                        pp_attempts = safe_int(row.get('powerPlayAttemptsFor'), 0)
+                        if pp_attempts > 0:
+                            team_metrics['pp_pct'] = (pp_goals / pp_attempts) * 100
+                    
+                    if 'pk_pct' not in team_metrics or team_metrics.get('pk_pct') == 0:
+                        pk_goals_against = safe_int(row.get('powerPlayGoalsAgainst'), 0)
+                        pk_attempts = safe_int(row.get('powerPlayAttemptsAgainst'), 0)
+                        if pk_attempts > 0:
+                            team_metrics['pk_pct'] = ((pk_attempts - pk_goals_against) / pk_attempts) * 100
+                    
+                    if 'faceoff_pct' not in team_metrics or team_metrics.get('faceoff_pct') == 0:
+                        faceoffs_won = safe_int(row.get('faceOffsWonFor'), 0)
+                        faceoffs_total = faceoffs_won + safe_int(row.get('faceOffsWonAgainst'), 0)
+                        if faceoffs_total > 0:
+                            team_metrics['faceoff_pct'] = (faceoffs_won / faceoffs_total) * 100
+                    
+                    moneypuck_count += 1
+            
+            print(f"✅ Supplemented {moneypuck_count} teams with MoneyPuck data")
+            
+            # Debug: Check CBJ metrics after MoneyPuck supplement
+            if 'CBJ' in metrics:
+                cbj_metrics = metrics['CBJ']
+                print(f"DEBUG: CBJ metrics after MoneyPuck - ozs: {cbj_metrics.get('ozs')}, nzs: {cbj_metrics.get('nzs')}, gs: {cbj_metrics.get('gs')}, fc: {cbj_metrics.get('fc')}")
+        
+        except Exception as moneypuck_error:
+            print(f"⚠️ Warning: Could not fetch MoneyPuck data (non-critical): {moneypuck_error}")
+            # Continue without MoneyPuck data - season stats are primary source
         else:
             print("⏩ Skipping MoneyPuck supplement for faster response (use ?skip_moneypuck=0 to enable)")
         
@@ -411,10 +410,10 @@ def get_team_metrics():
             cbj_metrics = metrics['CBJ']
             print(f"DEBUG: Final CBJ metrics before cache - ozs: {cbj_metrics.get('ozs')}, nzs: {cbj_metrics.get('nzs')}, gs: {cbj_metrics.get('gs')}, fc: {cbj_metrics.get('fc')}, rush: {cbj_metrics.get('rush')}, lat: {cbj_metrics.get('lat')}")
     
-        # Cache the results
-        _team_metrics_cache = metrics
-        _team_metrics_cache_time = current_time
-        return jsonify(metrics)
+    # Cache the results
+    _team_metrics_cache = metrics
+    _team_metrics_cache_time = current_time
+    return jsonify(metrics)
     
     except Exception as e:
         print(f"Error loading team metrics: {e}")
@@ -1489,9 +1488,145 @@ def get_live_game_data(game_id):
                         prediction['home_shots'] = prediction['live_metrics']['home_shots']
                     print(f"✅✅✅ FINAL PHYSICAL EXTRACTION: away_hits={prediction['live_metrics']['away_hits']}, blocked={prediction['live_metrics']['away_blocked_shots']}, gv={prediction['live_metrics']['away_giveaways']}", flush=True)
             
-            # Also add shots_data if available
+            # Also add shots_data if available - check both live_data and live_metrics
+            shots_data_to_fix = None
             if 'shots_data' in live_data:
-                prediction['shots_data'] = live_data['shots_data']
+                shots_data_to_fix = live_data['shots_data']
+                print(f"🔍 API_SERVER: Found shots_data in live_data: {len(shots_data_to_fix) if shots_data_to_fix else 0} shots", flush=True)
+            elif 'shots_data' in live_metrics:
+                shots_data_to_fix = live_metrics['shots_data']
+                print(f"🔍 API_SERVER: Found shots_data in live_metrics: {len(shots_data_to_fix) if shots_data_to_fix else 0} shots", flush=True)
+            elif 'shots_data' in prediction:
+                shots_data_to_fix = prediction['shots_data']
+                print(f"🔍 API_SERVER: Found shots_data in prediction: {len(shots_data_to_fix) if shots_data_to_fix else 0} shots", flush=True)
+            else:
+                print(f"⚠️ API_SERVER: shots_data NOT FOUND in live_data, live_metrics, or prediction!", flush=True)
+                print(f"   live_data keys: {list(live_data.keys())[:10] if isinstance(live_data, dict) else 'Not a dict'}", flush=True)
+                print(f"   prediction keys: {list(prediction.keys())[:10] if isinstance(prediction, dict) else 'Not a dict'}", flush=True)
+            
+            if shots_data_to_fix:
+                print(f"🔍 API_SERVER: Processing {len(shots_data_to_fix)} shots for integer conversion", flush=True)
+                # FINAL SAFETY NET: Ensure all shooters are strings, never integers
+                # This is the absolute last line of defense - convert any integer shooters to names
+                shots_data = shots_data_to_fix
+                if shots_data:
+                    # Get boxscore for lookup - try multiple paths
+                    boxscore_for_api_fix = live_data.get('boxscore', {})
+                    if not boxscore_for_api_fix:
+                        boxscore_for_api_fix = prediction.get('live_metrics', {}).get('boxscore', {})
+                    if not boxscore_for_api_fix:
+                        game_center = live_data.get('game_center', {})
+                        boxscore_for_api_fix = game_center.get('boxscore', {}) if game_center else {}
+                    
+                    player_by_game_stats_api = boxscore_for_api_fix.get('playerByGameStats', {}) if boxscore_for_api_fix else {}
+                    
+                    # If we still don't have it, try to get it from the API client directly
+                    if not player_by_game_stats_api:
+                        try:
+                            from nhl_api_client import NHLAPIClient
+                            api_client = NHLAPIClient()
+                            game_center_direct = api_client.get_game_center(game_id)
+                            if game_center_direct and 'boxscore' in game_center_direct:
+                                boxscore_for_api_fix = game_center_direct['boxscore']
+                                player_by_game_stats_api = boxscore_for_api_fix.get('playerByGameStats', {}) if boxscore_for_api_fix else {}
+                        except Exception as e:
+                            print(f"⚠️ Could not fetch boxscore for API fix: {e}", flush=True)
+                    
+                    for shot in shots_data:
+                        if 'shooter' in shot:
+                            shooter_val = shot['shooter']
+                            
+                            # If it's an integer, convert it using boxscore lookup (same as top performers)
+                            if isinstance(shooter_val, int):
+                                shooter_id_to_fix = shooter_val
+                                name_found = None
+                                
+                                # Look up in boxscore (same method as top performers)
+                                if player_by_game_stats_api:
+                                    for team_key in ['awayTeam', 'homeTeam']:
+                                        team_players = player_by_game_stats_api.get(team_key, {})
+                                        for position_group in ['forwards', 'defense', 'goalies']:
+                                            players = team_players.get(position_group, [])
+                                            for player in players:
+                                                p_id = player.get('playerId') or player.get('id') or player.get('playerID')
+                                                if p_id == shooter_id_to_fix or str(p_id) == str(shooter_id_to_fix):
+                                                    # Get name - EXACT SAME METHOD AS TOP PERFORMERS
+                                                    name = ''
+                                                    name_field = player.get('name', '')
+                                                    if isinstance(name_field, dict):
+                                                        name = name_field.get('default', '')
+                                                    elif isinstance(name_field, str):
+                                                        name = name_field
+                                                    
+                                                    if not name:
+                                                        firstName = player.get('firstName', {}).get('default', '') if isinstance(player.get('firstName'), dict) else player.get('firstName', '')
+                                                        lastName = player.get('lastName', {}).get('default', '') if isinstance(player.get('lastName'), dict) else player.get('lastName', '')
+                                                        name = f"{firstName} {lastName}".strip()
+                                                    
+                                                    if name:
+                                                        name_found = name
+                                                        break
+                                            if name_found:
+                                                break
+                                        if name_found:
+                                            break
+                                
+                                if name_found:
+                                    shot['shooter'] = name_found
+                                    shot['shooterName'] = name_found
+                                    print(f"✅✅✅ API_SERVER FIX: Converted INT {shooter_id_to_fix} to name '{name_found}'", flush=True)
+                                else:
+                                    shot['shooter'] = f"Player #{shooter_id_to_fix}"
+                                    shot['shooterName'] = shot['shooter']
+                                    print(f"⚠️ API_SERVER FIX: INT {shooter_id_to_fix} not found, using fallback", flush=True)
+                            # If it's a string that's just digits, convert it
+                            elif isinstance(shooter_val, str) and shooter_val.isdigit():
+                                shooter_id_int = int(shooter_val)
+                                name_found = None
+                                
+                                if player_by_game_stats_api:
+                                    for team_key in ['awayTeam', 'homeTeam']:
+                                        team_players = player_by_game_stats_api.get(team_key, {})
+                                        for position_group in ['forwards', 'defense', 'goalies']:
+                                            players = team_players.get(position_group, [])
+                                            for player in players:
+                                                p_id = player.get('playerId') or player.get('id') or player.get('playerID')
+                                                if p_id == shooter_id_int or str(p_id) == str(shooter_id_int):
+                                                    name = ''
+                                                    name_field = player.get('name', '')
+                                                    if isinstance(name_field, dict):
+                                                        name = name_field.get('default', '')
+                                                    elif isinstance(name_field, str):
+                                                        name = name_field
+                                                    
+                                                    if not name:
+                                                        firstName = player.get('firstName', {}).get('default', '') if isinstance(player.get('firstName'), dict) else player.get('firstName', '')
+                                                        lastName = player.get('lastName', {}).get('default', '') if isinstance(player.get('lastName'), dict) else player.get('lastName', '')
+                                                        name = f"{firstName} {lastName}".strip()
+                                                    
+                                                    if name:
+                                                        name_found = name
+                                                        break
+                                            if name_found:
+                                                break
+                                        if name_found:
+                                            break
+                                
+                                if name_found:
+                                    shot['shooter'] = name_found
+                                    shot['shooterName'] = name_found
+                                    print(f"✅✅✅ API_SERVER FIX: Converted STRING ID '{shooter_val}' to name '{name_found}'", flush=True)
+                                else:
+                                    shot['shooter'] = f"Player #{shooter_val}"
+                                    shot['shooterName'] = shot['shooter']
+                                    print(f"⚠️ API_SERVER FIX: STRING ID '{shooter_val}' not found, using fallback", flush=True)
+                
+                # Assign the fixed shots_data back
+                prediction['shots_data'] = shots_data
+                # Also ensure it's in live_metrics if that exists
+                if 'live_metrics' in prediction:
+                    prediction['live_metrics']['shots_data'] = shots_data
+                print(f"✅✅✅ API_SERVER: Fixed {len(shots_data)} shots, assigned to prediction", flush=True)
             
             # Format period_stats for the frontend PeriodStatsTable component
             # Frontend expects: liveData.period_stats
@@ -2412,6 +2547,66 @@ def get_live_game_data(game_id):
             import traceback
             traceback.print_exc()
         
+        # FINAL FINAL FIX: Convert any integer shooters in final_response shots_data (absolute last chance)
+        if 'shots_data' in final_response and final_response['shots_data']:
+            shots_data_final = final_response['shots_data']
+            print(f"🔍 FINAL_FINAL: Processing {len(shots_data_final)} shots in final_response", flush=True)
+            
+            # Get boxscore for lookup
+            try:
+                from nhl_api_client import NHLAPIClient
+                api_client_final = NHLAPIClient()
+                game_center_final = api_client_final.get_game_center(game_id)
+                if game_center_final and 'boxscore' in game_center_final:
+                    boxscore_final = game_center_final['boxscore']
+                    player_by_game_stats_final = boxscore_final.get('playerByGameStats', {}) if boxscore_final else {}
+                    
+                    for shot in shots_data_final:
+                        if 'shooter' in shot and isinstance(shot['shooter'], int):
+                            shooter_id_final = shot['shooter']
+                            name_found_final = None
+                            
+                            # Look up in boxscore (same method as top performers)
+                            if player_by_game_stats_final:
+                                for team_key in ['awayTeam', 'homeTeam']:
+                                    team_players = player_by_game_stats_final.get(team_key, {})
+                                    for position_group in ['forwards', 'defense', 'goalies']:
+                                        players = team_players.get(position_group, [])
+                                        for player in players:
+                                            p_id = player.get('playerId') or player.get('id') or player.get('playerID')
+                                            if p_id == shooter_id_final or str(p_id) == str(shooter_id_final):
+                                                # Get name - EXACT SAME METHOD AS TOP PERFORMERS
+                                                name = ''
+                                                name_field = player.get('name', '')
+                                                if isinstance(name_field, dict):
+                                                    name = name_field.get('default', '')
+                                                elif isinstance(name_field, str):
+                                                    name = name_field
+                                                
+                                                if not name:
+                                                    firstName = player.get('firstName', {}).get('default', '') if isinstance(player.get('firstName'), dict) else player.get('firstName', '')
+                                                    lastName = player.get('lastName', {}).get('default', '') if isinstance(player.get('lastName'), dict) else player.get('lastName', '')
+                                                    name = f"{firstName} {lastName}".strip()
+                                                
+                                                if name:
+                                                    name_found_final = name
+                                                    break
+                                        if name_found_final:
+                                            break
+                                    if name_found_final:
+                                        break
+                            
+                            if name_found_final:
+                                shot['shooter'] = name_found_final
+                                shot['shooterName'] = name_found_final
+                                print(f"✅✅✅ FINAL_FINAL: Converted INT {shooter_id_final} to name '{name_found_final}'", flush=True)
+                            else:
+                                shot['shooter'] = f"Player #{shooter_id_final}"
+                                shot['shooterName'] = shot['shooter']
+                                print(f"⚠️ FINAL_FINAL: INT {shooter_id_final} not found, using fallback", flush=True)
+            except Exception as e:
+                print(f"⚠️ FINAL_FINAL fix failed: {e}", flush=True)
+        
         print(f"🚀🚀🚀 RETURNING response for game_id={game_id}", flush=True)
         print(f"   Final away_hits: {final_response.get('live_metrics', {}).get('away_hits')}", flush=True)
         print(f"   Final away_blocked_shots: {final_response.get('live_metrics', {}).get('away_blocked_shots')}", flush=True)
@@ -2428,9 +2623,32 @@ def get_live_game_data(game_id):
         return jsonify(error_response), 500
 
 if __name__ == '__main__':
+    import sys
+    
+    # Set up file logging for easier debugging
+    log_file = os.path.join(DATA_DIR, 'api_server.log')
+    
+    # Create a class that writes to both file and stdout
+    class TeeOutput:
+        def __init__(self, *files):
+            self.files = files
+        def write(self, obj):
+            for f in self.files:
+                f.write(obj)
+                f.flush()
+        def flush(self):
+            for f in self.files:
+                f.flush()
+    
+    # Redirect stdout and stderr to both file and console
+    log_f = open(log_file, 'a', encoding='utf-8')
+    sys.stdout = TeeOutput(sys.stdout, log_f)
+    sys.stderr = TeeOutput(sys.stderr, log_f)
+    
     print("🏒 NHL Analytics API Server")
     print("=" * 50)
     print(f"Data directory: {DATA_DIR}")
+    print(f"Log file: {log_file}")
     print(f"Available endpoints:")
     print(f"  GET /api/health")
     print(f"  GET /api/team-stats")

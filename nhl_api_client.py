@@ -27,6 +27,23 @@ class NHLAPIClient:
             return response.json()
         return None
     
+    def get_team_roster_by_abbrev(self, team_abbrev, season='20252026'):
+        """Get team roster by team abbreviation (e.g., 'TOR', 'BOS')"""
+        url = f"{self.base_url}/roster/{team_abbrev}/{season}"
+        response = self.session.get(url)
+        if response.status_code == 200:
+            return response.json()
+        return None
+    
+    def get_player_info(self, player_id):
+        """Get player information by player ID"""
+        # Try the player stats endpoint first (might have name info)
+        url = f"{self.base_url}/player/{player_id}/landing"
+        response = self.session.get(url)
+        if response.status_code == 200:
+            return response.json()
+        return None
+    
     def get_game_schedule(self, date=None):
         """Get game schedule for a specific date"""
         if date is None:
