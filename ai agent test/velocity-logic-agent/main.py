@@ -110,10 +110,14 @@ class VelocityLogicAgent:
             )
             print(f"   ✓ PDF generated: {pdf_path}")
             
-            # Step 4: Create email body
-            print("\n[4/5] Preparing email draft...")
+            # Store company info for template access
+            self._current_company_info = company_info
+            
+            # Step 4: Generate email body with custom template
+            print("\n[4/5] Generating email body...")
+            email_template = company_info.get('email_template') if company_info else None
             email_subject = f"Quote #{quote_number} - Velocity Logic"
-            email_body = self._generate_email_body(customer_name, quote_data, quote_number)
+            email_body = self._generate_email_body(customer_name, quote_data, quote_number, email_template)
             
             # Step 5: Create Gmail draft
             print("\n[5/5] Creating Gmail draft...")
@@ -148,32 +152,55 @@ class VelocityLogicAgent:
             traceback.print_exc()
             return None
     
-    def _generate_email_body(self, customer_name: str, quote_data: Dict[str, Any], quote_number: str) -> str:
-        """Generate professional email body for the quote."""
-        body = f"""Dear {customer_name},
+    def _generate_email_body(self, customer_name: str, quote_data: Dict[str, Any], quote_number: str, template: str = None) -> str:
+        """
+        Generate professional email body for the quote.
+        Supports custom templates with variable substitution.
+        """
+        # Default template if none provided
+        if not template:
+            template = """Dear {customer_name},
 
-Thank you for contacting Velocity Logic. We're pleased to provide you with the following quote:
+Thank you for contacting {company_name}. We're pleased to provide you with the following quote:
 
 Quote Number: {quote_number}
 
 Services:
-"""
-        for item in quote_data["line_items"]:
-            body += f"  • {item['service_name']} (Qty: {item['quantity']}) - ${item['line_total']:.2f}\n"
-        
-        body += f"""
-Subtotal: ${quote_data['subtotal']:.2f}
-Tax: ${quote_data['tax']:.2f}
-Total: ${quote_data['total']:.2f}
+{line_items}
+
+Subtotal: ${subtotal}
+Tax: ${tax}
+Total: ${total}
 
 A detailed quote has been attached to this email.
 
 This quote is valid for 30 days from the date issued. If you have any questions or would like to proceed, please don't hesitate to contact us.
 
 Best regards,
-Velocity Logic Team
-"""
-        return body
+{company_name} Team"""
+        
+        # Build line items string
+        line_items_text = ""
+        for item in quote_data["line_items"]:
+            line_items_text += f"  • {item['service_name']} (Qty: {item['quantity']}) - ${item['line_total']:.2f}\n"
+        
+        # Get company name from company_info or default
+        company_name = "Your Company"
+        if hasattr(self, '_current_company_info') and self._current_company_info:
+            company_name = self._current_company_info.get('company_name', 'Your Company')
+        
+        # Substitute variables
+        email_body = template.format(
+            customer_name=customer_name,
+            company_name=company_name,
+            quote_number=quote_number,
+            line_items=line_items_text.strip(),
+            subtotal=f"{quote_data['subtotal']:.2f}",
+            tax=f"{quote_data['tax']:.2f}",
+            total=f"{quote_data['total']:.2f}"
+        )
+        
+        return email_body
     
     def run_continuous(self, check_interval: int = 60):
         """

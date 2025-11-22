@@ -1417,32 +1417,20 @@ def get_live_game_data(game_id):
                 elif key in live_metrics:
                     prediction['live_metrics'][key] = live_metrics[key]
             
-            # CRITICAL: Ensure zone_metrics and period data are copied from live_metrics
-            # These are needed for the period stats table
-            if 'away_zone_metrics' in live_metrics:
-                prediction['live_metrics']['away_zone_metrics'] = live_metrics['away_zone_metrics']
-            if 'home_zone_metrics' in live_metrics:
-                prediction['live_metrics']['home_zone_metrics'] = live_metrics['home_zone_metrics']
-            if 'away_period_goals' in live_metrics:
-                prediction['live_metrics']['away_period_goals'] = live_metrics['away_period_goals']
-            if 'home_period_goals' in live_metrics:
-                prediction['live_metrics']['home_period_goals'] = live_metrics['home_period_goals']
-            if 'away_ot_goals' in live_metrics:
-                prediction['live_metrics']['away_ot_goals'] = live_metrics['away_ot_goals']
-            if 'home_ot_goals' in live_metrics:
-                prediction['live_metrics']['home_ot_goals'] = live_metrics['home_ot_goals']
-            if 'away_so_goals' in live_metrics:
-                prediction['live_metrics']['away_so_goals'] = live_metrics['away_so_goals']
-            if 'home_so_goals' in live_metrics:
-                prediction['live_metrics']['home_so_goals'] = live_metrics['home_so_goals']
-            if 'away_xg_by_period' in live_metrics:
-                prediction['live_metrics']['away_xg_by_period'] = live_metrics['away_xg_by_period']
-            if 'home_xg_by_period' in live_metrics:
-                prediction['live_metrics']['home_xg_by_period'] = live_metrics['home_xg_by_period']
-            if 'away_period_stats' in live_metrics:
-                prediction['live_metrics']['away_period_stats'] = live_metrics['away_period_stats']
-            if 'home_period_stats' in live_metrics:
-                prediction['live_metrics']['home_period_stats'] = live_metrics['home_period_stats']
+            # CRITICAL: Ensure ALL live metrics are copied from live_metrics to prediction['live_metrics']
+            # This includes zone_metrics, period data, and all other metrics
+            for key, value in live_metrics.items():
+                if key not in prediction['live_metrics']:
+                    prediction['live_metrics'][key] = value
+                # Also ensure zone_metrics and period data are explicitly set (they're critical for period table)
+                if key in ['away_zone_metrics', 'home_zone_metrics', 'away_period_goals', 'home_period_goals',
+                           'away_ot_goals', 'home_ot_goals', 'away_so_goals', 'home_so_goals',
+                           'away_xg_by_period', 'home_xg_by_period', 'away_period_stats', 'home_period_stats',
+                           'away_gs', 'home_gs', 'away_nzt', 'home_nzt', 'away_nztsa', 'home_nztsa',
+                           'away_ozs', 'home_ozs', 'away_nzs', 'home_nzs', 'away_dzs', 'home_dzs',
+                           'away_fc', 'home_fc', 'away_rush', 'home_rush', 'away_hdc', 'home_hdc',
+                           'away_corsi_pct', 'home_corsi_pct', 'away_xg', 'home_xg', 'current_period']:
+                    prediction['live_metrics'][key] = value
             
             # FORCE: Extract physical stats AFTER the copying loop to ensure they're not overwritten
             # This is the FINAL source of truth - extract directly from boxscore
