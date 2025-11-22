@@ -11,6 +11,14 @@ import io
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
 
+# Try to enable response compression (optional, speeds up responses)
+try:
+    from flask_compress import Compress
+    Compress(app)
+    print("✅ Response compression enabled")
+except ImportError:
+    print("⚠️ flask-compress not installed (optional, install with: pip install flask-compress)")
+
 # Base directory for data files
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -297,100 +305,106 @@ def get_team_metrics():
         
         print(f"✅ Calculated averages from season stats for {len(metrics)} teams")
         
-        # SUPPLEMENT with MoneyPuck data for any missing fields
-        print("Supplementing with MoneyPuck data for additional fields...")
+        # SUPPLEMENT with MoneyPuck data for any missing fields (optional, can skip for faster loading)
+        # Only fetch MoneyPuck if explicitly requested or if critical fields are missing
+        skip_moneypuck = request.args.get('skip_moneypuck', '0') == '1'
         
-        season = request.args.get('season', '2025')
-        game_type = request.args.get('type', 'regular')
-        situation = request.args.get('situation', 'all')
-        
-        url = f"https://moneypuck.com/moneypuck/playerData/seasonSummary/{season}/{game_type}/teams.csv"
-        
-        try:
-            response = requests.get(url, timeout=15)
+        if not skip_moneypuck:
+            print("Supplementing with MoneyPuck data for additional fields...")
             
-            if response.status_code != 200:
-                raise Exception(f"MoneyPuck API returned status {response.status_code}")
+            season = request.args.get('season', '2025')
+            game_type = request.args.get('type', 'regular')
+            situation = request.args.get('situation', 'all')
             
-            # Parse MoneyPuck CSV data
-            content = response.content.decode('utf-8')
-            csv_reader = csv.DictReader(io.StringIO(content))
+            url = f"https://moneypuck.com/moneypuck/playerData/seasonSummary/{season}/{game_type}/teams.csv"
             
-            # Helper functions
-            def safe_float(val, default=0.0):
-                try:
-                    return float(val) if val else default
-                except:
-                    return default
+            try:
+                response = requests.get(url, timeout=15)
+                
+                if response.status_code != 200:
+                    raise Exception(f"MoneyPuck API returned status {response.status_code}")
+                
+                # Parse MoneyPuck CSV data
+                content = response.content.decode('utf-8')
+                csv_reader = csv.DictReader(io.StringIO(content))
+                
+                # Helper functions
+                def safe_float(val, default=0.0):
+                    try:
+                        return float(val) if val else default
+                    except:
+                        return default
+                
+                def safe_int(val, default=0):
+                    try:
+                        return int(float(val)) if val else default
+                    except:
+                        return default
+                
+                # Supplement existing metrics with MoneyPuck data (only fill in missing fields)
+                moneypuck_count = 0
+                for row in csv_reader:
+                    if row.get('situation', '').strip() == situation:
+                        team_abbr = row.get('team', '').strip()
+                        if not team_abbr or team_abbr not in metrics:
+                            continue
+                        
+                        # Only supplement fields that are missing or need updating from MoneyPuck
+                        team_metrics = metrics[team_abbr]
+                        
+                        # Supplement xG if missing
+                        if 'xg' not in team_metrics or team_metrics.get('xg') == 0:
+                            team_metrics['xg'] = safe_float(row.get('xGoalsFor'))
+                        
+                        # Supplement HDC if missing
+                        if 'hdc' not in team_metrics or team_metrics.get('hdc') == 0:
+                            team_metrics['hdc'] = safe_int(row.get('highDangerShotsFor'))
+                        
+                        # Supplement HDCA if missing
+                        if 'hdca' not in team_metrics or team_metrics.get('hdca') == 0:
+                            team_metrics['hdca'] = safe_int(row.get('highDangerShotsAgainst'))
+                        
+                        # Supplement shots if missing
+                        if 'shots' not in team_metrics or team_metrics.get('shots') == 0:
+                            team_metrics['shots'] = safe_int(row.get('shotsOnGoalFor'))
+                        
+                        # Supplement corsi_pct if missing
+                        if 'corsi_pct' not in team_metrics or team_metrics.get('corsi_pct') == 0:
+                            team_metrics['corsi_pct'] = safe_float(row.get('corsiPercentage')) * 100
+                        
+                        # Supplement PP/PK/Faceoff if missing
+                        if 'pp_pct' not in team_metrics or team_metrics.get('pp_pct') == 0:
+                            pp_goals = safe_int(row.get('powerPlayGoalsFor'), 0)
+                            pp_attempts = safe_int(row.get('powerPlayAttemptsFor'), 0)
+                            if pp_attempts > 0:
+                                team_metrics['pp_pct'] = (pp_goals / pp_attempts) * 100
+                        
+                        if 'pk_pct' not in team_metrics or team_metrics.get('pk_pct') == 0:
+                            pk_goals_against = safe_int(row.get('powerPlayGoalsAgainst'), 0)
+                            pk_attempts = safe_int(row.get('powerPlayAttemptsAgainst'), 0)
+                            if pk_attempts > 0:
+                                team_metrics['pk_pct'] = ((pk_attempts - pk_goals_against) / pk_attempts) * 100
+                        
+                        if 'faceoff_pct' not in team_metrics or team_metrics.get('faceoff_pct') == 0:
+                            faceoffs_won = safe_int(row.get('faceOffsWonFor'), 0)
+                            faceoffs_total = faceoffs_won + safe_int(row.get('faceOffsWonAgainst'), 0)
+                            if faceoffs_total > 0:
+                                team_metrics['faceoff_pct'] = (faceoffs_won / faceoffs_total) * 100
+                        
+                        moneypuck_count += 1
+                
+                print(f"✅ Supplemented {moneypuck_count} teams with MoneyPuck data")
+                
+                # Debug: Check CBJ metrics after MoneyPuck supplement
+                if 'CBJ' in metrics:
+                    cbj_metrics = metrics['CBJ']
+                    print(f"DEBUG: CBJ metrics after MoneyPuck - ozs: {cbj_metrics.get('ozs')}, nzs: {cbj_metrics.get('nzs')}, gs: {cbj_metrics.get('gs')}, fc: {cbj_metrics.get('fc')}")
             
-            def safe_int(val, default=0):
-                try:
-                    return int(float(val)) if val else default
-                except:
-                    return default
-            
-            # Supplement existing metrics with MoneyPuck data (only fill in missing fields)
-            moneypuck_count = 0
-            for row in csv_reader:
-                if row.get('situation', '').strip() == situation:
-                    team_abbr = row.get('team', '').strip()
-                    if not team_abbr or team_abbr not in metrics:
-                        continue
-                    
-                    # Only supplement fields that are missing or need updating from MoneyPuck
-                    team_metrics = metrics[team_abbr]
-                    
-                    # Supplement xG if missing
-                    if 'xg' not in team_metrics or team_metrics.get('xg') == 0:
-                        team_metrics['xg'] = safe_float(row.get('xGoalsFor'))
-                    
-                    # Supplement HDC if missing
-                    if 'hdc' not in team_metrics or team_metrics.get('hdc') == 0:
-                        team_metrics['hdc'] = safe_int(row.get('highDangerShotsFor'))
-                    
-                    # Supplement HDCA if missing
-                    if 'hdca' not in team_metrics or team_metrics.get('hdca') == 0:
-                        team_metrics['hdca'] = safe_int(row.get('highDangerShotsAgainst'))
-                    
-                    # Supplement shots if missing
-                    if 'shots' not in team_metrics or team_metrics.get('shots') == 0:
-                        team_metrics['shots'] = safe_int(row.get('shotsOnGoalFor'))
-                    
-                    # Supplement corsi_pct if missing
-                    if 'corsi_pct' not in team_metrics or team_metrics.get('corsi_pct') == 0:
-                        team_metrics['corsi_pct'] = safe_float(row.get('corsiPercentage')) * 100
-                    
-                    # Supplement PP/PK/Faceoff if missing
-                    if 'pp_pct' not in team_metrics or team_metrics.get('pp_pct') == 0:
-                        pp_goals = safe_int(row.get('powerPlayGoalsFor'), 0)
-                        pp_attempts = safe_int(row.get('powerPlayAttemptsFor'), 0)
-                        if pp_attempts > 0:
-                            team_metrics['pp_pct'] = (pp_goals / pp_attempts) * 100
-                    
-                    if 'pk_pct' not in team_metrics or team_metrics.get('pk_pct') == 0:
-                        pk_goals_against = safe_int(row.get('powerPlayGoalsAgainst'), 0)
-                        pk_attempts = safe_int(row.get('powerPlayAttemptsAgainst'), 0)
-                        if pk_attempts > 0:
-                            team_metrics['pk_pct'] = ((pk_attempts - pk_goals_against) / pk_attempts) * 100
-                    
-                    if 'faceoff_pct' not in team_metrics or team_metrics.get('faceoff_pct') == 0:
-                        faceoffs_won = safe_int(row.get('faceOffsWonFor'), 0)
-                        faceoffs_total = faceoffs_won + safe_int(row.get('faceOffsWonAgainst'), 0)
-                        if faceoffs_total > 0:
-                            team_metrics['faceoff_pct'] = (faceoffs_won / faceoffs_total) * 100
-                    
-                    moneypuck_count += 1
-            
-            print(f"✅ Supplemented {moneypuck_count} teams with MoneyPuck data")
-            
-            # Debug: Check CBJ metrics after MoneyPuck supplement
-            if 'CBJ' in metrics:
-                cbj_metrics = metrics['CBJ']
-                print(f"DEBUG: CBJ metrics after MoneyPuck - ozs: {cbj_metrics.get('ozs')}, nzs: {cbj_metrics.get('nzs')}, gs: {cbj_metrics.get('gs')}, fc: {cbj_metrics.get('fc')}")
-        
-        except Exception as moneypuck_error:
-            print(f"⚠️ Warning: Could not fetch MoneyPuck data (non-critical): {moneypuck_error}")
-            # Continue without MoneyPuck data - season stats are primary source
+            except Exception as moneypuck_error:
+                print(f"⚠️ Warning: Could not fetch MoneyPuck data (non-critical): {moneypuck_error}")
+                # Continue without MoneyPuck data - season stats are primary source
+        else:
+            print("⏩ Skipping MoneyPuck supplement for faster response (use ?skip_moneypuck=0 to enable)")
         
         # Debug: Final check before caching
         if 'CBJ' in metrics:
@@ -2206,20 +2220,21 @@ def get_live_game_data(game_id):
             print(f"🔍 Period stats count: {period_stats_count}", flush=True)
             print(f"🔍 final_response keys: {list(final_response.keys())[:30]}", flush=True)
             
-            # Calculate win probability for completed games OR if we have all the data
-            # (Sometimes game state might not be set correctly, but we can still calculate)
-            # ALWAYS calculate if we have 3 periods (game is definitely complete)
+            # Calculate win probability for completed games ONLY
+            # Don't calculate for live games - that's handled separately below
             has_3_periods = period_stats_count >= 3
             is_off_or_final = game_state in ['OFF', 'FINAL'] if game_state else False
-            should_calculate = is_off_or_final or has_3_periods
+            # Only calculate postgame if game is actually finished (not live)
+            should_calculate = is_off_or_final and has_3_periods
             
             print(f"🔍 Should calculate win probability: {should_calculate}", flush=True)
             print(f"   - game_state: '{game_state}' (in ['OFF', 'FINAL']: {is_off_or_final})", flush=True)
             print(f"   - period_stats_count: {period_stats_count} (>= 3: {has_3_periods})", flush=True)
             
-            # FORCE calculation if we have 3 periods (game is definitely done)
-            if has_3_periods and not should_calculate:
-                print(f"⚠️ WARNING: Has 3 periods but should_calculate is False, forcing calculation", flush=True)
+            # Only force calculation if game is actually finished (not live)
+            # Don't force for live games - they'll use the live calculation below
+            if has_3_periods and is_off_or_final and not should_calculate:
+                print(f"⚠️ WARNING: Has 3 periods and is FINAL but should_calculate is False, forcing calculation", flush=True)
                 should_calculate = True
             
             if should_calculate:
@@ -2283,6 +2298,76 @@ def get_live_game_data(game_id):
             traceback.print_exc()
             # Don't fail the request if this calculation fails
         
+        # Calculate live win probability for LIVE games using the EXACT SAME method from auto post reports
+        # This calls the report_generator.calculate_win_probability() method directly
+        print(f"🔍🔍🔍 ENTERING live win probability calculation block for game {game_id}", flush=True)
+        try:
+            # Get game_state from multiple sources to ensure we catch live games
+            game_state_for_live = final_response.get('game_state')
+            print(f"🔍 Initial game_state_for_live from final_response: {game_state_for_live}", flush=True)
+            if not game_state_for_live and 'live_metrics' in final_response:
+                game_state_for_live = final_response['live_metrics'].get('game_state')
+                print(f"🔍 Got game_state_for_live from live_metrics: {game_state_for_live}", flush=True)
+            if not game_state_for_live and prediction and 'live_metrics' in prediction:
+                game_state_for_live = prediction['live_metrics'].get('game_state')
+                print(f"🔍 Got game_state_for_live from prediction live_metrics: {game_state_for_live}", flush=True)
+            
+            # Also check if we have current_period (indicates live game)
+            has_current_period = final_response.get('live_metrics', {}).get('current_period') is not None
+            is_not_final = game_state_for_live not in ['OFF', 'FINAL'] if game_state_for_live else True
+            
+            is_live = (game_state_for_live in ['LIVE', 'CRIT']) or (has_current_period and is_not_final)
+            print(f"🔍 Live win prob check - game_state: {game_state_for_live}, has_current_period: {has_current_period}, is_not_final: {is_not_final}, is_live: {is_live}", flush=True)
+            
+            if is_live:
+                print(f"🔍 Calculating live win probability for game {game_id} using report generator method...", flush=True)
+                
+                # Fetch comprehensive game data to use the exact same calculation method
+                game_data_for_calc = live_predictor.api.get_comprehensive_game_data(game_id)
+                if game_data_for_calc:
+                    # Normalize game_data structure (same as postgame calculation)
+                    normalized_game_data = game_data_for_calc.copy()
+                    
+                    if 'boxscore' not in normalized_game_data:
+                        if 'game_center' in normalized_game_data and 'boxscore' in normalized_game_data['game_center']:
+                            normalized_game_data['boxscore'] = normalized_game_data['game_center']['boxscore']
+                            print(f"🔍 Moved boxscore to top level from game_center for live calc", flush=True)
+                    
+                    if 'play_by_play' not in normalized_game_data:
+                        if 'game_center' in normalized_game_data and 'play_by_play' in normalized_game_data['game_center']:
+                            normalized_game_data['play_by_play'] = normalized_game_data['game_center']['play_by_play']
+                    
+                    print(f"🔍 Game data structure for live calc - Has boxscore: {'boxscore' in normalized_game_data}, Has play_by_play: {'play_by_play' in normalized_game_data}", flush=True)
+                    
+                    # Call the EXACT SAME calculate_win_probability method from report generator
+                    # This uses the same methods: _calculate_game_scores(), _calculate_xg_from_plays(), etc.
+                    win_prob = live_predictor.report_generator.calculate_win_probability(normalized_game_data)
+                    print(f"🔍 calculate_win_probability (live) returned: {win_prob} (type: {type(win_prob)})", flush=True)
+                    
+                    if win_prob and isinstance(win_prob, dict):
+                        away_prob = win_prob.get('away_probability')
+                        home_prob = win_prob.get('home_probability')
+                        
+                        print(f"🔍 live away_probability: {away_prob}, home_probability: {home_prob}", flush=True)
+                        
+                        if away_prob is not None and home_prob is not None:
+                            final_response['live_win_probability'] = {
+                                'away_probability': float(away_prob),
+                                'home_probability': float(home_prob)
+                            }
+                            print(f"✅ SUCCESS: Calculated live win probability using report generator - Away {away_prob:.1f}% / Home {home_prob:.1f}%", flush=True)
+                        else:
+                            print(f"⚠️ Win prob dict exists but missing probability values", flush=True)
+                    else:
+                        print(f"⚠️ calculate_win_probability (live) returned: {win_prob} (type: {type(win_prob)})", flush=True)
+                else:
+                    print(f"⚠️ Could not get game_data for live win prob calculation", flush=True)
+        except Exception as e:
+            print(f"⚠️ Could not calculate live win probability: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+            # Don't fail the request if this calculation fails
+        
         # SINGLE FINAL EXTRACTION: Extract physical stats RIGHT BEFORE return
         # This is the ONLY extraction block - runs unconditionally as the last step
         print(f"🔍🔍🔍 FINAL EXTRACTION: Starting extraction for game {game_id}...", flush=True)
@@ -2327,6 +2412,9 @@ def get_live_game_data(game_id):
         print(f"🚀🚀🚀 RETURNING response for game_id={game_id}", flush=True)
         print(f"   Final away_hits: {final_response.get('live_metrics', {}).get('away_hits')}", flush=True)
         print(f"   Final away_blocked_shots: {final_response.get('live_metrics', {}).get('away_blocked_shots')}", flush=True)
+        print(f"   live_win_probability in response: {'live_win_probability' in final_response}", flush=True)
+        if 'live_win_probability' in final_response:
+            print(f"   live_win_probability value: {final_response['live_win_probability']}", flush=True)
         return jsonify(final_response)
     except Exception as e:
         print(f"Error in live-game endpoint: {e}")

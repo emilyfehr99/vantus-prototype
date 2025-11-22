@@ -26,23 +26,38 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
     // Poll for live updates if game is live
     useEffect(() => {
         if (isLive && game?.id) {
-            // Initial fetch
-            nhlApi.getGameCenter(game.id)
-                .then(data => {
-                    if (data?.boxscore) {
-                        setLiveGameData(data.boxscore);
-                    }
-                })
-                .catch(err => console.error('Error updating game card:', err));
+            // Initial fetch - get both boxscore and live game data for likelihood calculation
+            Promise.all([
+                nhlApi.getGameCenter(game.id).catch(() => null),
+                backendApi.getLiveGame(game.id).catch(() => null)
+            ]).then(([boxscoreData, liveData]) => {
+                if (boxscoreData?.boxscore) {
+                    setLiveGameData(boxscoreData.boxscore);
+                }
+                if (liveData) {
+                    console.log('Live game data received:', liveData);
+                    console.log('Live win probability (top level):', liveData.live_win_probability);
+                    console.log('Live win probability (in live_metrics):', liveData.live_metrics?.live_win_probability);
+                    console.log('All keys in liveData:', Object.keys(liveData));
+                    setFinalGameData(liveData);
+                }
+            }).catch(err => console.error('Error updating game card:', err));
             
             const interval = setInterval(() => {
-                nhlApi.getGameCenter(game.id)
-                    .then(data => {
-                        if (data?.boxscore) {
-                            setLiveGameData(data.boxscore);
-                        }
-                    })
-                    .catch(err => console.error('Error updating game card:', err));
+                Promise.all([
+                    nhlApi.getGameCenter(game.id).catch(() => null),
+                    backendApi.getLiveGame(game.id).catch(() => null)
+                ]).then(([boxscoreData, liveData]) => {
+                    if (boxscoreData?.boxscore) {
+                        setLiveGameData(boxscoreData.boxscore);
+                    }
+                    if (liveData) {
+                        console.log('Live game data updated:', liveData);
+                        console.log('Live win probability (top level):', liveData.live_win_probability);
+                        console.log('Live win probability (in live_metrics):', liveData.live_metrics?.live_win_probability);
+                        setFinalGameData(liveData);
+                    }
+                }).catch(err => console.error('Error updating game card:', err));
             }, 10000); // Update every 10 seconds
             
             return () => clearInterval(interval);
@@ -117,7 +132,7 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-accent-magenta"></span>
                             </span>
                             <span className="text-xs font-display font-bold text-accent-magenta tracking-wider">
-                                {liveGameData?.periodDescriptor?.number || liveGameData?.period || '1'} - {liveGameData?.clock?.timeRemaining || liveGameData?.clock || '20:00'}
+                                Period {liveGameData?.periodDescriptor?.number || liveGameData?.period || '1'} - {liveGameData?.clock?.timeRemaining || liveGameData?.clock || '20:00'}
                             </span>
                         </div>
                     ) : isFinal ? (
@@ -253,23 +268,82 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
                     )}
 
 
-                    {/* Live Game Stats Preview */}
-                    {isLive && (
-                        <div className="mt-auto grid grid-cols-3 gap-2 text-center text-xs font-mono text-gray-400 bg-white/5 rounded-lg p-2">
-                            <div>
-                                <div className="text-white font-bold">{liveGameData?.periodDescriptor?.number || liveGameData?.period || '1st'}</div>
-                                <div className="text-[10px]">PER</div>
+                    {/* Live Game Likelihood of Winning Bar - Replaces PER, TIME, SOG */}
+                    {isLive && (() => {
+                        const winProb = finalGameData?.live_win_probability;
+                        console.log('GameCard render check - isLive:', isLive, 'winProb:', winProb, 'finalGameData keys:', finalGameData ? Object.keys(finalGameData) : 'no data');
+                        
+                        if (winProb) {
+                            return (
+                                <div className="mt-auto">
+                                    <div>
+                                        <div className="flex justify-between text-xs font-mono mb-2 px-1">
+                                            <span className="font-bold" style={{ color: awayColor }}>
+                                                {winProb.away_probability.toFixed(1)}%
+                                            </span>
+                                            <span className="text-gray-500">LIKELIHOOD OF WINNING</span>
+                                            <span className="font-bold" style={{ color: homeColor }}>
+                                                {winProb.home_probability.toFixed(1)}%
+                                            </span>
+                                        </div>
+                                        <div className="h-3 bg-white/5 rounded-full overflow-hidden relative flex">
+                                            <div
+                                                className="h-full relative"
+                                                style={{ 
+                                                    width: `${winProb.away_probability}%`,
+                                                    backgroundColor: awayColor
+                                                }}
+                                            >
+                                                <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                            </div>
+                                            <div
+                                                className="h-full relative"
+                                                style={{ 
+                                                    width: `${winProb.home_probability}%`,
+                                                    backgroundColor: homeColor
+                                                }}
+                                            >
+                                                <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                            </div>
+                                        </div>
+                                        {/* SOG per team with logos below progress bar */}
+                                        <div className="mt-2 flex items-center justify-between text-xs font-mono">
+                                            <div className="flex items-center gap-1.5">
+                                                <img src={game?.awayTeam?.logo || ''} alt={game?.awayTeam?.abbrev || 'Away'} className="w-4 h-4 object-contain" />
+                                                <span className="text-white font-bold">{liveGameData?.awayTeam?.sog ?? game?.awayTeam?.sog ?? finalGameData?.live_metrics?.away_shots ?? finalGameData?.away_shots ?? 0}</span>
+                                                <span className="text-gray-400">SOG</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <img src={game?.homeTeam?.logo || ''} alt={game?.homeTeam?.abbrev || 'Home'} className="w-4 h-4 object-contain" />
+                                                <span className="text-white font-bold">{liveGameData?.homeTeam?.sog ?? game?.homeTeam?.sog ?? finalGameData?.live_metrics?.home_shots ?? finalGameData?.home_shots ?? 0}</span>
+                                                <span className="text-gray-400">SOG</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        }
+                        
+                        // Fallback to PER, TIME, SOG if likelihood not available yet
+                        return (
+                            <div className="mt-auto">
+                                <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono text-gray-400 bg-white/5 rounded-lg p-2">
+                                    <div>
+                                        <div className="text-white font-bold">Period {liveGameData?.periodDescriptor?.number || liveGameData?.period || '1'}</div>
+                                        <div className="text-[10px]">PER</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-white font-bold">{liveGameData?.clock?.timeRemaining || liveGameData?.clock || '20:00'}</div>
+                                        <div className="text-[10px]">TIME</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-white font-bold">{((liveGameData?.awayTeam?.sog ?? game?.awayTeam?.sog) || 0) + ((liveGameData?.homeTeam?.sog ?? game?.homeTeam?.sog) || 0)}</div>
+                                        <div className="text-[10px]">SOG</div>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <div className="text-white font-bold">{liveGameData?.clock?.timeRemaining || liveGameData?.clock || '20:00'}</div>
-                                <div className="text-[10px]">TIME</div>
-                            </div>
-                            <div>
-                                <div className="text-white font-bold">{((liveGameData?.awayTeam?.sog ?? game?.awayTeam?.sog) || 0) + ((liveGameData?.homeTeam?.sog ?? game?.homeTeam?.sog) || 0)}</div>
-                                <div className="text-[10px]">SOG</div>
-                            </div>
-                        </div>
-                    )}
+                        );
+                    })()}
 
                 </div>
             </motion.div>

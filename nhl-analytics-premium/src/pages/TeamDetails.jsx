@@ -123,10 +123,10 @@ const TeamDetails = () => {
     useEffect(() => {
         const fetchTeamData = async () => {
             try {
-                const [rosterData, allMetrics, heatmapData] = await Promise.allSettled([
+                // Load critical data first (roster and metrics)
+                const [rosterData, allMetrics] = await Promise.allSettled([
                     nhlApi.getTeamDetails(id),
-                    backendApi.getTeamMetrics(),
-                    backendApi.getTeamHeatmap(id)
+                    backendApi.getTeamMetrics()
                 ]);
 
                 if (rosterData.status === 'fulfilled') {
@@ -139,13 +139,14 @@ const TeamDetails = () => {
                     const teamMetric = metrics[id];
                     setTeamMetrics(teamMetric);
                 }
-
-                if (heatmapData.status === 'fulfilled') {
-                    setTeamHeatmap(heatmapData.value);
-                }
+                
+                // Load heatmap data in background (non-blocking, can be slow)
+                setLoading(false); // Allow page to render while heatmap loads
+                backendApi.getTeamHeatmap(id)
+                    .then(heatmap => setTeamHeatmap(heatmap))
+                    .catch(err => console.warn('Heatmap load failed (non-critical):', err));
             } catch (error) {
                 console.error('Failed to fetch team details:', error);
-            } finally {
                 setLoading(false);
             }
         };

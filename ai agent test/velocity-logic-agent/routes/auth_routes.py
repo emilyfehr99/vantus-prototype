@@ -82,43 +82,46 @@ def login():
     if not data.get('email') or not data.get('password'):
         return jsonify({"error": "Email and password required"}), 400
     
-    # Get user by email
-    user = db.get_user_by_email(data['email'])
-    
-    if not user:
-        return jsonify({"error": "Invalid credentials"}), 401
-    
-    # Verify password
-    if not AuthService.verify_password(data['password'], user['password_hash']):
-        return jsonify({"error": "Invalid credentials"}), 401
-    
-    # Get client info
-    client = db.get_client(user['client_id'])
-    
-    if not client or not client.get('is_active'):
-        return jsonify({"error": "Account is not active"}), 403
-    
-    # Update last login
-    db.update_last_login(user['id'])
-    
-    # Generate token
-    token = AuthService.generate_token(user['id'], user['client_id'], user['role'])
-    
-    return jsonify({
-        "success": True,
-        "token": token,
-        "user": {
-            "id": user['id'],
-            "email": user['email'],
-            "full_name": user['full_name'],
-            "role": user['role']
-        },
-        "client": {
-            "id": client['id'],
-            "company_name": client['company_name'],
-            "industry": client['industry']
-        }
-    })
+    try:
+        # Get user by email
+        user = db.get_user_by_email(data['email'])
+        
+        if not user:
+            return jsonify({"error": "Invalid credentials"}), 401
+        
+        # Verify password
+        if not AuthService.verify_password(data['password'], user['password_hash']):
+            return jsonify({"error": "Invalid credentials"}), 401
+        
+        # Get client info
+        client = db.get_client(user['client_id'])
+        
+        if not client or not client.get('is_active'):
+            return jsonify({"error": "Account is not active"}), 403
+        
+        # Update last login
+        db.update_last_login(user['id'])
+        
+        # Generate token
+        token = AuthService.generate_token(user['id'], user['client_id'], user['role'])
+        
+        return jsonify({
+            "success": True,
+            "token": token,
+            "user": {
+                "id": user['id'],
+                "email": user['email'],
+                "full_name": user['full_name'],
+                "role": user['role']
+            },
+            "client": {
+                "id": client['id'],
+                "company_name": client['company_name'],
+                "industry": client['industry']
+            }
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @auth_bp.route('/me', methods=['GET'])

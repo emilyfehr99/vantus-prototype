@@ -802,6 +802,199 @@ class LiveInGamePredictor:
                     print(f"   ❌❌❌ CRITICAL: Sample shot has shooter as INT ID!", flush=True)
             
             live_metrics['shots_data'] = shots_data
+            
+            # Calculate likelihood of winning at each play in play-by-play
+            # This uses the same POSTGAME_WEIGHTS formula from auto post reports
+            play_by_play_with_likelihood = []
+            if play_by_play and 'plays' in play_by_play and away_team_id and home_team_id:
+                print(f"🔍 Calculating likelihood of winning for each play in play-by-play...", flush=True)
+                try:
+                    import math
+                    import numpy as np
+                    
+                    # POSTGAME CORRELATION WEIGHTS (same as in pdf_report_generator.py)
+                    POSTGAME_WEIGHTS = {
+                        'gs_diff': 0.6504,           # Game Score difference - STRONGEST predictor
+                        'power_play_diff': 0.3933,   # Power Play % difference
+                        'corsi_diff': -0.3598,       # Corsi % difference (negative: higher Corsi favors home)
+                        'hits_diff': -0.2434,        # Hits difference (negative: more hits favors home)
+                        'hdc_diff': 0.0747,          # High Danger Chances difference
+                        'xg_diff': -0.0545,          # Expected Goals difference
+                        'pim_diff': 0.0173,          # Penalty Minutes difference
+                        'shots_diff': -0.0158,       # Shots on Goal difference
+                    }
+                    
+                    # Helper function for sigmoid
+                    def sigmoid(x: float) -> float:
+                        try:
+                            return 1.0 / (1.0 + math.exp(-x))
+                        except OverflowError:
+                            return 0.0 if x < 0 else 1.0
+                    
+                    # Process plays and calculate cumulative stats
+                    plays = play_by_play.get('plays', [])
+                    away_gs_cumulative = 0.0
+                    home_gs_cumulative = 0.0
+                    away_xg_cumulative = 0.0
+                    home_xg_cumulative = 0.0
+                    away_hdc_cumulative = 0
+                    home_hdc_cumulative = 0
+                    away_shots_cumulative = 0
+                    home_shots_cumulative = 0
+                    away_hits_cumulative = 0
+                    home_hits_cumulative = 0
+                    away_pim_cumulative = 0
+                    home_pim_cumulative = 0
+                    away_pp_goals_cumulative = 0
+                    away_pp_attempts_cumulative = 0
+                    home_pp_goals_cumulative = 0
+                    home_pp_attempts_cumulative = 0
+                    away_corsi_for_cumulative = 0
+                    away_corsi_against_cumulative = 0
+                    home_corsi_for_cumulative = 0
+                    home_corsi_against_cumulative = 0
+                    
+                    for play_index, play in enumerate(plays):
+                        event_type = play.get('typeDescKey', '')
+                        details = play.get('details', {})
+                        event_owner_team_id = details.get('eventOwnerTeamId')
+                        is_away = (event_owner_team_id == away_team_id) if event_owner_team_id else False
+                        is_home = (event_owner_team_id == home_team_id) if event_owner_team_id else False
+                        
+                        # Update cumulative stats based on event type
+                        if event_type == 'goal':
+                            if is_away:
+                                away_gs_cumulative += 0.75  # Goals: 0.75 points
+                            elif is_home:
+                                home_gs_cumulative += 0.75
+                            
+                            # Check if it's a power play goal
+                            situation = details.get('situationCode', '')
+                            if 'PP' in situation or 'powerPlay' in situation.lower():
+                                if is_away:
+                                    away_pp_goals_cumulative += 1
+                                elif is_home:
+                                    home_pp_goals_cumulative += 1
+                        
+                        elif event_type == 'shot-on-goal':
+                            if is_away:
+                                away_gs_cumulative += 0.075  # Shots: 0.075 points
+                                away_shots_cumulative += 1
+                            elif is_home:
+                                home_gs_cumulative += 0.075
+                                home_shots_cumulative += 1
+                            
+                            # Check if high danger chance
+                            x = details.get('xCoord', 0)
+                            y = details.get('yCoord', 0)
+                            distance = math.sqrt(x**2 + y**2) if x and y else 100
+                            if distance < 25:  # High danger zone
+                                if is_away:
+                                    away_hdc_cumulative += 1
+                                elif is_home:
+                                    home_hdc_cumulative += 1
+                            
+                            # Calculate xG for this shot
+                            try:
+                                shot_type = details.get('shotType', 'wrist')
+                                xg_value = self.report_generator._calculate_improved_xg(x, y, shot_type) if x and y else 0.0
+                                if is_away:
+                                    away_xg_cumulative += xg_value
+                                elif is_home:
+                                    home_xg_cumulative += xg_value
+                            except:
+                                pass
+                        
+                        elif event_type == 'blocked-shot':
+                            if is_away:
+                                away_gs_cumulative += 0.05  # Blocked shots: 0.05 points
+                            elif is_home:
+                                home_gs_cumulative += 0.05
+                        
+                        elif event_type == 'penalty':
+                            if is_away:
+                                away_gs_cumulative -= 0.15  # Penalties: -0.15 points
+                                away_pim_cumulative += details.get('duration', 2)
+                                if 'PP' in situation or 'powerPlay' in situation.lower():
+                                    home_pp_attempts_cumulative += 1
+                            elif is_home:
+                                home_gs_cumulative -= 0.15
+                                home_pim_cumulative += details.get('duration', 2)
+                                if 'PP' in situation or 'powerPlay' in situation.lower():
+                                    away_pp_attempts_cumulative += 1
+                        
+                        elif event_type == 'hit':
+                            if is_away:
+                                away_hits_cumulative += 1
+                            elif is_home:
+                                home_hits_cumulative += 1
+                        
+                        # Track Corsi events (shots, goals, blocked shots, missed shots)
+                        if event_type in ['goal', 'shot-on-goal', 'blocked-shot', 'missed-shot']:
+                            if is_away:
+                                away_corsi_for_cumulative += 1
+                                home_corsi_against_cumulative += 1
+                            elif is_home:
+                                home_corsi_for_cumulative += 1
+                                away_corsi_against_cumulative += 1
+                        
+                        # Calculate likelihood at this point in the game
+                        # Only calculate for significant events (goals, shots, penalties) or every 10 plays
+                        should_calculate = (
+                            event_type in ['goal', 'shot-on-goal', 'penalty', 'blocked-shot'] or
+                            play_index % 10 == 0  # Every 10 plays
+                        )
+                        
+                        if should_calculate:
+                            # Calculate differences
+                            gs_diff = away_gs_cumulative - home_gs_cumulative
+                            xg_diff = away_xg_cumulative - home_xg_cumulative
+                            hdc_diff = away_hdc_cumulative - home_hdc_cumulative
+                            shots_diff = away_shots_cumulative - home_shots_cumulative
+                            hits_diff = away_hits_cumulative - home_hits_cumulative
+                            pim_diff = away_pim_cumulative - home_pim_cumulative
+                            
+                            # Calculate Corsi %
+                            away_corsi_total = away_corsi_for_cumulative + away_corsi_against_cumulative
+                            home_corsi_total = home_corsi_for_cumulative + home_corsi_against_cumulative
+                            away_corsi_pct = (away_corsi_for_cumulative / away_corsi_total * 100) if away_corsi_total > 0 else 50.0
+                            home_corsi_pct = (home_corsi_for_cumulative / home_corsi_total * 100) if home_corsi_total > 0 else 50.0
+                            corsi_diff = away_corsi_pct - home_corsi_pct
+                            
+                            # Power Play %
+                            away_pp_pct = (away_pp_goals_cumulative / away_pp_attempts_cumulative * 100) if away_pp_attempts_cumulative > 0 else 0.0
+                            home_pp_pct = (home_pp_goals_cumulative / home_pp_attempts_cumulative * 100) if home_pp_attempts_cumulative > 0 else 0.0
+                            power_play_diff = away_pp_pct - home_pp_pct
+                            
+                            # Calculate weighted score
+                            score = 0.0
+                            score += POSTGAME_WEIGHTS['gs_diff'] * (gs_diff * 0.1)
+                            score += POSTGAME_WEIGHTS['power_play_diff'] * (power_play_diff * 0.01)
+                            score += POSTGAME_WEIGHTS['corsi_diff'] * (corsi_diff * 0.01)
+                            score += POSTGAME_WEIGHTS['hits_diff'] * (hits_diff * 0.01)
+                            score += POSTGAME_WEIGHTS['hdc_diff'] * (hdc_diff * 0.05)
+                            score += POSTGAME_WEIGHTS['xg_diff'] * (xg_diff * 0.2)
+                            score += POSTGAME_WEIGHTS['pim_diff'] * (pim_diff * 0.01)
+                            score += POSTGAME_WEIGHTS['shots_diff'] * (shots_diff * 0.02)
+                            
+                            # Convert to probabilities
+                            away_prob = sigmoid(score) * 100
+                            home_prob = (1.0 - sigmoid(score)) * 100
+                            
+                            # Add likelihood to play
+                            play_with_likelihood = play.copy()
+                            play_with_likelihood['likelihood'] = {
+                                'away_probability': round(away_prob, 1),
+                                'home_probability': round(home_prob, 1)
+                            }
+                            play_by_play_with_likelihood.append(play_with_likelihood)
+                    
+                    print(f"✅ Calculated likelihood for {len(play_by_play_with_likelihood)} plays in play-by-play", flush=True)
+                    live_metrics['play_by_play_with_likelihood'] = play_by_play_with_likelihood
+                except Exception as e:
+                    print(f"⚠️ Error calculating likelihood for play-by-play: {e}", flush=True)
+                    import traceback
+                    traceback.print_exc()
 
             # Extract Goalie Stats from boxscore like PDF generator
             goalie_stats = {'away': {}, 'home': {}}

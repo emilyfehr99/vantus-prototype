@@ -30,7 +30,7 @@ export default defineConfig({
       },
       // Proxy all other /api calls to Flask backend
       '/api': {
-        target: 'http://localhost:5400',
+        target: 'http://localhost:5001',
         changeOrigin: true,
       },
     },
