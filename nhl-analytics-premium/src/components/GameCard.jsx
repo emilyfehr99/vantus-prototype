@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 import { nhlApi } from '../api/nhl';
+import { backendApi } from '../api/backend';
 
 // Team primary colors (hex)
 const TEAM_COLORS = {
@@ -18,6 +19,7 @@ const TEAM_COLORS = {
 
 const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
     const [liveGameData, setLiveGameData] = useState(null);
+    const [finalGameData, setFinalGameData] = useState(null);
     const isLive = game?.gameState === 'LIVE' || game?.gameState === 'CRIT';
     const isFinal = game?.gameState === 'FINAL' || game?.gameState === 'OFF';
     
@@ -46,6 +48,37 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
             return () => clearInterval(interval);
         }
     }, [isLive, game?.id]);
+
+    // Fetch actual game data for completed games (one-time fetch)
+    // The backend calculates postgame_win_probability using the exact formula from pdf_report_generator.calculate_win_probability()
+    // which uses POSTGAME correlation weights and calculates Game Score from play-by-play data
+    useEffect(() => {
+        if (isFinal && game?.id && !finalGameData) {
+            // Fetch both boxscore and live game data for actual metrics
+            Promise.all([
+                nhlApi.getGameCenter(game.id).catch(() => null),
+                backendApi.getLiveGame(game.id).catch(() => null)
+            ]).then(([boxscoreData, liveData]) => {
+                if (boxscoreData?.boxscore) {
+                    setLiveGameData(boxscoreData.boxscore);
+                }
+                if (liveData) {
+                    console.log('Final game data received:', liveData);
+                    console.log('Postgame win probability from API (calculated by backend using report generator formula):', liveData.postgame_win_probability);
+                    
+                    // The backend should return postgame_win_probability calculated using:
+                    // - Game Score from play-by-play (0.75×G + 0.075×SOG + 0.05×BLK + 0.15×PD - 0.15×PT)
+                    // - xG from play-by-play
+                    // - HDC from play-by-play
+                    // - Period stats (Corsi, PP%, hits, PIM)
+                    // - POSTGAME correlation weights
+                    // - Sigmoid conversion to probabilities
+                    
+                    setFinalGameData(liveData);
+                }
+            }).catch(err => console.error('Error fetching final game data:', err));
+        }
+    }, [isFinal, game?.id, finalGameData]);
 
     // Handle both decimal (0.47) and percentage (47) formats
     const awayProbRaw = prediction?.predicted_away_win_prob || prediction?.calibrated_away_prob || prediction?.away_win_prob || 0;
@@ -115,7 +148,9 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
                             <div className="text-center w-full">
                                 <span className="font-display font-bold text-2xl tracking-tight block">{game?.awayTeam?.abbrev || 'AWAY'}</span>
                                 {isLive || isFinal ? (
-                                    <span className="text-4xl font-display font-bold text-white block mt-1 text-glow-cyan">{liveGameData?.awayTeam?.score ?? game?.awayTeam?.score ?? 0}</span>
+                                    <span className="text-4xl font-display font-bold text-white block mt-1 text-glow-cyan">
+                                        {finalGameData?.away_score ?? finalGameData?.live_metrics?.away_score ?? liveGameData?.awayTeam?.score ?? game?.awayTeam?.score ?? 0}
+                                    </span>
                                 ) : (
                                     <span className="text-sm text-gray-400 font-mono mt-1">AWAY</span>
                                 )}
@@ -140,7 +175,9 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
                             <div className="text-center w-full">
                                 <span className="font-display font-bold text-2xl tracking-tight block">{game?.homeTeam?.abbrev || 'HOME'}</span>
                                 {isLive || isFinal ? (
-                                    <span className="text-4xl font-display font-bold text-white block mt-1 text-glow-magenta">{liveGameData?.homeTeam?.score ?? game?.homeTeam?.score ?? 0}</span>
+                                    <span className="text-4xl font-display font-bold text-white block mt-1 text-glow-magenta">
+                                        {finalGameData?.home_score ?? finalGameData?.live_metrics?.home_score ?? liveGameData?.homeTeam?.score ?? game?.homeTeam?.score ?? 0}
+                                    </span>
                                 ) : (
                                     <span className="text-sm text-gray-400 font-mono mt-1">HOME</span>
                                 )}
@@ -148,7 +185,7 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
                         </div>
                     </div>
 
-                    {/* Win Probability Bar - Single bar with both team colors */}
+                    {/* Win Probability Bar - Pre-game predictions for upcoming games */}
                     {showProb && !isLive && !isFinal && (
                         <div className="mt-4">
                             <div className="flex justify-between text-xs font-mono mb-2 px-1">
@@ -179,6 +216,41 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
                         </div>
                     )}
 
+                    {/* Post-Game Win Probability Bar - Actual calculated probability for completed games */}
+                    {isFinal && finalGameData?.postgame_win_probability && (
+                        <div className="mt-4">
+                            <div className="flex justify-between text-xs font-mono mb-2 px-1">
+                                <span className="font-bold" style={{ color: awayColor }}>
+                                    {finalGameData.postgame_win_probability.away_probability.toFixed(1)}%
+                                </span>
+                                <span className="text-gray-500">LIKELIHOOD OF WINNING</span>
+                                <span className="font-bold" style={{ color: homeColor }}>
+                                    {finalGameData.postgame_win_probability.home_probability.toFixed(1)}%
+                                </span>
+                            </div>
+                            <div className="h-3 bg-white/5 rounded-full overflow-hidden relative flex">
+                                <div
+                                    className="h-full relative"
+                                    style={{ 
+                                        width: `${finalGameData.postgame_win_probability.away_probability}%`,
+                                        backgroundColor: awayColor
+                                    }}
+                                >
+                                    <div className="absolute inset-0 bg-white/20" />
+                                </div>
+                                <div
+                                    className="h-full relative"
+                                    style={{ 
+                                        width: `${finalGameData.postgame_win_probability.home_probability}%`,
+                                        backgroundColor: homeColor
+                                    }}
+                                >
+                                    <div className="absolute inset-0 bg-white/20" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
 
                     {/* Live Game Stats Preview */}
                     {isLive && (
@@ -197,6 +269,7 @@ const GameCard = ({ game, prediction, awayMetrics, homeMetrics }) => {
                             </div>
                         </div>
                     )}
+
                 </div>
             </motion.div>
         </Link>

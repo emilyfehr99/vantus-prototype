@@ -288,15 +288,15 @@ const Metrics = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <div className="relative w-full md:w-72">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-accent-primary" size={20} />
-                            <input
-                                type="text"
-                                placeholder="Search teams..."
-                                value={filter}
-                                onChange={(e) => setFilter(e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white font-mono text-sm focus:outline-none focus:border-accent-primary/50 focus:bg-white/10 transition-all placeholder:text-text-muted"
-                            />
+                    <div className="relative w-full md:w-72">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-accent-primary" size={20} />
+                        <input
+                            type="text"
+                            placeholder="Search teams..."
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white font-mono text-sm focus:outline-none focus:border-accent-primary/50 focus:bg-white/10 transition-all placeholder:text-text-muted"
+                        />
                         </div>
                         <div className="flex items-center gap-2">
                             <button
@@ -349,9 +349,9 @@ const Metrics = () => {
 
             {/* Data Table - Only show for team metrics */}
             {metricsView === 'team' && (
-                <div className="glass-card rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+            <div className="glass-card rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
                         <thead>
                             <tr className="bg-white/5 border-b border-white/10">
                                 {columns.map((col) => (
@@ -491,9 +491,9 @@ const Metrics = () => {
                                 </motion.tr>
                             ))}
                         </tbody>
-                        </table>
-                    </div>
+                    </table>
                 </div>
+            </div>
             )}
 
             {/* Player Metrics Table - Only show for player metrics */}

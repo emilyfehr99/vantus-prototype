@@ -206,7 +206,7 @@ def get_team_metrics():
                 metrics[team_abbr] = team_metrics
         
         print(f"Successfully fetched MoneyPuck team data for {len(metrics)} teams (situation={situation})")
-    
+        
         # Cache the results
         _team_metrics_cache = metrics
         _team_metrics_cache_time = current_time
@@ -1030,27 +1030,90 @@ def get_team_top_performers(team_abbr):
 @app.route('/api/live-game/<game_id>', methods=['GET'])
 def get_live_game_data(game_id):
     """Get live game data and predictions"""
+    print(f"🚀🚀🚀 ENTERING get_live_game_data for game_id={game_id}", flush=True)
     try:
-        # Get live metrics
+        # Get live metrics (works for live and completed games)
         live_metrics = live_predictor.get_live_game_data(game_id)
         
         if not live_metrics:
-            return jsonify({"error": "Game not found or not live"}), 404
-            
-        # DEBUG: Check if period stats are in live_metrics BEFORE predict_live_game
-        print(f"🔍 live_metrics keys BEFORE predict_live_game: {list(live_metrics.keys())[:25]}")
-        print(f"🔍 Has away_period_stats in live_metrics: {'away_period_stats' in live_metrics}")
-        print(f"🔍 Has home_period_stats in live_metrics: {'home_period_stats' in live_metrics}")
-        if 'away_period_stats' in live_metrics:
-            print(f"🔍 away_period_stats value: {live_metrics['away_period_stats']}")
-        if 'home_period_stats' in live_metrics:
-            print(f"🔍 home_period_stats value: {live_metrics['home_period_stats']}")
+            return jsonify({"error": "Game not found"}), 404
+        
+        # CRITICAL: Extract physical stats from boxscore RIGHT HERE if they're 0
+        # This ensures they're set before predict_live_game
+        if live_metrics.get('away_hits', 0) == 0 or live_metrics.get('away_blocked_shots', 0) == 0:
+            try:
+                from nhl_api_client import NHLAPIClient
+                api_early = NHLAPIClient()
+                boxscore_early = api_early.get_game_boxscore(game_id)
+                if boxscore_early and 'playerByGameStats' in boxscore_early:
+                    pbg_early = boxscore_early['playerByGameStats']
+                    if 'awayTeam' in pbg_early and 'homeTeam' in pbg_early:
+                        away_pl_early = (pbg_early['awayTeam'].get('forwards', []) or []) + (pbg_early['awayTeam'].get('defense', []) or [])
+                        home_pl_early = (pbg_early['homeTeam'].get('forwards', []) or []) + (pbg_early['homeTeam'].get('defense', []) or [])
+                        live_metrics['away_hits'] = sum(p.get('hits', 0) for p in away_pl_early)
+                        live_metrics['home_hits'] = sum(p.get('hits', 0) for p in home_pl_early)
+                        live_metrics['away_pim'] = sum(p.get('pim', 0) for p in away_pl_early)
+                        live_metrics['home_pim'] = sum(p.get('pim', 0) for p in home_pl_early)
+                        live_metrics['away_blocked_shots'] = sum(p.get('blockedShots', 0) for p in away_pl_early)
+                        live_metrics['home_blocked_shots'] = sum(p.get('blockedShots', 0) for p in home_pl_early)
+                        live_metrics['away_giveaways'] = sum(p.get('giveaways', 0) for p in away_pl_early)
+                        live_metrics['home_giveaways'] = sum(p.get('giveaways', 0) for p in home_pl_early)
+                        live_metrics['away_takeaways'] = sum(p.get('takeaways', 0) for p in away_pl_early)
+                        live_metrics['home_takeaways'] = sum(p.get('takeaways', 0) for p in home_pl_early)
+                        print(f"✅✅✅ EARLY EXTRACTION: Set away_hits={live_metrics['away_hits']}, blocked={live_metrics['away_blocked_shots']}, gv={live_metrics['away_giveaways']}", flush=True)
+            except Exception as e:
+                print(f"⚠️ EARLY EXTRACTION failed: {e}", flush=True)
             
         # Generate prediction
         prediction = live_predictor.predict_live_game(live_metrics)
         
         if not prediction:
             return jsonify({"error": "Could not generate prediction"}), 500
+        
+        # CRITICAL: Preserve original live_metrics physical stats IMMEDIATELY after predict_live_game
+        # predict_live_game might overwrite or not preserve these values, so we force them back
+        if 'live_metrics' not in prediction:
+            prediction['live_metrics'] = {}
+        physical_stats_preserve = ['away_hits', 'home_hits', 'away_pim', 'home_pim', 'away_blocked_shots', 'home_blocked_shots', 
+                                   'away_giveaways', 'home_giveaways', 'away_takeaways', 'home_takeaways', 'away_shots', 'home_shots']
+        # Extract from boxscore if values are 0
+        from nhl_api_client import NHLAPIClient
+        api_preserve = NHLAPIClient()
+        boxscore_preserve = api_preserve.get_game_boxscore(game_id)
+        if boxscore_preserve and 'playerByGameStats' in boxscore_preserve:
+            pbg_preserve = boxscore_preserve['playerByGameStats']
+            if 'awayTeam' in pbg_preserve and 'homeTeam' in pbg_preserve:
+                away_pl_preserve = (pbg_preserve['awayTeam'].get('forwards', []) or []) + (pbg_preserve['awayTeam'].get('defense', []) or [])
+                home_pl_preserve = (pbg_preserve['homeTeam'].get('forwards', []) or []) + (pbg_preserve['homeTeam'].get('defense', []) or [])
+                # Extract all physical stats
+                prediction['live_metrics']['away_hits'] = sum(p.get('hits', 0) for p in away_pl_preserve)
+                prediction['live_metrics']['home_hits'] = sum(p.get('hits', 0) for p in home_pl_preserve)
+                prediction['live_metrics']['away_pim'] = sum(p.get('pim', 0) for p in away_pl_preserve)
+                prediction['live_metrics']['home_pim'] = sum(p.get('pim', 0) for p in home_pl_preserve)
+                prediction['live_metrics']['away_blocked_shots'] = sum(p.get('blockedShots', 0) for p in away_pl_preserve)
+                prediction['live_metrics']['home_blocked_shots'] = sum(p.get('blockedShots', 0) for p in home_pl_preserve)
+                prediction['live_metrics']['away_giveaways'] = sum(p.get('giveaways', 0) for p in away_pl_preserve)
+                prediction['live_metrics']['home_giveaways'] = sum(p.get('giveaways', 0) for p in home_pl_preserve)
+                prediction['live_metrics']['away_takeaways'] = sum(p.get('takeaways', 0) for p in away_pl_preserve)
+                prediction['live_metrics']['home_takeaways'] = sum(p.get('takeaways', 0) for p in home_pl_preserve)
+                # Also set at top level
+                prediction['away_hits'] = prediction['live_metrics']['away_hits']
+                prediction['home_hits'] = prediction['live_metrics']['home_hits']
+                prediction['away_pim'] = prediction['live_metrics']['away_pim']
+                prediction['home_pim'] = prediction['live_metrics']['home_pim']
+                prediction['away_blocked_shots'] = prediction['live_metrics']['away_blocked_shots']
+                prediction['home_blocked_shots'] = prediction['live_metrics']['home_blocked_shots']
+                prediction['away_giveaways'] = prediction['live_metrics']['away_giveaways']
+                prediction['home_giveaways'] = prediction['live_metrics']['home_giveaways']
+                prediction['away_takeaways'] = prediction['live_metrics']['away_takeaways']
+                prediction['home_takeaways'] = prediction['live_metrics']['home_takeaways']
+                if boxscore_preserve.get('awayTeam', {}).get('sog'):
+                    prediction['live_metrics']['away_shots'] = int(boxscore_preserve['awayTeam']['sog'])
+                    prediction['away_shots'] = prediction['live_metrics']['away_shots']
+                if boxscore_preserve.get('homeTeam', {}).get('sog'):
+                    prediction['live_metrics']['home_shots'] = int(boxscore_preserve['homeTeam']['sog'])
+                    prediction['home_shots'] = prediction['live_metrics']['home_shots']
+                print(f"✅✅✅ PRESERVATION: Extracted physical stats - away_hits={prediction['live_metrics']['away_hits']}, blocked={prediction['live_metrics']['away_blocked_shots']}, gv={prediction['live_metrics']['away_giveaways']}", flush=True)
             
         print(f"🔍 Prediction keys after predict_live_game: {list(prediction.keys())[:25]}")
         print(f"🔍 Has away_period_stats: {'away_period_stats' in prediction}")
@@ -1142,24 +1205,85 @@ def get_live_game_data(game_id):
             # CRITICAL: Since predict_live_game merges everything to top level via result.update(live_metrics),
             # all the keys are at prediction['away_period_stats'], not prediction['live_metrics']['away_period_stats']
             # So we need to copy from prediction (top level), not live_data
+            # Physical stats are extracted separately - don't include them in the copying loop
             live_metrics_fields = [
                 'away_period_stats', 'home_period_stats', 'away_period_goals', 'home_period_goals',
                 'away_xg_by_period', 'home_xg_by_period', 'away_zone_metrics', 'home_zone_metrics',
                 'away_xg', 'home_xg', 'away_shots', 'home_shots', 'away_corsi_pct', 'home_corsi_pct',
                 'away_hdc', 'home_hdc', 'away_ozs', 'home_ozs', 'away_rush', 'home_rush', 
                 'away_fc', 'home_fc', 'shots_data', 'away_score', 'home_score', 'current_period',
-                'time_remaining', 'away_team', 'home_team'
+                'time_remaining', 'game_state', 'away_team', 'home_team', 'game_id',
+                # Physical stats removed - they're extracted separately after this loop
+                'away_faceoff_pct', 'home_faceoff_pct', 'away_power_play_pct', 'home_power_play_pct'
             ]
+            
+            # Also copy boxscore to live_metrics for frontend access to team.sog
+            if 'boxscore' in live_data:
+                prediction['live_metrics']['boxscore'] = live_data['boxscore']
+            elif 'boxscore' in prediction:
+                if 'live_metrics' not in prediction:
+                    prediction['live_metrics'] = {}
+                prediction['live_metrics']['boxscore'] = prediction['boxscore']
+            # Physical stats that should NOT be overwritten by the copying loop
+            physical_stats = ['away_hits', 'home_hits', 'away_pim', 'home_pim', 'away_blocked_shots', 'home_blocked_shots', 
+                            'away_giveaways', 'home_giveaways', 'away_takeaways', 'home_takeaways', 'away_shots', 'home_shots']
+            
             for key in live_metrics_fields:
+                # SKIP physical stats - they're already extracted and should not be overwritten
+                if key in physical_stats:
+                    continue
                 # Check prediction first (top level where predict_live_game puts everything)
                 if key in prediction:
                     prediction['live_metrics'][key] = prediction[key]
-                    if key in ['away_period_stats', 'home_period_stats']:
-                        print(f"✅ Copied {key} from prediction top level to live_metrics", flush=True)
                 elif key in live_data:
                     prediction['live_metrics'][key] = live_data[key]
-                    if key in ['away_period_stats', 'home_period_stats']:
-                        print(f"✅ Copied {key} from live_data to live_metrics", flush=True)
+                # FORCE: Also check original live_metrics if still not found
+                elif key in live_metrics:
+                    prediction['live_metrics'][key] = live_metrics[key]
+            
+            # FORCE: Extract physical stats AFTER the copying loop to ensure they're not overwritten
+            # This is the FINAL source of truth - extract directly from boxscore
+            from nhl_api_client import NHLAPIClient
+            api_physical = NHLAPIClient()
+            boxscore_physical = api_physical.get_game_boxscore(game_id)
+            if boxscore_physical and 'playerByGameStats' in boxscore_physical:
+                pbg_physical = boxscore_physical['playerByGameStats']
+                if 'awayTeam' in pbg_physical and 'homeTeam' in pbg_physical:
+                    away_pl_physical = (pbg_physical['awayTeam'].get('forwards', []) or []) + (pbg_physical['awayTeam'].get('defense', []) or [])
+                    home_pl_physical = (pbg_physical['homeTeam'].get('forwards', []) or []) + (pbg_physical['homeTeam'].get('defense', []) or [])
+                    # FORCE SET - this overwrites any 0s that might have been copied
+                    prediction['live_metrics']['away_hits'] = sum(p.get('hits', 0) for p in away_pl_physical)
+                    prediction['live_metrics']['home_hits'] = sum(p.get('hits', 0) for p in home_pl_physical)
+                    prediction['live_metrics']['away_pim'] = sum(p.get('pim', 0) for p in away_pl_physical)
+                    prediction['live_metrics']['home_pim'] = sum(p.get('pim', 0) for p in home_pl_physical)
+                    prediction['live_metrics']['away_blocked_shots'] = sum(p.get('blockedShots', 0) for p in away_pl_physical)
+                    prediction['live_metrics']['home_blocked_shots'] = sum(p.get('blockedShots', 0) for p in home_pl_physical)
+                    prediction['live_metrics']['away_giveaways'] = sum(p.get('giveaways', 0) for p in away_pl_physical)
+                    prediction['live_metrics']['home_giveaways'] = sum(p.get('giveaways', 0) for p in home_pl_physical)
+                    prediction['live_metrics']['away_takeaways'] = sum(p.get('takeaways', 0) for p in away_pl_physical)
+                    prediction['live_metrics']['home_takeaways'] = sum(p.get('takeaways', 0) for p in home_pl_physical)
+                    # Also set at top level
+                    prediction['away_hits'] = prediction['live_metrics']['away_hits']
+                    prediction['home_hits'] = prediction['live_metrics']['home_hits']
+                    prediction['away_pim'] = prediction['live_metrics']['away_pim']
+                    prediction['home_pim'] = prediction['live_metrics']['home_pim']
+                    prediction['away_blocked_shots'] = prediction['live_metrics']['away_blocked_shots']
+                    prediction['home_blocked_shots'] = prediction['live_metrics']['home_blocked_shots']
+                    prediction['away_giveaways'] = prediction['live_metrics']['away_giveaways']
+                    prediction['home_giveaways'] = prediction['live_metrics']['home_giveaways']
+                    prediction['away_takeaways'] = prediction['live_metrics']['away_takeaways']
+                    prediction['home_takeaways'] = prediction['live_metrics']['home_takeaways']
+                    if boxscore_physical.get('awayTeam', {}).get('sog'):
+                        prediction['live_metrics']['away_shots'] = int(boxscore_physical['awayTeam']['sog'])
+                        prediction['away_shots'] = prediction['live_metrics']['away_shots']
+                    if boxscore_physical.get('homeTeam', {}).get('sog'):
+                        prediction['live_metrics']['home_shots'] = int(boxscore_physical['homeTeam']['sog'])
+                        prediction['home_shots'] = prediction['live_metrics']['home_shots']
+                    print(f"✅✅✅ FINAL PHYSICAL EXTRACTION: away_hits={prediction['live_metrics']['away_hits']}, blocked={prediction['live_metrics']['away_blocked_shots']}, gv={prediction['live_metrics']['away_giveaways']}", flush=True)
+                elif stat in prediction:
+                    prediction['live_metrics'][stat] = prediction[stat]
+                elif stat in live_data:
+                    prediction['live_metrics'][stat] = live_data[stat]
             
             # Also add shots_data if available
             if 'shots_data' in live_data:
@@ -1271,7 +1395,7 @@ def get_live_game_data(game_id):
                             'xg': away_xg_by_period[period_idx] if period_idx < len(away_xg_by_period) else 0,
                             'xga': away_xga,
                             'hits': away_period_stats.get('hits', [0, 0, 0])[period_idx] if period_idx < len(away_period_stats.get('hits', [])) else 0,
-                            'faceoff_pct': away_period_stats.get('fo_pct', [50, 50, 50])[period_idx] if period_idx < len(away_period_stats.get('fo_pct', [])) else 50,
+                            'faceoff_pct': away_period_stats.get('fo_pct', [None, None, None])[period_idx] if period_idx < len(away_period_stats.get('fo_pct', [])) else None,
                             'pim': away_period_stats.get('pim', [0, 0, 0])[period_idx] if period_idx < len(away_period_stats.get('pim', [])) else 0,
                             'blocked_shots': away_period_stats.get('bs', [0, 0, 0])[period_idx] if period_idx < len(away_period_stats.get('bs', [])) else 0,
                             'giveaways': away_period_stats.get('gv', [0, 0, 0])[period_idx] if period_idx < len(away_period_stats.get('gv', [])) else 0,
@@ -1292,7 +1416,7 @@ def get_live_game_data(game_id):
                             'xg': home_xg_by_period[period_idx] if period_idx < len(home_xg_by_period) else 0,
                             'xga': home_xga,
                             'hits': home_period_stats.get('hits', [0, 0, 0])[period_idx] if period_idx < len(home_period_stats.get('hits', [])) else 0,
-                            'faceoff_pct': home_period_stats.get('fo_pct', [50, 50, 50])[period_idx] if period_idx < len(home_period_stats.get('fo_pct', [])) else 50,
+                            'faceoff_pct': home_period_stats.get('fo_pct', [None, None, None])[period_idx] if period_idx < len(home_period_stats.get('fo_pct', [])) else None,
                             'pim': home_period_stats.get('pim', [0, 0, 0])[period_idx] if period_idx < len(home_period_stats.get('pim', [])) else 0,
                             'blocked_shots': home_period_stats.get('bs', [0, 0, 0])[period_idx] if period_idx < len(home_period_stats.get('bs', [])) else 0,
                             'giveaways': home_period_stats.get('gv', [0, 0, 0])[period_idx] if period_idx < len(home_period_stats.get('gv', [])) else 0,
@@ -1316,6 +1440,51 @@ def get_live_game_data(game_id):
                     prediction['live_metrics'] = {}
                 prediction['live_metrics']['period_stats'] = period_stats_array
                 print(f"✅ Set prediction['live_metrics']['period_stats'] = {len(period_stats_array)} periods")
+                
+                # SUM PERIOD STATS to get overall totals for physical stats
+                # This ensures live_metrics has the correct totals even if extraction failed
+                away_blocked_total = sum(p.get('away_stats', {}).get('blocked_shots', 0) for p in period_stats_array)
+                home_blocked_total = sum(p.get('home_stats', {}).get('blocked_shots', 0) for p in period_stats_array)
+                away_giveaways_total = sum(p.get('away_stats', {}).get('giveaways', 0) for p in period_stats_array)
+                home_giveaways_total = sum(p.get('home_stats', {}).get('giveaways', 0) for p in period_stats_array)
+                away_takeaways_total = sum(p.get('away_stats', {}).get('takeaways', 0) for p in period_stats_array)
+                home_takeaways_total = sum(p.get('home_stats', {}).get('takeaways', 0) for p in period_stats_array)
+                away_hits_total = sum(p.get('away_stats', {}).get('hits', 0) for p in period_stats_array)
+                home_hits_total = sum(p.get('home_stats', {}).get('hits', 0) for p in period_stats_array)
+                away_pim_total = sum(p.get('away_stats', {}).get('pim', 0) for p in period_stats_array)
+                home_pim_total = sum(p.get('home_stats', {}).get('pim', 0) for p in period_stats_array)
+                
+                # Only set if we got values from period stats (don't overwrite with 0)
+                if away_blocked_total > 0:
+                    prediction['live_metrics']['away_blocked_shots'] = away_blocked_total
+                    print(f"✅ SUMMED away_blocked_shots from period_stats: {away_blocked_total}", flush=True)
+                if home_blocked_total > 0:
+                    prediction['live_metrics']['home_blocked_shots'] = home_blocked_total
+                    print(f"✅ SUMMED home_blocked_shots from period_stats: {home_blocked_total}", flush=True)
+                if away_giveaways_total > 0:
+                    prediction['live_metrics']['away_giveaways'] = away_giveaways_total
+                    print(f"✅ SUMMED away_giveaways from period_stats: {away_giveaways_total}", flush=True)
+                if home_giveaways_total > 0:
+                    prediction['live_metrics']['home_giveaways'] = home_giveaways_total
+                    print(f"✅ SUMMED home_giveaways from period_stats: {home_giveaways_total}", flush=True)
+                if away_takeaways_total > 0:
+                    prediction['live_metrics']['away_takeaways'] = away_takeaways_total
+                    print(f"✅ SUMMED away_takeaways from period_stats: {away_takeaways_total}", flush=True)
+                if home_takeaways_total > 0:
+                    prediction['live_metrics']['home_takeaways'] = home_takeaways_total
+                    print(f"✅ SUMMED home_takeaways from period_stats: {home_takeaways_total}", flush=True)
+                if away_hits_total > 0:
+                    prediction['live_metrics']['away_hits'] = away_hits_total
+                    print(f"✅ SUMMED away_hits from period_stats: {away_hits_total}", flush=True)
+                if home_hits_total > 0:
+                    prediction['live_metrics']['home_hits'] = home_hits_total
+                    print(f"✅ SUMMED home_hits from period_stats: {home_hits_total}", flush=True)
+                if away_pim_total > 0:
+                    prediction['live_metrics']['away_pim'] = away_pim_total
+                    print(f"✅ SUMMED away_pim from period_stats: {away_pim_total}", flush=True)
+                if home_pim_total > 0:
+                    prediction['live_metrics']['home_pim'] = home_pim_total
+                    print(f"✅ SUMMED home_pim from period_stats: {home_pim_total}", flush=True)
             else:
                 print(f"❌ ERROR: Cannot format period_stats!")
                 print(f"   away_period_stats: {bool(away_period_stats)}, type: {type(away_period_stats)}")
@@ -1394,7 +1563,7 @@ def get_live_game_data(game_id):
                                             'xg': away_xg_by_period[period_idx] if period_idx < len(away_xg_by_period) else 0,
                                             'xga': away_xga,
                                             'hits': away_period_stats.get('hits', [0, 0, 0])[period_idx] if period_idx < len(away_period_stats.get('hits', [])) else 0,
-                                            'faceoff_pct': away_period_stats.get('fo_pct', [50, 50, 50])[period_idx] if period_idx < len(away_period_stats.get('fo_pct', [])) else 50,
+                                            'faceoff_pct': away_period_stats.get('fo_pct', [None, None, None])[period_idx] if period_idx < len(away_period_stats.get('fo_pct', [])) else None,
                                             'pim': away_period_stats.get('pim', [0, 0, 0])[period_idx] if period_idx < len(away_period_stats.get('pim', [])) else 0,
                                             'blocked_shots': away_period_stats.get('bs', [0, 0, 0])[period_idx] if period_idx < len(away_period_stats.get('bs', [])) else 0,
                                             'giveaways': away_period_stats.get('gv', [0, 0, 0])[period_idx] if period_idx < len(away_period_stats.get('gv', [])) else 0,
@@ -1415,7 +1584,7 @@ def get_live_game_data(game_id):
                                             'xg': home_xg_by_period[period_idx] if period_idx < len(home_xg_by_period) else 0,
                                             'xga': home_xga,
                                             'hits': home_period_stats.get('hits', [0, 0, 0])[period_idx] if period_idx < len(home_period_stats.get('hits', [])) else 0,
-                                            'faceoff_pct': home_period_stats.get('fo_pct', [50, 50, 50])[period_idx] if period_idx < len(home_period_stats.get('fo_pct', [])) else 50,
+                                            'faceoff_pct': home_period_stats.get('fo_pct', [None, None, None])[period_idx] if period_idx < len(home_period_stats.get('fo_pct', [])) else None,
                                             'pim': home_period_stats.get('pim', [0, 0, 0])[period_idx] if period_idx < len(home_period_stats.get('pim', [])) else 0,
                                             'blocked_shots': home_period_stats.get('bs', [0, 0, 0])[period_idx] if period_idx < len(home_period_stats.get('bs', [])) else 0,
                                             'giveaways': home_period_stats.get('gv', [0, 0, 0])[period_idx] if period_idx < len(home_period_stats.get('gv', [])) else 0,
@@ -1447,6 +1616,24 @@ def get_live_game_data(game_id):
             print(f"⚠️ No live_data found in prediction. Prediction keys: {list(prediction.keys()) if isinstance(prediction, dict) else 'Not a dict'}")
             prediction['period_stats'] = []
         
+        # FORCE: Always copy physical stats from original live_metrics (OUTSIDE the if live_data block)
+        # This ensures they're ALWAYS set, even if live_data is empty
+        # BUT: Only copy if the value doesn't already exist or is 0 (don't overwrite summed values from period_stats)
+        if 'live_metrics' not in prediction:
+            prediction['live_metrics'] = {}
+        physical_stats_force = ['away_hits', 'home_hits', 'away_pim', 'home_pim', 'away_blocked_shots', 'home_blocked_shots', 
+                                'away_giveaways', 'home_giveaways', 'away_takeaways', 'home_takeaways', 'away_shots', 'home_shots']
+        for stat in physical_stats_force:
+            current_val = prediction['live_metrics'].get(stat, 0)
+            # Only copy if current value is 0 or doesn't exist (don't overwrite summed values)
+            if current_val == 0 or current_val is None:
+                if stat in live_metrics and live_metrics[stat] > 0:
+                    prediction['live_metrics'][stat] = live_metrics[stat]
+                    print(f"✅ FORCED {stat}={live_metrics[stat]} from original live_metrics", flush=True)
+                elif stat in prediction and prediction[stat] > 0:
+                    prediction['live_metrics'][stat] = prediction[stat]
+                    print(f"✅ FORCED {stat}={prediction[stat]} from prediction", flush=True)
+        
         # Always ensure period_stats key exists - CRITICAL for frontend
         if 'period_stats' not in prediction or prediction.get('period_stats') is None:
             prediction['period_stats'] = []
@@ -1462,19 +1649,253 @@ def get_live_game_data(game_id):
         print(f"✅ Returning period_stats: length={len(prediction.get('period_stats', []))}")
         print(f"✅ live_metrics.period_stats: length={len(prediction.get('live_metrics', {}).get('period_stats', []))}")
         
+        # ABSOLUTE FINAL: Extract physical stats RIGHT BEFORE creating final_response
+        # This ensures they're set and nothing can overwrite them
+        from nhl_api_client import NHLAPIClient
+        api_absolute_final = NHLAPIClient()
+        boxscore_absolute_final = api_absolute_final.get_game_boxscore(game_id)
+        if boxscore_absolute_final and 'playerByGameStats' in boxscore_absolute_final:
+            pbg_absolute_final = boxscore_absolute_final['playerByGameStats']
+            if 'awayTeam' in pbg_absolute_final and 'homeTeam' in pbg_absolute_final:
+                away_pl_absolute_final = (pbg_absolute_final['awayTeam'].get('forwards', []) or []) + (pbg_absolute_final['awayTeam'].get('defense', []) or [])
+                home_pl_absolute_final = (pbg_absolute_final['homeTeam'].get('forwards', []) or []) + (pbg_absolute_final['homeTeam'].get('defense', []) or [])
+                if 'live_metrics' not in prediction:
+                    prediction['live_metrics'] = {}
+                # FORCE SET - this is the absolute last chance before deepcopy
+                prediction['live_metrics']['away_hits'] = sum(p.get('hits', 0) for p in away_pl_absolute_final)
+                prediction['live_metrics']['home_hits'] = sum(p.get('hits', 0) for p in home_pl_absolute_final)
+                prediction['live_metrics']['away_pim'] = sum(p.get('pim', 0) for p in away_pl_absolute_final)
+                prediction['live_metrics']['home_pim'] = sum(p.get('pim', 0) for p in home_pl_absolute_final)
+                prediction['live_metrics']['away_blocked_shots'] = sum(p.get('blockedShots', 0) for p in away_pl_absolute_final)
+                prediction['live_metrics']['home_blocked_shots'] = sum(p.get('blockedShots', 0) for p in home_pl_absolute_final)
+                prediction['live_metrics']['away_giveaways'] = sum(p.get('giveaways', 0) for p in away_pl_absolute_final)
+                prediction['live_metrics']['home_giveaways'] = sum(p.get('giveaways', 0) for p in home_pl_absolute_final)
+                prediction['live_metrics']['away_takeaways'] = sum(p.get('takeaways', 0) for p in away_pl_absolute_final)
+                prediction['live_metrics']['home_takeaways'] = sum(p.get('takeaways', 0) for p in home_pl_absolute_final)
+                if boxscore_absolute_final.get('awayTeam', {}).get('sog'):
+                    prediction['live_metrics']['away_shots'] = int(boxscore_absolute_final['awayTeam']['sog'])
+                if boxscore_absolute_final.get('homeTeam', {}).get('sog'):
+                    prediction['live_metrics']['home_shots'] = int(boxscore_absolute_final['homeTeam']['sog'])
+                print(f"✅✅✅ ABSOLUTE FINAL BEFORE DEEPCOPY: away_hits={prediction['live_metrics']['away_hits']}, blocked={prediction['live_metrics']['away_blocked_shots']}, gv={prediction['live_metrics']['away_giveaways']}", flush=True)
+        
         # FINAL CHECK: Ensure period_stats is in the response
-        final_response = prediction.copy()
+        # Use deep copy to avoid reference issues
+        import copy
+        final_response = copy.deepcopy(prediction)
         if 'period_stats' not in final_response or not final_response.get('period_stats'):
             print(f"⚠️ WARNING: period_stats missing in final response, setting empty array")
             final_response['period_stats'] = []
+        # CRITICAL: Don't overwrite live_metrics if it exists - it has the extracted values!
         if 'live_metrics' not in final_response:
+            final_response['live_metrics'] = {}
+        elif not isinstance(final_response.get('live_metrics'), dict):
+            # Only recreate if it's not a dict
             final_response['live_metrics'] = {}
         if 'period_stats' not in final_response['live_metrics']:
             final_response['live_metrics']['period_stats'] = final_response.get('period_stats', [])
         
+        # Physical stats will be extracted in the single final block before return
+        
+        # FINAL SAFEGUARD: Force percentages to None if totals are 0 (prevent 50% defaults)
+        if final_response.get('live_metrics', {}).get('away_faceoff_total', 0) == 0:
+            final_response['live_metrics']['away_faceoff_pct'] = None
+        if final_response.get('live_metrics', {}).get('home_faceoff_total', 0) == 0:
+            final_response['live_metrics']['home_faceoff_pct'] = None
+        if final_response.get('live_metrics', {}).get('away_power_play_opportunities', 0) == 0:
+            final_response['live_metrics']['away_power_play_pct'] = None
+        if final_response.get('live_metrics', {}).get('home_power_play_opportunities', 0) == 0:
+            final_response['live_metrics']['home_power_play_pct'] = None
+        
+        # Also check if percentages are 50.0 (likely a default) and totals are 0, force to None
+        if final_response.get('live_metrics', {}).get('away_faceoff_pct') == 50.0 and final_response.get('live_metrics', {}).get('away_faceoff_total', 0) == 0:
+            final_response['live_metrics']['away_faceoff_pct'] = None
+            print(f"⚠️ FINAL: FORCED away_faceoff_pct from 50.0 to None (total=0)", flush=True)
+        if final_response.get('live_metrics', {}).get('home_faceoff_pct') == 50.0 and final_response.get('live_metrics', {}).get('home_faceoff_total', 0) == 0:
+            final_response['live_metrics']['home_faceoff_pct'] = None
+            print(f"⚠️ FINAL: FORCED home_faceoff_pct from 50.0 to None (total=0)", flush=True)
+        if final_response.get('live_metrics', {}).get('away_power_play_pct') == 50.0 and final_response.get('live_metrics', {}).get('away_power_play_opportunities', 0) == 0:
+            final_response['live_metrics']['away_power_play_pct'] = None
+            print(f"⚠️ FINAL: FORCED away_power_play_pct from 50.0 to None (opportunities=0)", flush=True)
+        if final_response.get('live_metrics', {}).get('home_power_play_pct') == 50.0 and final_response.get('live_metrics', {}).get('home_power_play_opportunities', 0) == 0:
+            final_response['live_metrics']['home_power_play_pct'] = None
+            print(f"⚠️ FINAL: FORCED home_power_play_pct from 50.0 to None (opportunities=0)", flush=True)
+        
+        # Ensure game_state is in the response (for frontend and our calculation)
+        # Check prediction first (where predict_live_game puts it), then live_metrics
+        if 'game_state' not in final_response:
+            if 'game_state' in prediction:
+                final_response['game_state'] = prediction.get('game_state')
+                print(f"✅ Set game_state from prediction: {final_response['game_state']}")
+            elif live_metrics and 'game_state' in live_metrics:
+                final_response['game_state'] = live_metrics.get('game_state')
+                print(f"✅ Set game_state from live_metrics: {final_response['game_state']}")
+            elif live_metrics and isinstance(live_metrics.get('boxscore'), dict):
+                final_response['game_state'] = live_metrics.get('boxscore', {}).get('gameState', '')
+                print(f"✅ Set game_state from live_metrics.boxscore: {final_response['game_state']}")
+        
+        # Also ensure time_remaining is correct for FINAL games
+        if final_response.get('game_state') in ['OFF', 'FINAL']:
+            final_response['time_remaining'] = '00:00'
+            if 'live_metrics' in final_response:
+                final_response['live_metrics']['time_remaining'] = '00:00'
+            print(f"✅ Set time_remaining to '00:00' for FINAL game")
+        
         print(f"✅ FINAL CHECK - period_stats in response: {'period_stats' in final_response}, length: {len(final_response.get('period_stats', []))}")
         print(f"✅ FINAL CHECK - live_metrics.period_stats in response: {'period_stats' in final_response.get('live_metrics', {})}, length: {len(final_response.get('live_metrics', {}).get('period_stats', []))}")
+        print(f"✅ FINAL CHECK - game_state in response: {'game_state' in final_response}, value: {final_response.get('game_state')}")
+        
+        # For completed games, calculate win probability based on actual game metrics
+        # This uses the same formula/model from the auto post reports
+        try:
+            print(f"🔍 Checking for postgame win probability calculation for game {game_id}...", flush=True)
             
+            # Check game state from multiple sources
+            game_state = None
+            game_data = None
+            
+            # Try to get game state from multiple sources
+            # First check final_response (top level)
+            if 'game_state' in final_response:
+                game_state = final_response.get('game_state')
+                print(f"🔍 Game state from final_response: {game_state}", flush=True)
+            
+            # Also check live_metrics (top level)
+            if not game_state and live_metrics and 'game_state' in live_metrics:
+                game_state = live_metrics.get('game_state')
+                print(f"🔍 Game state from live_metrics: {game_state}", flush=True)
+            
+            # Also check live_metrics.boxscore.gameState (nested)
+            if not game_state and live_metrics and isinstance(live_metrics.get('boxscore'), dict):
+                game_state = live_metrics.get('boxscore', {}).get('gameState', '')
+                if game_state:
+                    print(f"🔍 Game state from live_metrics.boxscore.gameState: {game_state}", flush=True)
+            
+            # Check if we have period_stats with 3 periods (indicates game is complete)
+            period_stats_count = len(final_response.get('period_stats', []))
+            print(f"🔍 Period stats count: {period_stats_count}", flush=True)
+            print(f"🔍 final_response keys: {list(final_response.keys())[:30]}", flush=True)
+            
+            # Calculate win probability for completed games OR if we have all the data
+            # (Sometimes game state might not be set correctly, but we can still calculate)
+            # ALWAYS calculate if we have 3 periods (game is definitely complete)
+            has_3_periods = period_stats_count >= 3
+            is_off_or_final = game_state in ['OFF', 'FINAL'] if game_state else False
+            should_calculate = is_off_or_final or has_3_periods
+            
+            print(f"🔍 Should calculate win probability: {should_calculate}", flush=True)
+            print(f"   - game_state: '{game_state}' (in ['OFF', 'FINAL']: {is_off_or_final})", flush=True)
+            print(f"   - period_stats_count: {period_stats_count} (>= 3: {has_3_periods})", flush=True)
+            
+            # FORCE calculation if we have 3 periods (game is definitely done)
+            if has_3_periods and not should_calculate:
+                print(f"⚠️ WARNING: Has 3 periods but should_calculate is False, forcing calculation", flush=True)
+                should_calculate = True
+            
+            if should_calculate:
+                # Fetch comprehensive game data for calculation
+                print(f"🔍 Fetching comprehensive game data for win probability calculation...", flush=True)
+                game_data = live_predictor.api.get_comprehensive_game_data(game_id)
+                if game_data:
+                    boxscore = game_data.get('game_center', {}).get('boxscore', {}) or game_data.get('boxscore', {})
+                    if not game_state:
+                        game_state = boxscore.get('gameState', '')
+                    print(f"🔍 Game state from boxscore: {game_state}", flush=True)
+                
+                if game_data:
+                    print(f"🔍 Game appears completed, calculating win probability using report generator...", flush=True)
+                    try:
+                        # Normalize game_data structure
+                        normalized_game_data = game_data.copy()
+                        
+                        if 'boxscore' not in normalized_game_data:
+                            if 'game_center' in normalized_game_data and 'boxscore' in normalized_game_data['game_center']:
+                                normalized_game_data['boxscore'] = normalized_game_data['game_center']['boxscore']
+                                print(f"🔍 Moved boxscore to top level from game_center", flush=True)
+                        
+                        if 'play_by_play' not in normalized_game_data:
+                            if 'game_center' in normalized_game_data and 'play_by_play' in normalized_game_data['game_center']:
+                                normalized_game_data['play_by_play'] = normalized_game_data['game_center']['play_by_play']
+                        
+                        print(f"🔍 Game data structure - Has boxscore: {'boxscore' in normalized_game_data}, Has play_by_play: {'play_by_play' in normalized_game_data}", flush=True)
+                        
+                        # Call the actual calculate_win_probability from report generator
+                        win_prob = live_predictor.report_generator.calculate_win_probability(normalized_game_data)
+                        print(f"🔍 calculate_win_probability returned: {win_prob} (type: {type(win_prob)})", flush=True)
+                        
+                        if win_prob and isinstance(win_prob, dict):
+                            away_prob = win_prob.get('away_probability')
+                            home_prob = win_prob.get('home_probability')
+                            
+                            print(f"🔍 away_probability: {away_prob}, home_probability: {home_prob}", flush=True)
+                            
+                            if away_prob is not None and home_prob is not None:
+                                final_response['postgame_win_probability'] = {
+                                    'away_probability': float(away_prob),
+                                    'home_probability': float(home_prob)
+                                }
+                                print(f"✅ SUCCESS: Calculated postgame win probability - Away {away_prob:.1f}% / Home {home_prob:.1f}%", flush=True)
+                            else:
+                                print(f"⚠️ Win prob dict exists but missing probability values", flush=True)
+                        else:
+                            print(f"⚠️ calculate_win_probability returned: {win_prob} (type: {type(win_prob)})", flush=True)
+                    except Exception as calc_error:
+                        print(f"❌ ERROR in calculate_win_probability: {calc_error}", flush=True)
+                        import traceback
+                        traceback.print_exc()
+                else:
+                    print(f"⚠️ Could not get game_data for win prob calculation (required for calculate_win_probability)", flush=True)
+            else:
+                print(f"🔍 Game is not completed (state: {game_state}, periods: {period_stats_count}), skipping win prob calculation", flush=True)
+        except Exception as e:
+            print(f"⚠️ Could not calculate postgame win probability: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+            # Don't fail the request if this calculation fails
+        
+        # SINGLE FINAL EXTRACTION: Extract physical stats RIGHT BEFORE return
+        # This is the ONLY extraction block - runs unconditionally as the last step
+        print(f"🔍🔍🔍 FINAL EXTRACTION: Starting extraction for game {game_id}...", flush=True)
+        try:
+            from nhl_api_client import NHLAPIClient
+            api_return = NHLAPIClient()
+            boxscore_return = api_return.get_game_boxscore(game_id)
+            print(f"🔍 ABSOLUTE FINAL: boxscore exists={bool(boxscore_return)}, has pbg={'playerByGameStats' in boxscore_return if boxscore_return else False}", flush=True)
+            if boxscore_return and 'playerByGameStats' in boxscore_return:
+                pbg_return = boxscore_return['playerByGameStats']
+                if 'awayTeam' in pbg_return and 'homeTeam' in pbg_return:
+                    away_pl_return = (pbg_return['awayTeam'].get('forwards', []) or []) + (pbg_return['awayTeam'].get('defense', []) or [])
+                    home_pl_return = (pbg_return['homeTeam'].get('forwards', []) or []) + (pbg_return['homeTeam'].get('defense', []) or [])
+                    print(f"🔍 ABSOLUTE FINAL: away_pl={len(away_pl_return)}, home_pl={len(home_pl_return)}", flush=True)
+                    if 'live_metrics' not in final_response:
+                        final_response['live_metrics'] = {}
+                    # FORCE SET - always overwrite with boxscore values
+                    final_response['live_metrics']['away_hits'] = sum(p.get('hits', 0) for p in away_pl_return)
+                    final_response['live_metrics']['home_hits'] = sum(p.get('hits', 0) for p in home_pl_return)
+                    final_response['live_metrics']['away_pim'] = sum(p.get('pim', 0) for p in away_pl_return)
+                    final_response['live_metrics']['home_pim'] = sum(p.get('pim', 0) for p in home_pl_return)
+                    final_response['live_metrics']['away_blocked_shots'] = sum(p.get('blockedShots', 0) for p in away_pl_return)
+                    final_response['live_metrics']['home_blocked_shots'] = sum(p.get('blockedShots', 0) for p in home_pl_return)
+                    final_response['live_metrics']['away_giveaways'] = sum(p.get('giveaways', 0) for p in away_pl_return)
+                    final_response['live_metrics']['home_giveaways'] = sum(p.get('giveaways', 0) for p in home_pl_return)
+                    final_response['live_metrics']['away_takeaways'] = sum(p.get('takeaways', 0) for p in away_pl_return)
+                    final_response['live_metrics']['home_takeaways'] = sum(p.get('takeaways', 0) for p in home_pl_return)
+                    if boxscore_return.get('awayTeam', {}).get('sog'):
+                        final_response['live_metrics']['away_shots'] = int(boxscore_return['awayTeam']['sog'])
+                    if boxscore_return.get('homeTeam', {}).get('sog'):
+                        final_response['live_metrics']['home_shots'] = int(boxscore_return['homeTeam']['sog'])
+                    print(f"✅✅✅ ABSOLUTE FINAL BEFORE RETURN: Set away_hits={final_response['live_metrics']['away_hits']}, blocked={final_response['live_metrics']['away_blocked_shots']}, gv={final_response['live_metrics']['away_giveaways']}", flush=True)
+                else:
+                    print(f"⚠️ ABSOLUTE FINAL: Missing awayTeam or homeTeam", flush=True)
+            else:
+                print(f"⚠️ ABSOLUTE FINAL: boxscore or playerByGameStats missing", flush=True)
+        except Exception as e:
+            print(f"❌ ABSOLUTE FINAL BEFORE RETURN failed: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+        
+        print(f"🚀🚀🚀 RETURNING response for game_id={game_id}", flush=True)
+        print(f"   Final away_hits: {final_response.get('live_metrics', {}).get('away_hits')}", flush=True)
+        print(f"   Final away_blocked_shots: {final_response.get('live_metrics', {}).get('away_blocked_shots')}", flush=True)
         return jsonify(final_response)
     except Exception as e:
         print(f"Error in live-game endpoint: {e}")
