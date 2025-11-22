@@ -134,7 +134,7 @@ def get_team_metrics():
                 home_ozs = cbj_data['home'].get('ozs', [])
                 print(f"DEBUG: CBJ home ozs is list: {isinstance(home_ozs, list)}, length: {len(home_ozs) if isinstance(home_ozs, list) else 'N/A'}")
         
-        metrics = {}
+    metrics = {}
         
         # Helper function to calculate average from list
         def avg_from_list(lst):
@@ -396,11 +396,11 @@ def get_team_metrics():
         if 'CBJ' in metrics:
             cbj_metrics = metrics['CBJ']
             print(f"DEBUG: Final CBJ metrics before cache - ozs: {cbj_metrics.get('ozs')}, nzs: {cbj_metrics.get('nzs')}, gs: {cbj_metrics.get('gs')}, fc: {cbj_metrics.get('fc')}, rush: {cbj_metrics.get('rush')}, lat: {cbj_metrics.get('lat')}")
-        
-        # Cache the results
-        _team_metrics_cache = metrics
-        _team_metrics_cache_time = current_time
-        return jsonify(metrics)
+    
+    # Cache the results
+    _team_metrics_cache = metrics
+    _team_metrics_cache_time = current_time
+    return jsonify(metrics)
     
     except Exception as e:
         print(f"Error loading team metrics: {e}")
@@ -1417,6 +1417,33 @@ def get_live_game_data(game_id):
                 elif key in live_metrics:
                     prediction['live_metrics'][key] = live_metrics[key]
             
+            # CRITICAL: Ensure zone_metrics and period data are copied from live_metrics
+            # These are needed for the period stats table
+            if 'away_zone_metrics' in live_metrics:
+                prediction['live_metrics']['away_zone_metrics'] = live_metrics['away_zone_metrics']
+            if 'home_zone_metrics' in live_metrics:
+                prediction['live_metrics']['home_zone_metrics'] = live_metrics['home_zone_metrics']
+            if 'away_period_goals' in live_metrics:
+                prediction['live_metrics']['away_period_goals'] = live_metrics['away_period_goals']
+            if 'home_period_goals' in live_metrics:
+                prediction['live_metrics']['home_period_goals'] = live_metrics['home_period_goals']
+            if 'away_ot_goals' in live_metrics:
+                prediction['live_metrics']['away_ot_goals'] = live_metrics['away_ot_goals']
+            if 'home_ot_goals' in live_metrics:
+                prediction['live_metrics']['home_ot_goals'] = live_metrics['home_ot_goals']
+            if 'away_so_goals' in live_metrics:
+                prediction['live_metrics']['away_so_goals'] = live_metrics['away_so_goals']
+            if 'home_so_goals' in live_metrics:
+                prediction['live_metrics']['home_so_goals'] = live_metrics['home_so_goals']
+            if 'away_xg_by_period' in live_metrics:
+                prediction['live_metrics']['away_xg_by_period'] = live_metrics['away_xg_by_period']
+            if 'home_xg_by_period' in live_metrics:
+                prediction['live_metrics']['home_xg_by_period'] = live_metrics['home_xg_by_period']
+            if 'away_period_stats' in live_metrics:
+                prediction['live_metrics']['away_period_stats'] = live_metrics['away_period_stats']
+            if 'home_period_stats' in live_metrics:
+                prediction['live_metrics']['home_period_stats'] = live_metrics['home_period_stats']
+            
             # FORCE: Extract physical stats AFTER the copying loop to ensure they're not overwritten
             # This is the FINAL source of truth - extract directly from boxscore
             from nhl_api_client import NHLAPIClient
@@ -1862,8 +1889,14 @@ def get_live_game_data(game_id):
                                 away_zone_metrics = live_data.get('away_zone_metrics', {})
                                 home_zone_metrics = live_data.get('home_zone_metrics', {})
                                 
+                                # Get current period to filter periods
+                                current_period = live_data.get('current_period', 1)
+                                
                                 period_stats_array = []
                                 for period_num in range(1, 4):
+                                    # Only show period if it's completed or currently active
+                                    if period_num > current_period:
+                                        continue  # Skip future periods
                                     period_idx = period_num - 1
                                     # Get zone metrics per period
                                     away_ozs_period = away_zone_metrics.get('oz_originating_shots', [0, 0, 0])[period_idx] if isinstance(away_zone_metrics, dict) and period_idx < len(away_zone_metrics.get('oz_originating_shots', [])) else 0
