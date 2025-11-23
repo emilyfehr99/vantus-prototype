@@ -374,6 +374,97 @@ def get_activity():
     return jsonify(activity)
 
 # ============================================
+# Customer Endpoints (Protected)
+# ============================================
+
+@app.route('/api/customers', methods=['GET'])
+@require_auth
+def get_customers():
+    """Get all customers for authenticated client from drafts."""
+    try:
+        conn = db.get_connection()
+        cursor = conn.execute("""
+            SELECT 
+                customer_name as name,
+                COALESCE(customer_email, 'N/A') as email,
+                MIN(created_at) as created_at,
+                COUNT(*) as quote_count,
+                SUM(CASE WHEN status = 'APPROVED' THEN total ELSE 0 END) as total_revenue,
+                MAX(created_at) as last_quote_date
+            FROM client_drafts
+            WHERE client_id = ? AND customer_name IS NOT NULL
+            GROUP BY customer_name, COALESCE(customer_email, 'N/A')
+            ORDER BY total_revenue DESC
+        """, (request.client_id,))
+        
+        customers = []
+        for idx, row in enumerate(cursor.fetchall()):
+            customers.append({
+                'id': idx + 1,  # Generate sequential ID
+                'name': row[0],
+                'email': row[1] or 'N/A',
+                'created_at': row[2],
+                'quote_count': row[3] or 0,
+                'total_revenue': row[4] or 0,
+                'last_quote_date': row[5]
+            })
+        
+        conn.close()
+        return jsonify(customers)
+    except Exception as e:
+        print(f"Error in get_customers: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/customers/<customer_id>/quotes', methods=['GET'])
+@require_auth
+def get_customer_quotes(customer_id):
+    """Get all quotes for a specific customer by name."""
+    try:
+        # Get customer name from ID (since we're using sequential IDs)
+        conn = db.get_connection()
+        
+        # Get all customers to find the name by ID
+        cursor = conn.execute("""
+            SELECT DISTINCT customer_name
+            FROM client_drafts
+            WHERE client_id = ? AND customer_name IS NOT NULL
+            ORDER BY customer_name
+        """, (request.client_id,))
+        
+        customers = cursor.fetchall()
+        customer_idx = int(customer_id) - 1
+        
+        if customer_idx < 0 or customer_idx >= len(customers):
+            conn.close()
+            return jsonify({"error": "Customer not found"}), 404
+        
+        customer_name = customers[customer_idx][0]
+        
+        # Get quotes for this customer
+        cursor = conn.execute("""
+            SELECT id, quote_number, total, status, created_at
+            FROM client_drafts
+            WHERE customer_name = ? AND client_id = ?
+            ORDER BY created_at DESC
+        """, (customer_name, request.client_id))
+        
+        quotes = []
+        for row in cursor.fetchall():
+            quotes.append({
+                'id': row[0],
+                'quote_number': row[1],
+                'total': row[2],
+                'status': row[3],
+                'created_at': row[4]
+            })
+        
+        conn.close()
+        return jsonify(quotes)
+    except Exception as e:
+        print(f"Error in get_customer_quotes: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# ============================================
 # PDF Serving
 # ============================================
 
