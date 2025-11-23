@@ -302,3 +302,73 @@ Please let us know at your earliest convenience.
 Best regards,
 {company_name} Estimating Team"""
 
+    def generate_professional_email(self, customer_name: str, quote_data: Dict[str, Any], company_info: Dict[str, Any]) -> str:
+        """
+        Generate a professional email body to accompany a quote.
+        
+        Args:
+            customer_name: Name of the customer
+            quote_data: Dictionary containing quote details (items, total, quote_number)
+            company_info: Dictionary containing company details (name, phone, email)
+        
+        Returns:
+            Professional email body as string
+        """
+        company_name = company_info.get('company_name', 'Our Company')
+        company_phone = company_info.get('phone', '')
+        company_email = company_info.get('email', '')
+        
+        items_summary = "\n".join([
+            f"- {item['service_name']} (Qty: {item['quantity']}): ${item['total']:.2f}"
+            for item in quote_data.get('items', [])
+        ])
+        
+        prompt = f"""You are writing a professional email on behalf of {company_name} to send a quote to a customer.
+
+Customer Name: {customer_name}
+Quote Number: {quote_data.get('quote_number', 'N/A')}
+Total Amount: ${quote_data.get('total', 0):.2f}
+
+Items Quoted:
+{items_summary}
+
+Write a professional, friendly email that:
+1. Thanks the customer for their inquiry
+2. Briefly mentions what services/products are included in the quote
+3. Highlights that a detailed PDF quote is attached
+4. Encourages them to reach out with any questions
+5. Provides contact information ({company_phone}, {company_email})
+6. Has a professional but warm tone
+7. Is concise (3-4 short paragraphs max)
+
+Do NOT include a subject line. Sign off as "{company_name} Team".
+"""
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Error generating professional email: {e}")
+            # Fallback template
+            return f"""Hi {customer_name},
+
+Thank you for your quote request! We're pleased to provide you with a detailed estimate for your project.
+
+Your quote includes:
+{items_summary}
+
+Total: ${quote_data.get('total', 0):.2f}
+
+Please find the complete quote attached as a PDF. If you have any questions or would like to discuss the details, feel free to reach out to us at {company_phone} or {company_email}.
+
+We look forward to working with you!
+
+Best regards,
+{company_name} Team"""
+

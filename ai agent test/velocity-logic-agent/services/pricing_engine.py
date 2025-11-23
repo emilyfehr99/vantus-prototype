@@ -55,6 +55,39 @@ class PricingEngine:
             print(f"✗ Error loading pricing data: {e}")
             raise
     
+    def load_from_google_sheets(self, sheets_service, spreadsheet_url: str) -> None:
+        """
+        Load pricing data from Google Sheets.
+        
+        Args:
+            sheets_service: Instance of SheetsService
+            spreadsheet_url: URL of the Google Sheet
+        """
+        try:
+            pricing_data = sheets_service.read_pricing_data(spreadsheet_url)
+            
+            if not pricing_data:
+                raise ValueError("No pricing data found in Google Sheet")
+            
+            # Convert to DataFrame
+            self.df = pd.DataFrame(pricing_data)
+            
+            # Rename columns to match expected format
+            self.df.rename(columns={
+                'service_name': 'Service Name',
+                'unit_price': 'Unit Price',
+                'unit': 'Unit'
+            }, inplace=True)
+            
+            # Convert Unit Price to float
+            self.df["Unit Price"] = pd.to_numeric(self.df["Unit Price"], errors="coerce")
+            
+            print(f"✓ Loaded {len(self.df)} pricing items from Google Sheets")
+            
+        except Exception as e:
+            print(f"✗ Error loading pricing data from Google Sheets: {e}")
+            raise
+    
     def _fuzzy_match_service(self, service_request: str, threshold: int = 60) -> Dict[str, Any]:
         """
         Find the best matching service using fuzzy string matching.

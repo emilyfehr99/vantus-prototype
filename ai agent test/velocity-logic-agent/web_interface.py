@@ -542,10 +542,94 @@ def upload_pricing():
             print(f"Error reloading pricing: {e}")
         
         db.log_activity(request.client_id, "Pricing Updated", f"Pricing file ({ext}) uploaded", request.user_id)
-        
         return jsonify({"success": True, "message": "Pricing data updated"})
     
     return jsonify({"error": "Invalid file type. Please upload .csv, .xlsx, or .xls"}), 400
+
+@app.route('/api/settings/sheets-connect', methods=['POST'])
+@require_auth
+def connect_google_sheets():
+    """Connect to Google Sheets for pricing data."""
+    data = request.json
+    sheets_url = data.get('sheets_url')
+    
+    if not sheets_url:
+        return jsonify({"error": "No Google Sheets URL provided"}), 400
+    
+    try:
+        from services.sheets_service import SheetsService
+        
+        # Initialize Sheets service
+        sheets_service = SheetsService()
+        
+        # Test connection
+        if not sheets_service.test_connection(sheets_url):
+            return jsonify({"error": "Failed to connect to Google Sheets. Please check the URL and permissions."}), 400
+        
+        # Load pricing data from Sheets
+        global agent
+        if agent:
+            agent.pricing_engine.load_from_google_sheets(sheets_service, sheets_url)
+        
+        # Update settings
+        from datetime import datetime
+        db.update_client_settings(request.client_id, {
+            'pricing_source': 'sheets',
+            'sheets_url': sheets_url,
+            'sheets_last_sync': datetime.now().isoformat()
+        })
+        
+        db.log_activity(request.client_id, "Google Sheets Connected", "Pricing data synced from Google Sheets", request.user_id)
+        
+        return jsonify({
+            "success": True, 
+            "message": "Successfully connected to Google Sheets",
+            "items_loaded": len(agent.pricing_engine.df) if agent else 0
+        })
+    
+    except Exception as e:
+        print(f"Error connecting to Google Sheets: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/settings/sheets-sync', methods=['POST'])
+@require_auth
+def sync_google_sheets():
+    """Manually sync pricing data from Google Sheets."""
+    try:
+        # Get current sheets URL from settings
+        settings = db.get_client_settings(request.client_id)
+        sheets_url = settings.get('sheets_url')
+        
+        if not sheets_url:
+            return jsonify({"error": "No Google Sheets URL configured"}), 400
+        
+        from services.sheets_service import SheetsService
+        
+        # Initialize Sheets service
+        sheets_service = SheetsService()
+        
+        # Load pricing data from Sheets
+        global agent
+        if agent:
+            agent.pricing_engine.load_from_google_sheets(sheets_service, sheets_url)
+        
+        # Update last sync timestamp
+        from datetime import datetime
+        db.update_client_settings(request.client_id, {
+            'sheets_last_sync': datetime.now().isoformat()
+        })
+        
+        db.log_activity(request.client_id, "Sheets Synced", "Pricing data refreshed from Google Sheets", request.user_id)
+        
+        return jsonify({
+            "success": True,
+            "message": "Pricing data synced successfully",
+            "items_loaded": len(agent.pricing_engine.df) if agent else 0
+        })
+    
+    except Exception as e:
+        print(f"Error syncing Google Sheets: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/settings/agreement', methods=['POST'])
 @require_auth
