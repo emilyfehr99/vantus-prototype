@@ -24,21 +24,14 @@ class PricingEngine:
         self.load_pricing_data()
     
     def load_pricing_data(self) -> None:
-        """Load pricing data from CSV or Excel into DataFrame."""
+        """Load pricing data from CSV into DataFrame."""
         try:
             if not os.path.exists(self.pricing_csv_path):
                 raise FileNotFoundError(
                     f"Pricing file not found: {self.pricing_csv_path}"
                 )
             
-            # Determine file type
-            _, ext = os.path.splitext(self.pricing_csv_path)
-            ext = ext.lower()
-            
-            if ext in ['.xlsx', '.xls']:
-                self.df = pd.read_excel(self.pricing_csv_path)
-            else:
-                self.df = pd.read_csv(self.pricing_csv_path)
+            self.df = pd.read_csv(self.pricing_csv_path)
             
             # Validate required columns
             required_columns = ["Service Name", "Unit Price"]
@@ -53,39 +46,6 @@ class PricingEngine:
             
         except Exception as e:
             print(f"✗ Error loading pricing data: {e}")
-            raise
-    
-    def load_from_google_sheets(self, sheets_service, spreadsheet_url: str) -> None:
-        """
-        Load pricing data from Google Sheets.
-        
-        Args:
-            sheets_service: Instance of SheetsService
-            spreadsheet_url: URL of the Google Sheet
-        """
-        try:
-            pricing_data = sheets_service.read_pricing_data(spreadsheet_url)
-            
-            if not pricing_data:
-                raise ValueError("No pricing data found in Google Sheet")
-            
-            # Convert to DataFrame
-            self.df = pd.DataFrame(pricing_data)
-            
-            # Rename columns to match expected format
-            self.df.rename(columns={
-                'service_name': 'Service Name',
-                'unit_price': 'Unit Price',
-                'unit': 'Unit'
-            }, inplace=True)
-            
-            # Convert Unit Price to float
-            self.df["Unit Price"] = pd.to_numeric(self.df["Unit Price"], errors="coerce")
-            
-            print(f"✓ Loaded {len(self.df)} pricing items from Google Sheets")
-            
-        except Exception as e:
-            print(f"✗ Error loading pricing data from Google Sheets: {e}")
             raise
     
     def _fuzzy_match_service(self, service_request: str, threshold: int = 60) -> Dict[str, Any]:

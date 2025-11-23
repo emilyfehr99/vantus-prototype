@@ -39,8 +39,6 @@ CREATE TABLE IF NOT EXISTS client_settings (
     company_phone TEXT,
     company_email TEXT,
     company_website TEXT,
-    auto_send_enabled INTEGER DEFAULT 0,
-    client_agreement_path TEXT,
     FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
 );
 
@@ -59,12 +57,6 @@ CREATE TABLE IF NOT EXISTS client_drafts (
     created_by TEXT,
     approved_by TEXT,
     approved_at TIMESTAMP,
-    email_thread_id TEXT,
-    in_reply_to TEXT,
-    email_received_at TIMESTAMP,
-    quote_sent_at TIMESTAMP,
-    clarifying_questions TEXT,
-    attention_reason TEXT,
     FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL
