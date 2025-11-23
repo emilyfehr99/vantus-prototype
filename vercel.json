@@ -1,0 +1,16 @@
+{
+  "buildCommand": "cd nhl-analytics-premium && npm install && npm run build",
+  "outputDirectory": "nhl-analytics-premium/dist",
+  "framework": "vite",
+  "installCommand": "cd nhl-analytics-premium && npm install",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "env": {
+    "VITE_API_URL": "https://nhl-analytics-api.onrender.com"
+  }
+}
+
