@@ -1360,15 +1360,16 @@ class LiveInGamePredictor:
                                 home_gs_cumulative += 0.05
                         
                         elif event_type == 'penalty':
+                            penalty_situation = details.get('situationCode', '')
                             if is_away:
                                 away_gs_cumulative -= 0.15  # Penalties: -0.15 points
                                 away_pim_cumulative += details.get('duration', 2)
-                                if 'PP' in situation or 'powerPlay' in situation.lower():
+                                if 'PP' in penalty_situation or 'powerPlay' in penalty_situation.lower():
                                     home_pp_attempts_cumulative += 1
                             elif is_home:
                                 home_gs_cumulative -= 0.15
                                 home_pim_cumulative += details.get('duration', 2)
-                                if 'PP' in situation or 'powerPlay' in situation.lower():
+                                if 'PP' in penalty_situation or 'powerPlay' in penalty_situation.lower():
                                     away_pp_attempts_cumulative += 1
                         
                         elif event_type == 'hit':

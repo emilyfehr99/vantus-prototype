@@ -2233,6 +2233,14 @@ def get_live_game_data(game_id):
         print(f"✅ Returning period_stats: length={len(prediction.get('period_stats', []))}")
         print(f"✅ live_metrics.period_stats: length={len(prediction.get('live_metrics', {}).get('period_stats', []))}")
         
+        # CRITICAL: Ensure play_by_play_with_likelihood is copied from live_metrics to prediction
+        # This is needed for extracting the latest likelihood in the API response
+        if 'live_metrics' not in prediction:
+            prediction['live_metrics'] = {}
+        if 'play_by_play_with_likelihood' in live_metrics and 'play_by_play_with_likelihood' not in prediction['live_metrics']:
+            prediction['live_metrics']['play_by_play_with_likelihood'] = live_metrics.get('play_by_play_with_likelihood')
+            print(f"✅ Copied play_by_play_with_likelihood to prediction (length: {len(live_metrics.get('play_by_play_with_likelihood', []))})", flush=True)
+        
         # ABSOLUTE FINAL: Extract physical stats RIGHT BEFORE creating final_response
         # This ensures they're set and nothing can overwrite them
         from nhl_api_client import NHLAPIClient
@@ -2589,8 +2597,9 @@ def get_live_game_data(game_id):
             traceback.print_exc()
             # Don't fail the request if this calculation fails
         
-        # Calculate live win probability for LIVE games using the EXACT SAME method from auto post reports
-        # This calls the report_generator.calculate_win_probability() method directly
+        # Calculate live win probability for LIVE games
+        # FIRST: Try to extract from play_by_play_with_likelihood (most accurate, calculated per play)
+        # SECOND: Fall back to calculate_win_probability() method
         print(f"🔍🔍🔍 ENTERING live win probability calculation block for game {game_id}", flush=True)
         try:
             # Get game_state from multiple sources to ensure we catch live games
@@ -2611,48 +2620,75 @@ def get_live_game_data(game_id):
             print(f"🔍 Live win prob check - game_state: {game_state_for_live}, has_current_period: {has_current_period}, is_not_final: {is_not_final}, is_live: {is_live}", flush=True)
             
             if is_live:
-                print(f"🔍 Calculating live win probability for game {game_id} using report generator method...", flush=True)
+                # FIRST: Try to extract latest likelihood from play_by_play_with_likelihood
+                play_by_play_likelihood = final_response.get('live_metrics', {}).get('play_by_play_with_likelihood')
+                if not play_by_play_likelihood and prediction and 'live_metrics' in prediction:
+                    play_by_play_likelihood = prediction.get('live_metrics', {}).get('play_by_play_with_likelihood')
                 
-                # Fetch comprehensive game data to use the exact same calculation method
-                game_data_for_calc = live_predictor.api.get_comprehensive_game_data(game_id)
-                if game_data_for_calc:
-                    # Normalize game_data structure (same as postgame calculation)
-                    normalized_game_data = game_data_for_calc.copy()
-                    
-                    if 'boxscore' not in normalized_game_data:
-                        if 'game_center' in normalized_game_data and 'boxscore' in normalized_game_data['game_center']:
-                            normalized_game_data['boxscore'] = normalized_game_data['game_center']['boxscore']
-                            print(f"🔍 Moved boxscore to top level from game_center for live calc", flush=True)
-                    
-                    if 'play_by_play' not in normalized_game_data:
-                        if 'game_center' in normalized_game_data and 'play_by_play' in normalized_game_data['game_center']:
-                            normalized_game_data['play_by_play'] = normalized_game_data['game_center']['play_by_play']
-                    
-                    print(f"🔍 Game data structure for live calc - Has boxscore: {'boxscore' in normalized_game_data}, Has play_by_play: {'play_by_play' in normalized_game_data}", flush=True)
-                    
-                    # Call the EXACT SAME calculate_win_probability method from report generator
-                    # This uses the same methods: _calculate_game_scores(), _calculate_xg_from_plays(), etc.
-                    win_prob = live_predictor.report_generator.calculate_win_probability(normalized_game_data)
-                    print(f"🔍 calculate_win_probability (live) returned: {win_prob} (type: {type(win_prob)})", flush=True)
-                    
-                    if win_prob and isinstance(win_prob, dict):
-                        away_prob = win_prob.get('away_probability')
-                        home_prob = win_prob.get('home_probability')
-                        
-                        print(f"🔍 live away_probability: {away_prob}, home_probability: {home_prob}", flush=True)
+                if play_by_play_likelihood and isinstance(play_by_play_likelihood, list) and len(play_by_play_likelihood) > 0:
+                    # Get the last play (most recent) which has the current likelihood
+                    last_play = play_by_play_likelihood[-1]
+                    if last_play and 'likelihood' in last_play:
+                        latest_likelihood = last_play['likelihood']
+                        away_prob = latest_likelihood.get('away_probability')
+                        home_prob = latest_likelihood.get('home_probability')
                         
                         if away_prob is not None and home_prob is not None:
                             final_response['live_win_probability'] = {
                                 'away_probability': float(away_prob),
                                 'home_probability': float(home_prob)
                             }
-                            print(f"✅ SUCCESS: Calculated live win probability using report generator - Away {away_prob:.1f}% / Home {home_prob:.1f}%", flush=True)
+                            print(f"✅ SUCCESS: Extracted live win probability from play_by_play_with_likelihood (latest play) - Away {away_prob:.1f}% / Home {home_prob:.1f}%", flush=True)
                         else:
-                            print(f"⚠️ Win prob dict exists but missing probability values", flush=True)
+                            print(f"⚠️ Latest play has likelihood but missing probability values", flush=True)
                     else:
-                        print(f"⚠️ calculate_win_probability (live) returned: {win_prob} (type: {type(win_prob)})", flush=True)
+                        print(f"⚠️ Latest play in play_by_play_with_likelihood doesn't have likelihood", flush=True)
                 else:
-                    print(f"⚠️ Could not get game_data for live win prob calculation", flush=True)
+                    print(f"⚠️ No play_by_play_with_likelihood available, falling back to calculate_win_probability", flush=True)
+                    
+                    # FALLBACK: Use calculate_win_probability method
+                    print(f"🔍 Calculating live win probability for game {game_id} using report generator method...", flush=True)
+                    
+                    # Fetch comprehensive game data to use the exact same calculation method
+                    game_data_for_calc = live_predictor.api.get_comprehensive_game_data(game_id)
+                    if game_data_for_calc:
+                        # Normalize game_data structure (same as postgame calculation)
+                        normalized_game_data = game_data_for_calc.copy()
+                        
+                        if 'boxscore' not in normalized_game_data:
+                            if 'game_center' in normalized_game_data and 'boxscore' in normalized_game_data['game_center']:
+                                normalized_game_data['boxscore'] = normalized_game_data['game_center']['boxscore']
+                                print(f"🔍 Moved boxscore to top level from game_center for live calc", flush=True)
+                        
+                        if 'play_by_play' not in normalized_game_data:
+                            if 'game_center' in normalized_game_data and 'play_by_play' in normalized_game_data['game_center']:
+                                normalized_game_data['play_by_play'] = normalized_game_data['game_center']['play_by_play']
+                        
+                        print(f"🔍 Game data structure for live calc - Has boxscore: {'boxscore' in normalized_game_data}, Has play_by_play: {'play_by_play' in normalized_game_data}", flush=True)
+                        
+                        # Call the EXACT SAME calculate_win_probability method from report generator
+                        # This uses the same methods: _calculate_game_scores(), _calculate_xg_from_plays(), etc.
+                        win_prob = live_predictor.report_generator.calculate_win_probability(normalized_game_data)
+                        print(f"🔍 calculate_win_probability (live) returned: {win_prob} (type: {type(win_prob)})", flush=True)
+                        
+                        if win_prob and isinstance(win_prob, dict):
+                            away_prob = win_prob.get('away_probability')
+                            home_prob = win_prob.get('home_probability')
+                            
+                            print(f"🔍 live away_probability: {away_prob}, home_probability: {home_prob}", flush=True)
+                            
+                            if away_prob is not None and home_prob is not None:
+                                final_response['live_win_probability'] = {
+                                    'away_probability': float(away_prob),
+                                    'home_probability': float(home_prob)
+                                }
+                                print(f"✅ SUCCESS: Calculated live win probability using report generator - Away {away_prob:.1f}% / Home {home_prob:.1f}%", flush=True)
+                            else:
+                                print(f"⚠️ Win prob dict exists but missing probability values", flush=True)
+                        else:
+                            print(f"⚠️ calculate_win_probability (live) returned: {win_prob} (type: {type(win_prob)})", flush=True)
+                    else:
+                        print(f"⚠️ Could not get game_data for live win prob calculation", flush=True)
         except Exception as e:
             print(f"⚠️ Could not calculate live win probability: {e}", flush=True)
             import traceback
@@ -2766,6 +2802,13 @@ def get_live_game_data(game_id):
         print(f"   live_win_probability in response: {'live_win_probability' in final_response}", flush=True)
         if 'live_win_probability' in final_response:
             print(f"   live_win_probability value: {final_response['live_win_probability']}", flush=True)
+        print(f"   postgame_win_probability in response: {'postgame_win_probability' in final_response}", flush=True)
+        if 'postgame_win_probability' in final_response:
+            print(f"   postgame_win_probability value: {final_response['postgame_win_probability']}", flush=True)
+        print(f"   play_by_play_with_likelihood in live_metrics: {'play_by_play_with_likelihood' in final_response.get('live_metrics', {})}", flush=True)
+        if 'play_by_play_with_likelihood' in final_response.get('live_metrics', {}):
+            pbp_len = len(final_response['live_metrics']['play_by_play_with_likelihood'])
+            print(f"   play_by_play_with_likelihood length: {pbp_len}", flush=True)
         return jsonify(final_response)
     except Exception as e:
         print(f"Error in live-game endpoint: {e}")

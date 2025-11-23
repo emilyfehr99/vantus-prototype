@@ -16,8 +16,8 @@ services:
   - type: web
     name: nhl-analytics-frontend
     env: static
-    buildCommand: "cd automated-post-game-reports/nhl-analytics && npm install && npm run build"
-    staticPublishPath: automated-post-game-reports/nhl-analytics/dist
+    buildCommand: "cd nhl-analytics-premium && npm install && npm run build"
+    staticPublishPath: nhl-analytics-premium/dist
     envVars:
       - key: VITE_API_URL
         value: https://nhl-analytics-api.onrender.com
