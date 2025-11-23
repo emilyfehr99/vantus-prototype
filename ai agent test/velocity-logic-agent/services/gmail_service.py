@@ -182,6 +182,94 @@ class GmailService:
         except Exception as e:
             print(f"✗ Error creating draft: {e}")
             return None
+
+    def send_email(
+        self,
+        to_email: str,
+        subject: str,
+        body: str,
+        thread_id: Optional[str] = None,
+        pdf_path: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Send an email immediately.
+        
+        Args:
+            to_email: Recipient email address
+            subject: Email subject
+            body: Email body text
+            thread_id: Optional thread ID to reply to
+            pdf_path: Optional path to PDF file to attach
+        
+        Returns:
+            Dictionary with message info or None if failed
+        """
+        if self.mock_mode:
+            print(f"\\n{'='*60}")
+            print("📧 MOCK MODE - Email Sent")
+            print(f"{'='*60}")
+            print(f"To: {to_email}")
+            print(f"Subject: {subject}")
+            if thread_id:
+                print(f"Thread ID: {thread_id}")
+            print(f"\\nBody:\\n{body}")
+            if pdf_path:
+                print(f"\\nAttachment: {pdf_path}")
+            print(f"{'='*60}\\n")
+            return {
+                "id": "mock_sent_id",
+                "threadId": thread_id or "mock_thread_id",
+                "labelIds": ["SENT"]
+            }
+        
+        try:
+            # Create message
+            message = MIMEMultipart()
+            message['to'] = to_email
+            message['subject'] = subject
+            
+            # Add body
+            message.attach(MIMEText(body, 'plain'))
+            
+            # Add PDF attachment if provided
+            if pdf_path and os.path.exists(pdf_path):
+                with open(pdf_path, "rb") as attachment:
+                    part = MIMEBase('application', 'octet-stream')
+                    part.set_payload(attachment.read())
+                
+                encoders.encode_base64(part)
+                part.add_header(
+                    'Content-Disposition',
+                    f'attachment; filename= {os.path.basename(pdf_path)}'
+                )
+                message.attach(part)
+            
+            # Encode message
+            raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
+            
+            # Create message body
+            message_body = {
+                'raw': raw_message
+            }
+            
+            # Add thread ID if replying
+            if thread_id:
+                message_body['threadId'] = thread_id
+            
+            sent_message = self.service.users().messages().send(
+                userId='me',
+                body=message_body
+            ).execute()
+            
+            print(f"✓ Sent Gmail message: {sent_message['id']}")
+            return sent_message
+            
+        except HttpError as error:
+            print(f"✗ Gmail API error: {error}")
+            return None
+        except Exception as e:
+            print(f"✗ Error sending email: {e}")
+            return None
     
     def get_message(self, message_id: str) -> Optional[Dict[str, Any]]:
         """

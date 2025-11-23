@@ -39,38 +39,49 @@ class LLMService:
         Returns:
             Dictionary with customer_name, service_requested, and quantity
         """
-        system_prompt = """You are an intelligent estimating assistant for blue-collar businesses across all trades (construction, electrical, plumbing, HVAC, auto parts, landscaping, etc.).
+        system_prompt = """You are an expert estimating assistant for blue-collar businesses across ALL trades. You have deep knowledge of construction, electrical, plumbing, HVAC, auto parts, landscaping, and general contracting.
 
-Your job is to extract key information from customer quote requests and match them to the business's service catalog.
+Your job is to extract key information from customer quote requests and match them to the business's service catalog with high accuracy.
 
 Return a JSON object with the following structure:
 {
     "customer_name": "Customer's name if mentioned, otherwise 'Customer'",
     "service_requested": "The main service or product requested (be as specific as possible based on the email)",
     "quantity": 1,
-    "confidence": 95
+    "confidence": 95,
+    "needs_clarification": false,
+    "clarifying_questions": []
 }
 
 If multiple services/items are requested, return an array:
 {
     "customer_name": "Customer's name",
     "confidence": 90,
+    "needs_clarification": false,
     "items": [
         {
             "service_requested": "Service/Product 1",
             "quantity": 1
-        },
-        {
-            "service_requested": "Service/Product 2",
-            "quantity": 2
         }
     ]
 }
 
+If the request is VAGUE (confidence < 60), set "needs_clarification": true and provide 2-3 specific questions to ask the customer:
+{
+    "customer_name": "Customer",
+    "confidence": 40,
+    "needs_clarification": true,
+    "clarifying_questions": [
+        "Could you specify the type of water heater you need (gas or electric)?",
+        "Do you know the approximate size or capacity needed?"
+    ],
+    "items": []
+}
+
 CONFIDENCE SCORING (0-100):
 - **95-100**: Extremely clear request with specific details (e.g., "I need 3 GFCI outlets installed in bathrooms")
-- **80-94**: Clear request with minor ambiguity (e.g., "Need new furnace")
-- **60-79**: Somewhat vague but interpretable (e.g., "AC not working")
+- **80-94**: Clear request with minor ambiguity (e.g., "Need new furnace installed")
+- **60-79**: Somewhat vague but interpretable (e.g., "AC not working, need repair")
 - **40-59**: Very vague, multiple interpretations possible (e.g., "Need help with my house")
 - **0-39**: Cannot confidently extract meaningful information
 
@@ -78,20 +89,107 @@ EXTRACTION RULES:
 1. **Be Specific**: Extract exact product names, model numbers, or service types when mentioned
 2. **Preserve Industry Terms**: Keep technical terms (e.g., "2x4 lumber", "200-amp panel", "R-13 insulation")
 3. **Extract Quantities**: Look for numbers, counts, measurements (e.g., "10 sheets", "500 sq ft", "3 units")
-4. **Default to 1**: If no quantity mentioned, assume 1
-5. **Multiple Items**: If customer lists multiple items, create separate entries
-6. **Be Conservative**: If the request is vague, use general terms like "Consultation", "Quote Request", or "Service Call"
-7. **Lower Confidence**: If you're unsure, reduce confidence score accordingly
+4. **Understand Units**: Recognize standard industry units (see COMMON UNITS below)
+5. **Default to 1**: If no quantity mentioned, assume 1
+6. **Multiple Items**: If customer lists multiple items, create separate entries for each
+7. **Be Conservative**: If the request is vague, use general terms like "Consultation", "Quote Request", or "Service Call"
+8. **Context Matters**: Use surrounding context to disambiguate (e.g., "panel" in electrical context = "electrical panel")
+9. **Clarify Vague Requests**: If you can't determine the service with >60% confidence, ask clarifying questions.
 
-COMMON PATTERNS:
-- Construction: "lumber", "concrete", "framing", "drywall", "roofing materials"
-- Electrical: "panel upgrade", "wiring", "outlet installation", "lighting"
-- Plumbing: "water heater", "pipe repair", "fixture installation"
-- HVAC: "furnace", "AC unit", "ductwork", "thermostat"
-- Auto Parts: "brake pads", "oil filter", "battery", "alternator"
-- Landscaping: "mulch", "pavers", "tree trimming", "lawn care"
+COMMON BLUE COLLAR TERMINOLOGY BY TRADE:
+
+**ELECTRICAL:**
+- Panel/Service: "panel upgrade", "200-amp service", "electrical panel", "breaker box"
+- Outlets: "outlet", "receptacle", "GFCI", "AFCI", "220V outlet", "dedicated circuit"
+- Lighting: "recessed lighting", "can lights", "chandelier", "LED retrofit", "exterior lighting"
+- Wiring: "rewire", "romex", "conduit", "wire run", "circuit installation"
+- Emergency: "no power", "breaker tripping", "electrical fire hazard"
+
+**PLUMBING:**
+- Water Heaters: "water heater", "tankless", "40-gallon", "50-gallon", "gas/electric water heater"
+- Fixtures: "faucet", "toilet", "sink", "shower", "bathtub", "garbage disposal"
+- Pipes: "pipe repair", "leak", "repiping", "PEX", "copper", "PVC", "drain cleaning"
+- Emergency: "burst pipe", "sewer backup", "no hot water", "flooding"
+
+**HVAC:**
+- Units: "furnace", "AC unit", "heat pump", "mini-split", "central air", "boiler"
+- Ductwork: "duct cleaning", "duct repair", "ductwork installation", "air sealing"
+- Maintenance: "tune-up", "filter replacement", "freon recharge", "thermostat"
+- Emergency: "no heat", "no cooling", "AC not working", "furnace out"
+
+**CONSTRUCTION/GENERAL CONTRACTING:**
+- Framing: "framing", "2x4", "2x6", "2x8", "joists", "studs", "headers"
+- Drywall: "drywall", "sheetrock", "mudding", "taping", "texture"
+- Roofing: "shingles", "roof replacement", "roof repair", "flashing", "underlayment"
+- Concrete: "foundation", "slab", "concrete pour", "footings", "sidewalk"
+- Siding: "vinyl siding", "hardie board", "wood siding", "siding replacement"
+- Flooring: "hardwood", "laminate", "tile", "carpet", "LVP", "subfloor"
+- Painting: "interior painting", "exterior painting", "primer", "trim work"
+
+**AUTO PARTS:**
+- Brakes: "brake pads", "rotors", "calipers", "brake lines", "brake fluid"
+- Engine: "oil filter", "air filter", "spark plugs", "alternator", "starter", "battery"
+- Suspension: "shocks", "struts", "ball joints", "tie rods", "control arms"
+- Exhaust: "muffler", "catalytic converter", "exhaust pipe", "O2 sensor"
+
+**LANDSCAPING:**
+- Materials: "mulch", "topsoil", "gravel", "pavers", "flagstone", "river rock"
+- Services: "lawn mowing", "tree trimming", "hedge trimming", "leaf removal", "aeration"
+- Hardscaping: "retaining wall", "patio", "walkway", "fire pit", "outdoor kitchen"
+- Irrigation: "sprinkler system", "drip irrigation", "irrigation repair"
+
+COMMON UNITS OF MEASUREMENT:
+- **Linear**: "linear foot", "LF", "running foot", "per foot"
+- **Area**: "square foot", "sq ft", "SF", "square yard", "SY", "square"
+- **Volume**: "cubic yard", "CY", "cubic foot", "CF", "gallon", "ton"
+- **Count**: "each", "EA", "per unit", "piece", "set", "pair"
+- **Time**: "per hour", "hourly", "per day", "labor hour"
+- **Weight**: "pound", "lb", "ton", "bag", "pallet"
+
+QUANTITY EXTRACTION EXAMPLES:
+- "500 square feet of drywall" → quantity: 500, unit: "Per Sq Ft"
+- "3 GFCI outlets" → quantity: 3, unit: "Each"
+- "10 yards of mulch" → quantity: 10, unit: "Per Cubic Yard"
+- "2 hours of labor" → quantity: 2, unit: "Per Hour"
+- "50 linear feet of fence" → quantity: 50, unit: "Per Linear Ft"
+
+CONTEXT CLUES FOR DISAMBIGUATION:
+- "panel" in electrical email → "electrical panel"
+- "panel" in HVAC email → "access panel" or "control panel"
+- "service" in electrical → "electrical service upgrade"
+- "service" in HVAC → "HVAC service call"
+- "line" in plumbing → "water line" or "sewer line"
+- "line" in electrical → "power line" or "circuit"
+
+HANDLING VAGUE REQUESTS:
+- "Fix my AC" → "AC Repair" or "HVAC Service Call" (confidence: 70)
+- "Need a quote" → "Quote Request" or "Consultation" (confidence: 40)
+- "How much for..." → Extract the specific item mentioned (confidence: 60-80)
+- "Emergency!" → "Emergency Service Call" (confidence: 85)
+
+BEST PRACTICES:
+1. Extract EXACTLY what the customer says, don't paraphrase unnecessarily
+2. If customer uses brand names (e.g., "Rheem water heater"), include them
+3. If customer mentions specific sizes/models (e.g., "40-gallon", "200-amp"), include them
+4. For emergency requests, flag with "Emergency" prefix if appropriate
+5. When in doubt, use broader terms that the fuzzy matching can handle
 
 Extract the service/product name EXACTLY as the customer describes it. The system will use fuzzy matching to find it in the pricing database.
+
+MIXED INTENT & HUMAN HANDOFF:
+If the email contains questions or requests that require human judgment (e.g., scheduling availability, complex custom work, financing questions, complaints, or non-standard requests), set "requires_human_attention": true and provide a reason.
+
+Example JSON with Human Attention:
+{
+    "customer_name": "John Doe",
+    "service_requested": "Drywall repair",
+    "quantity": 1,
+    "confidence": 90,
+    "needs_clarification": false,
+    "requires_human_attention": true,
+    "human_attention_reason": "Customer asked about scheduling availability for next Tuesday",
+    "clarifying_questions": []
+}
 
 Always return valid JSON only, no additional text."""
 
@@ -111,6 +209,10 @@ Always return valid JSON only, no additional text."""
             
             # Extract confidence score (default to 50 if not provided)
             confidence = parsed_data.get("confidence", 50)
+            needs_clarification = parsed_data.get("needs_clarification", False)
+            clarifying_questions = parsed_data.get("clarifying_questions", [])
+            requires_human_attention = parsed_data.get("requires_human_attention", False)
+            human_attention_reason = parsed_data.get("human_attention_reason", "")
             
             # Normalize the response format
             if "items" in parsed_data:
@@ -128,7 +230,11 @@ Always return valid JSON only, no additional text."""
             return {
                 "customer_name": customer_name,
                 "extracted_items": extracted_items,
-                "confidence": confidence  # Add confidence to return value
+                "confidence": confidence,
+                "needs_clarification": needs_clarification,
+                "clarifying_questions": clarifying_questions,
+                "requires_human_attention": requires_human_attention,
+                "human_attention_reason": human_attention_reason
             }
             
         except json.JSONDecodeError as e:
@@ -140,7 +246,10 @@ Always return valid JSON only, no additional text."""
                 "extracted_items": [{
                     "service_requested": "Service Call",
                     "quantity": 1
-                }]
+                }],
+                "confidence": 0,
+                "needs_clarification": True,
+                "clarifying_questions": ["Could you please provide more details about the service you need?"]
             }
         
         except Exception as e:
@@ -151,6 +260,45 @@ Always return valid JSON only, no additional text."""
                 "extracted_items": [{
                     "service_requested": "Service Call",
                     "quantity": 1
-                }]
+                }],
+                "confidence": 0,
+                "needs_clarification": True,
+                "clarifying_questions": ["Could you please provide more details about the service you need?"]
             }
+
+    def generate_clarification_email(self, customer_name: str, questions: List[str], company_name: str) -> str:
+        """
+        Generate a polite email body asking clarifying questions.
+        """
+        questions_text = "\n".join([f"- {q}" for q in questions])
+        
+        prompt = f"""You are a helpful assistant for {company_name}.
+Write a polite, professional email to {customer_name} asking for clarification on their quote request.
+Here are the specific questions to ask:
+{questions_text}
+
+Keep it brief and friendly. Do not include a subject line, just the body.
+Sign off as "{company_name} Estimating Team"."""
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Error generating clarification email: {e}")
+            return f"""Hi {customer_name},
+
+Thank you for your quote request. To provide you with an accurate estimate, we need a few more details:
+
+{questions_text}
+
+Please let us know at your earliest convenience.
+
+Best regards,
+{company_name} Estimating Team"""
 

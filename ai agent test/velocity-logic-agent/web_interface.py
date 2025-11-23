@@ -24,6 +24,183 @@ auth_service = AuthService()
 agent = None
 polling_service = PollingService(check_interval=60)
 
+# ============================================
+# Admin Analytics Endpoints
+# ============================================
+
+@app.route('/api/admin/stats', methods=['GET'])
+def get_admin_stats():
+    """Get aggregated stats for the master dashboard."""
+    try:
+        # Total Clients
+        clients_response = db.supabase.table("clients").select("id", count='exact').execute()
+        total_clients = clients_response.count
+
+        # Total Revenue (sum of all accepted quotes)
+        revenue_response = db.supabase.table("client_drafts")\
+            .select("total")\
+            .eq("status", "ACCEPTED")\
+            .execute()
+        
+        total_revenue = sum(float(row['total']) for row in revenue_response.data if row['total'])
+
+        # Active Quotes (SENT or DRAFT)
+        active_quotes_response = db.supabase.table("client_drafts")\
+            .select("id", count='exact')\
+            .in_("status", ["SENT", "DRAFT"])\
+            .execute()
+        active_quotes = active_quotes_response.count
+
+        return jsonify({
+            "total_clients": total_clients,
+            "total_revenue": total_revenue,
+            "active_quotes": active_quotes
+        })
+    except Exception as e:
+        print(f"Error in get_admin_stats: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/admin/clients', methods=['GET'])
+def get_admin_clients():
+    """Get list of all clients with their stats."""
+    try:
+        # Fetch all clients
+        clients_response = db.supabase.table("clients").select("*").execute()
+        clients = clients_response.data
+
+        client_data = []
+        for client in clients:
+            # Get quote count for this client
+            quotes_response = db.supabase.table("client_drafts")\
+                .select("id", count='exact')\
+                .eq("client_id", client['id'])\
+                .execute()
+            
+            # Get revenue for this client
+            revenue_response = db.supabase.table("client_drafts")\
+                .select("total")\
+                .eq("client_id", client['id'])\
+                .eq("status", "ACCEPTED")\
+                .execute()
+            revenue = sum(float(row['total']) for row in revenue_response.data if row['total'])
+
+            client_data.append({
+                "id": client['id'],
+                "company_name": client['company_name'],
+                "industry": client['industry'],
+                "subscription_tier": client['subscription_tier'],
+                "total_quotes": quotes_response.count,
+                "total_revenue": revenue,
+                "joined_at": client.get('created_at', 'N/A') # Assuming created_at exists or N/A
+            })
+        
+        return jsonify(client_data)
+    except Exception as e:
+        print(f"Error in get_admin_clients: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/admin/quarterly-revenue', methods=['GET'])
+def get_quarterly_revenue():
+    """Get revenue broken down by quarter for the current year."""
+    try:
+        from datetime import datetime
+        
+        # Get all accepted quotes with their created_at dates
+        response = db.supabase.table("client_drafts")\
+            .select("total, created_at")\
+            .eq("status", "ACCEPTED")\
+            .execute()
+        
+        # Initialize quarterly data
+        quarters = {"Q1": 0, "Q2": 0, "Q3": 0, "Q4": 0}
+        current_year = datetime.now().year
+        
+        for row in response.data:
+            if not row.get('total') or not row.get('created_at'):
+                continue
+            
+            # Parse the created_at date
+            created_date = datetime.fromisoformat(row['created_at'].replace('Z', '+00:00'))
+            
+            # Only count current year
+            if created_date.year == current_year:
+                month = created_date.month
+                revenue = float(row['total'])
+                
+                if month <= 3:
+                    quarters["Q1"] += revenue
+                elif month <= 6:
+                    quarters["Q2"] += revenue
+                elif month <= 9:
+                    quarters["Q3"] += revenue
+                else:
+                    quarters["Q4"] += revenue
+        
+        return jsonify(quarters)
+    except Exception as e:
+        print(f"Error in get_quarterly_revenue: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/admin/metrics', methods=['GET'])
+def get_admin_metrics():
+    """Get additional business metrics."""
+    try:
+        from datetime import datetime, timedelta
+        
+        # Get all drafts
+        all_drafts = db.supabase.table("client_drafts").select("*").execute()
+        
+        # Client Churn (clients with no quotes in last 90 days)
+        ninety_days_ago = (datetime.now() - timedelta(days=90)).isoformat()
+        recent_clients = set()
+        for draft in all_drafts.data:
+            if draft.get('created_at') and draft['created_at'] > ninety_days_ago:
+                recent_clients.add(draft['client_id'])
+        
+        total_clients_response = db.supabase.table("clients").select("id", count='exact').execute()
+        total_clients = total_clients_response.count
+        inactive_clients = total_clients - len(recent_clients)
+        churn_rate = (inactive_clients / total_clients * 100) if total_clients > 0 else 0
+        
+        # Average Deal Size
+        accepted_quotes = [float(d['total']) for d in all_drafts.data if d.get('status') == 'ACCEPTED' and d.get('total')]
+        avg_deal_size = sum(accepted_quotes) / len(accepted_quotes) if accepted_quotes else 0
+        
+        # Quote Conversion Rate
+        sent_quotes = len([d for d in all_drafts.data if d.get('status') in ['SENT', 'ACCEPTED']])
+        accepted_count = len(accepted_quotes)
+        conversion_rate = (accepted_count / sent_quotes * 100) if sent_quotes > 0 else 0
+        
+        # Month-over-Month Growth
+        current_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        last_month_start = (current_month_start - timedelta(days=1)).replace(day=1)
+        
+        current_month_revenue = sum(
+            float(d['total']) for d in all_drafts.data 
+            if d.get('status') == 'ACCEPTED' and d.get('total') and d.get('created_at') 
+            and datetime.fromisoformat(d['created_at'].replace('Z', '+00:00')) >= current_month_start
+        )
+        
+        last_month_revenue = sum(
+            float(d['total']) for d in all_drafts.data 
+            if d.get('status') == 'ACCEPTED' and d.get('total') and d.get('created_at')
+            and last_month_start <= datetime.fromisoformat(d['created_at'].replace('Z', '+00:00')) < current_month_start
+        )
+        
+        mom_growth = ((current_month_revenue - last_month_revenue) / last_month_revenue * 100) if last_month_revenue > 0 else 0
+        
+        return jsonify({
+            "churn_rate": round(churn_rate, 1),
+            "avg_deal_size": round(avg_deal_size, 2),
+            "conversion_rate": round(conversion_rate, 1),
+            "mom_growth": round(mom_growth, 1),
+            "current_month_revenue": round(current_month_revenue, 2),
+            "last_month_revenue": round(last_month_revenue, 2)
+        })
+    except Exception as e:
+        print(f"Error in get_admin_metrics: {e}")
+        return jsonify({"error": str(e)}), 500
+
 def init_agent():
     """Initialize the agent."""
     global agent
@@ -265,7 +442,9 @@ def get_settings():
         'secondary_color': settings.get('secondary_color'),
         'pricing_csv_path': settings.get('pricing_csv_path'),
         'tax_rate': settings.get('tax_rate'),
-        'auto_approve_threshold': settings.get('auto_approve_threshold')
+        'auto_approve_threshold': settings.get('auto_approve_threshold'),
+        'auto_send_enabled': settings.get('auto_send_enabled', 0),
+        'email_template': settings.get('email_template')
     })
 
 @app.route('/api/settings', methods=['POST'])
@@ -335,13 +514,17 @@ def upload_pricing():
     if file.filename == '':
         return jsonify({"error": "No file selected"}), 400
     
-    if file and file.filename.lower().endswith('.csv'):
+    if file and file.filename.lower().endswith(('.csv', '.xlsx', '.xls')):
         # Create client-specific data directory
         data_dir = os.path.join('data', request.client_id)
         os.makedirs(data_dir, exist_ok=True)
         
+        # Determine filename based on extension
+        ext = os.path.splitext(file.filename)[1].lower()
+        filename = f'pricing{ext}'
+        filepath = os.path.join(data_dir, filename)
+        
         # Save file
-        filepath = os.path.join(data_dir, 'pricing.csv')
         file.save(filepath)
         
         # Update settings
@@ -351,15 +534,52 @@ def upload_pricing():
         try:
             global agent
             if agent:
-                agent.pricing_engine.load_pricing_data(filepath)
+                # Re-initialize pricing engine to pick up new file
+                # We need to update the path in the engine instance
+                agent.pricing_engine.pricing_csv_path = filepath
+                agent.pricing_engine.load_pricing_data()
         except Exception as e:
             print(f"Error reloading pricing: {e}")
         
-        db.log_activity(request.client_id, "Pricing Updated", "Pricing CSV uploaded", request.user_id)
+        db.log_activity(request.client_id, "Pricing Updated", f"Pricing file ({ext}) uploaded", request.user_id)
         
         return jsonify({"success": True, "message": "Pricing data updated"})
     
-    return jsonify({"error": "Invalid file type"}), 400
+    return jsonify({"error": "Invalid file type. Please upload .csv, .xlsx, or .xls"}), 400
+
+@app.route('/api/settings/agreement', methods=['POST'])
+@require_auth
+def upload_agreement():
+    """Upload client agreement file."""
+    if 'agreement' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    
+    file = request.files['agreement']
+    
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+    
+    if file and file.filename.lower().endswith(('.pdf', '.doc', '.docx')):
+        # Create client-specific data directory
+        data_dir = os.path.join('data', request.client_id)
+        os.makedirs(data_dir, exist_ok=True)
+        
+        # Determine filename based on extension
+        ext = os.path.splitext(file.filename)[1].lower()
+        filename = f'client_agreement{ext}'
+        filepath = os.path.join(data_dir, filename)
+        
+        # Save file
+        file.save(filepath)
+        
+        # Update settings
+        db.update_client_settings(request.client_id, {'client_agreement_path': filepath})
+        
+        db.log_activity(request.client_id, "Agreement Updated", f"Client agreement ({ext}) uploaded", request.user_id)
+        
+        return jsonify({"success": True, "message": "Client agreement updated", "path": filepath})
+    
+    return jsonify({"error": "Invalid file type. Please upload .pdf, .doc, or .docx"}), 400
 
 # ============================================
 # Activity Log (Protected)
@@ -382,34 +602,51 @@ def get_activity():
 def get_customers():
     """Get all customers for authenticated client from drafts."""
     try:
-        conn = db.get_connection()
-        cursor = conn.execute("""
-            SELECT 
-                customer_name as name,
-                COALESCE(customer_email, 'N/A') as email,
-                MIN(created_at) as created_at,
-                COUNT(*) as quote_count,
-                SUM(CASE WHEN status = 'APPROVED' THEN total ELSE 0 END) as total_revenue,
-                MAX(created_at) as last_quote_date
-            FROM client_drafts
-            WHERE client_id = ? AND customer_name IS NOT NULL
-            GROUP BY customer_name, COALESCE(customer_email, 'N/A')
-            ORDER BY total_revenue DESC
-        """, (request.client_id,))
+        # Fetch all drafts for the client
+        response = db.supabase.table("client_drafts").select("*").eq("client_id", request.client_id).execute()
+        drafts = response.data
         
+        # Aggregate data in Python
+        customer_stats = {}
+        
+        for draft in drafts:
+            email = draft.get('customer_email') or 'N/A'
+            name = draft.get('customer_name')
+            if not name:
+                continue
+                
+            key = (name, email)
+            
+            if key not in customer_stats:
+                customer_stats[key] = {
+                    'name': name,
+                    'email': email,
+                    'created_at': draft['created_at'],
+                    'quote_count': 0,
+                    'total_revenue': 0,
+                    'last_quote_date': draft['created_at']
+                }
+            
+            stats = customer_stats[key]
+            stats['quote_count'] += 1
+            if draft.get('status') == 'APPROVED':
+                stats['total_revenue'] += draft.get('total', 0)
+            
+            # Update dates
+            if draft['created_at'] < stats['created_at']:
+                stats['created_at'] = draft['created_at']
+            if draft['created_at'] > stats['last_quote_date']:
+                stats['last_quote_date'] = draft['created_at']
+        
+        # Convert to list and sort
         customers = []
-        for idx, row in enumerate(cursor.fetchall()):
-            customers.append({
-                'id': idx + 1,  # Generate sequential ID
-                'name': row[0],
-                'email': row[1] or 'N/A',
-                'created_at': row[2],
-                'quote_count': row[3] or 0,
-                'total_revenue': row[4] or 0,
-                'last_quote_date': row[5]
-            })
+        for idx, ((name, email), stats) in enumerate(customer_stats.items()):
+            stats['id'] = idx + 1
+            customers.append(stats)
+            
+        # Sort by total revenue desc
+        customers.sort(key=lambda x: x['total_revenue'], reverse=True)
         
-        conn.close()
         return jsonify(customers)
     except Exception as e:
         print(f"Error in get_customers: {e}")
@@ -421,44 +658,39 @@ def get_customer_quotes(customer_id):
     """Get all quotes for a specific customer by name."""
     try:
         # Get customer name from ID (since we're using sequential IDs)
-        conn = db.get_connection()
+        # Get customer name from ID (since we're using sequential IDs)
+        # Re-fetch customers to map ID to name (inefficient but consistent with previous logic)
+        # In a real app, we'd use the customer UUID directly
         
-        # Get all customers to find the name by ID
-        cursor = conn.execute("""
-            SELECT DISTINCT customer_name
-            FROM client_drafts
-            WHERE client_id = ? AND customer_name IS NOT NULL
-            ORDER BY customer_name
-        """, (request.client_id,))
+        # Fetch all drafts for the client
+        response = db.supabase.table("client_drafts").select("customer_name").eq("client_id", request.client_id).neq("customer_name", "null").execute()
+        all_names = sorted(list(set(d['customer_name'] for d in response.data if d.get('customer_name'))))
         
-        customers = cursor.fetchall()
         customer_idx = int(customer_id) - 1
         
-        if customer_idx < 0 or customer_idx >= len(customers):
-            conn.close()
+        if customer_idx < 0 or customer_idx >= len(all_names):
             return jsonify({"error": "Customer not found"}), 404
         
-        customer_name = customers[customer_idx][0]
+        customer_name = all_names[customer_idx]
         
         # Get quotes for this customer
-        cursor = conn.execute("""
-            SELECT id, quote_number, total, status, created_at
-            FROM client_drafts
-            WHERE customer_name = ? AND client_id = ?
-            ORDER BY created_at DESC
-        """, (customer_name, request.client_id))
+        response = db.supabase.table("client_drafts")\
+            .select("id, quote_number, total, status, created_at")\
+            .eq("customer_name", customer_name)\
+            .eq("client_id", request.client_id)\
+            .order("created_at", desc=True)\
+            .execute()
         
         quotes = []
-        for row in cursor.fetchall():
+        for row in response.data:
             quotes.append({
-                'id': row[0],
-                'quote_number': row[1],
-                'total': row[2],
-                'status': row[3],
-                'created_at': row[4]
+                'id': row['id'],
+                'quote_number': row['quote_number'],
+                'total': row['total'],
+                'status': row['status'],
+                'created_at': row['created_at']
             })
-        
-        conn.close()
+            
         return jsonify(quotes)
     except Exception as e:
         print(f"Error in get_customer_quotes: {e}")

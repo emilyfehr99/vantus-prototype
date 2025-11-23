@@ -15,6 +15,7 @@ from services.llm_service import LLMService
 from services.pricing_engine import PricingEngine
 from services.pdf_service import PDFService
 from services.gmail_service import GmailService
+from database.db_manager import DatabaseManager
 
 # Load environment variables
 load_dotenv()
@@ -29,6 +30,25 @@ class VelocityLogicAgent:
         print("🚀 Velocity Logic Agent - Starting Up")
         print("=" * 60)
         
+        try:
+            self.db = DatabaseManager()
+            print("✓ Database Manager initialized")
+            
+            # Get default client (for single-tenant mode)
+            # Get default client (for single-tenant mode)
+            # In Supabase, we can just fetch the first client
+            response = self.db.supabase.table("clients").select("id").limit(1).execute()
+            if response.data:
+                self.client_id = response.data[0]['id']
+                print(f"✓ Using Client ID: {self.client_id}")
+            else:
+                print("⚠ No clients found in database. Please run migration or create a client.")
+                self.client_id = None
+            
+        except Exception as e:
+            print(f"✗ Failed to initialize Database: {e}")
+            sys.exit(1)
+
         try:
             self.llm_service = LLMService()
             print("✓ LLM Service initialized")
@@ -79,15 +99,73 @@ class VelocityLogicAgent:
             print(f"📧 Processing email from: {from_email}")
             print(f"{'='*60}")
             
+            # Get auto-send preference
+            auto_send_enabled = company_info.get('auto_send_enabled', 0) if company_info else 0
+            company_name = company_info.get('company_name', 'Velocity Logic') if company_info else 'Velocity Logic'
+            
             # Step 1: Parse email intent with LLM
             print("\n[1/5] Parsing email intent...")
             parsed_data = self.llm_service.parse_email_intent(email_body)
             customer_name = parsed_data.get("customer_name", "Customer")
             extracted_items = parsed_data.get("extracted_items", [])
-            confidence = parsed_data.get("confidence", 50)  # Get confidence score
+            confidence = parsed_data.get("confidence", 50)
+            needs_clarification = parsed_data.get("needs_clarification", False)
+            clarifying_questions = parsed_data.get("clarifying_questions", [])
+            requires_human_attention = parsed_data.get("requires_human_attention", False)
+            human_attention_reason = parsed_data.get("human_attention_reason", "")
             
             print(f"   ✓ Customer: {customer_name}")
             print(f"   ✓ Confidence: {confidence}% {'✅' if confidence >= 80 else '⚠️' if confidence >= 60 else '❌'}")
+            
+            if requires_human_attention:
+                print(f"   ✋ HUMAN ATTENTION REQUIRED: {human_attention_reason}")
+                # Disable auto-send for this specific email
+                auto_send_enabled = False
+                print(f"   🚫 Auto-send OVERRIDDEN (blocked) due to human attention flag")
+            
+            # Handle Clarification Needed
+            if needs_clarification:
+                print(f"   ⚠ Request needs clarification. Questions generated: {len(clarifying_questions)}")
+                
+                # Generate clarification email
+                email_body = self.llm_service.generate_clarification_email(customer_name, clarifying_questions, company_name)
+                email_subject = f"Questions regarding your quote request - {company_name}"
+                
+                if auto_send_enabled:
+                    print(f"   🚀 Auto-send ENABLED: Sending clarification email...")
+                    sent_msg = self.gmail_service.send_email(
+                        to_email=from_email,
+                        subject=email_subject,
+                        body=email_body,
+                        thread_id=thread_id
+                    )
+                    if sent_msg:
+                        print(f"   ✓ Clarification email sent!")
+                        return {
+                            "success": True,
+                            "status": "NEEDS_CLARIFICATION",
+                            "action": "EMAIL_SENT",
+                            "clarifying_questions": clarifying_questions
+                        }
+                else:
+                    print(f"   📝 Auto-send DISABLED: Creating draft with questions...")
+                    draft = self.gmail_service.create_draft(
+                        to_email=from_email,
+                        subject=email_subject,
+                        body=email_body,
+                        thread_id=thread_id
+                    )
+                    if draft:
+                        print(f"   ✓ Draft created with questions!")
+                        return {
+                            "success": True,
+                            "status": "NEEDS_CLARIFICATION",
+                            "action": "DRAFT_CREATED",
+                            "draft_id": draft.get('id'),
+                            "clarifying_questions": clarifying_questions
+                        }
+                return None
+
             print(f"   ✓ Services requested: {len(extracted_items)}")
             for item in extracted_items:
                 print(f"      - {item.get('service_requested')} (Qty: {item.get('quantity', 1)})")
@@ -116,35 +194,104 @@ class VelocityLogicAgent:
             # Step 4: Generate email body with custom template
             print("\n[4/5] Generating email body...")
             email_template = company_info.get('email_template') if company_info else None
-            email_subject = f"Quote #{quote_number} - Velocity Logic"
+            email_subject = f"Quote #{quote_number} - {company_name}"
             email_body = self._generate_email_body(customer_name, quote_data, quote_number, email_template)
             
-            # Step 5: Create Gmail draft
-            print("\n[5/5] Creating Gmail draft...")
-            draft = self.gmail_service.create_draft(
-                to_email=from_email,
-                subject=email_subject,
-                body=email_body,
-                thread_id=thread_id,
-                pdf_path=pdf_path
-            )
+            # Step 5: Create Draft or Auto-Send
+            print("\n[5/5] Finalizing response...")
             
-            if draft:
-                print(f"\n✅ Successfully processed email and created draft!")
-                return {
-                    "success": True,
-                    "quote_number": quote_number,
-                    "customer_name": customer_name,
-                    "total": quote_data['total'],
-                    "pdf_path": pdf_path,
-                    "draft_id": draft.get('id', 'mock_draft_id'),
-                    "email_body": email_body,
-                    "line_items": quote_data['line_items'],
-                    "confidence": confidence  # Add confidence score
-                }
+            # Auto-send logic: Enabled AND High Confidence (>90)
+            should_auto_send = auto_send_enabled and confidence >= 90
+            
+            if should_auto_send:
+                print(f"   🚀 Auto-send ENABLED & High Confidence ({confidence}%): Sending quote...")
+                sent_msg = self.gmail_service.send_email(
+                    to_email=from_email,
+                    subject=email_subject,
+                    body=email_body,
+                    thread_id=thread_id,
+                    pdf_path=pdf_path
+                )
+                if sent_msg:
+                    print(f"   ✓ Quote sent successfully!")
+                    return {
+                        "success": True,
+                        "quote_number": quote_number,
+                        "customer_name": customer_name,
+                        "total": quote_data['total'],
+                        "pdf_path": pdf_path,
+                        "status": "SENT",
+                        "email_body": email_body,
+                        "line_items": quote_data['line_items'],
+                        "confidence": confidence
+                    }
             else:
-                print(f"\n⚠ Draft creation may have failed (check logs)")
-                return None
+                if auto_send_enabled:
+                    print(f"   ⚠️ Auto-send ENABLED but Confidence too low ({confidence}% < 90%): Creating draft instead.")
+                else:
+                    print(f"   📝 Auto-send DISABLED: Creating draft...")
+                
+                draft = self.gmail_service.create_draft(
+                    to_email=from_email,
+                    subject=email_subject,
+                    body=email_body,
+                    thread_id=thread_id,
+                    pdf_path=pdf_path
+                )
+                
+                if draft:
+                    print(f"   ✓ Draft created successfully!")
+                    
+                    # Save draft to database
+                    if self.client_id:
+                        try:
+                            conn = self.db.get_connection()
+                            
+                            # Determine status
+                            status = 'NEEDS_REVIEW' if requires_human_attention else 'DRAFT'
+                            
+                            conn.execute("""
+                                INSERT INTO client_drafts (
+                                    client_id, customer_name, customer_email, 
+                                    service_type, total, status, 
+                                    email_thread_id, in_reply_to, 
+                                    email_received_at, attention_reason
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                self.client_id, 
+                                customer_name, 
+                                from_email, 
+                                ", ".join([item['service_name'] for item in quote_data['line_items']]), 
+                                quote_data['total'], 
+                                status,
+                                thread_id, 
+                                None, # in_reply_to
+                                datetime.now(),
+                                human_attention_reason if requires_human_attention else None
+                            ))
+                            conn.commit()
+                            conn.close()
+                            print(f"   ✓ Draft saved to database with status: {status}")
+                        except Exception as e:
+                            print(f"   ⚠ Error saving draft to database: {e}")
+
+                    return {
+                        "success": True,
+                        "quote_number": quote_number,
+                        "customer_name": customer_name,
+                        "total": quote_data['total'],
+                        "pdf_path": pdf_path,
+                        "draft_id": draft.get('id', 'mock_draft_id'),
+                        "status": "DRAFT",
+                        "email_body": email_body,
+                        "line_items": quote_data['line_items'],
+                        "confidence": confidence,
+                        "requires_human_attention": requires_human_attention,
+                        "human_attention_reason": human_attention_reason
+                    }
+            
+            print(f"\n⚠ Failed to send or create draft")
+            return None
             
         except Exception as e:
             print(f"\n✗ Error processing email: {e}")
@@ -252,8 +399,54 @@ Best regards,
                         # Extract email body
                         email_body = self.gmail_service.get_message_body(full_message)
                         
+                        # Fetch latest company info (settings might have changed)
+                        company_info = None
+                        if self.client_id:
+                            try:
+                                # We need a helper to get company info from DB
+                                # Re-using logic from web_interface.py's get_company_info would be ideal
+                                # For now, let's just query the tables directly
+                                conn = self.db.get_connection()
+                                
+                                # Get client details
+                                cursor = conn.execute("SELECT company_name FROM clients WHERE id = ?", (self.client_id,))
+                                client_row = cursor.fetchone()
+                                company_name = client_row[0] if client_row else "Velocity Logic"
+                                
+                                # Get settings
+                                cursor = conn.execute("""
+                                    SELECT logo_path, primary_color, secondary_color, email_template, 
+                                           pricing_csv_path, tax_rate, auto_approve_threshold,
+                                           company_tagline, company_address, company_phone, 
+                                           company_email, company_website, auto_send_enabled
+                                    FROM client_settings 
+                                    WHERE client_id = ?
+                                """, (self.client_id,))
+                                settings_row = cursor.fetchone()
+                                
+                                if settings_row:
+                                    company_info = {
+                                        'company_name': company_name,
+                                        'logo_path': settings_row[0],
+                                        'primary_color': settings_row[1],
+                                        'secondary_color': settings_row[2],
+                                        'email_template': settings_row[3],
+                                        'pricing_csv_path': settings_row[4],
+                                        'tax_rate': settings_row[5],
+                                        'auto_approve_threshold': settings_row[6],
+                                        'company_tagline': settings_row[7],
+                                        'company_address': settings_row[8],
+                                        'company_phone': settings_row[9],
+                                        'company_email': settings_row[10],
+                                        'company_website': settings_row[11],
+                                        'auto_send_enabled': settings_row[12]
+                                    }
+                                conn.close()
+                            except Exception as e:
+                                print(f"⚠ Error fetching company info: {e}")
+
                         # Process the email
-                        if self.process_email(email_body, from_email, thread_id):
+                        if self.process_email(email_body, from_email, thread_id, company_info):
                             processed_message_ids.add(msg_id)
                             print(f"   ✓ Marked message {msg_id} as processed")
                 

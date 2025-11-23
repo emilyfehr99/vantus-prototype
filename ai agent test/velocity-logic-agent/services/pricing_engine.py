@@ -24,14 +24,21 @@ class PricingEngine:
         self.load_pricing_data()
     
     def load_pricing_data(self) -> None:
-        """Load pricing data from CSV into DataFrame."""
+        """Load pricing data from CSV or Excel into DataFrame."""
         try:
             if not os.path.exists(self.pricing_csv_path):
                 raise FileNotFoundError(
                     f"Pricing file not found: {self.pricing_csv_path}"
                 )
             
-            self.df = pd.read_csv(self.pricing_csv_path)
+            # Determine file type
+            _, ext = os.path.splitext(self.pricing_csv_path)
+            ext = ext.lower()
+            
+            if ext in ['.xlsx', '.xls']:
+                self.df = pd.read_excel(self.pricing_csv_path)
+            else:
+                self.df = pd.read_csv(self.pricing_csv_path)
             
             # Validate required columns
             required_columns = ["Service Name", "Unit Price"]
