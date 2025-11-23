@@ -7,9 +7,36 @@ from datetime import datetime, timedelta
 import requests
 import csv
 import io
+import ipaddress
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for React frontend
+
+# Render IP ranges for allowlisting (if needed)
+RENDER_IP_RANGES = [
+    '74.220.49.0/24',
+    '74.220.57.0/24'
+]
+
+# Convert CIDR ranges to networks for IP checking
+RENDER_NETWORKS = [ipaddress.ip_network(cidr) for cidr in RENDER_IP_RANGES]
+
+def is_render_ip(ip_address):
+    """Check if an IP address belongs to Render's IP ranges"""
+    try:
+        ip = ipaddress.ip_address(ip_address)
+        return any(ip in network for network in RENDER_NETWORKS)
+    except ValueError:
+        return False
+
+# Enable CORS for React frontend (allows all origins by default)
+# If you need to restrict to specific domains, configure CORS with specific origins
+CORS(app, resources={
+    r"/api/*": {
+        "origins": "*",  # Allow all origins, or specify: ["https://nhl-analytics.vercel.app", "https://nhl-analytics-frontend.onrender.com"]
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 # Try to enable response compression (optional, speeds up responses)
 try:
