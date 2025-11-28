@@ -1,0 +1,46 @@
+name: Sync Google Sheets to Supabase
+
+on:
+  # Temporary: disable scheduled runs to stop failure emails.
+  # Re-enable by restoring the cron schedule below when ready.
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      
+      - name: Install dependencies
+        run: |
+          cd "ai agent test/velocity-logic-agent"
+          pip install -r requirements.txt
+      
+      - name: Run sync job
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SHEET_WORKSHEET_NAME: ${{ secrets.GOOGLE_SHEET_WORKSHEET_NAME }}
+          GOOGLE_SHEETS_CREDENTIALS_PATH: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+        run: |
+          cd "ai agent test/velocity-logic-agent"
+          # Write credentials from secret
+          echo "$GOOGLE_SHEETS_CREDENTIALS_PATH" > credentials.json
+          python3 sync_job.py --run-now
+      
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: sync-logs
+          path: "ai agent test/velocity-logic-agent/sync_job.log"
+

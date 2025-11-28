@@ -52,7 +52,8 @@ def get_analytics_overview():
         
         revenue_by_month.append(month_data)
     
-    return jsonify({
+    # Prepare metrics for Supabase
+    metrics = {
         'total_quotes': total_quotes,
         'approved': approved,
         'pending': pending,
@@ -60,7 +61,18 @@ def get_analytics_overview():
         'total_revenue': total_revenue,
         'pending_revenue': pending_revenue,
         'avg_confidence': round(avg_confidence, 1),
-        'approval_rate': round(approval_rate, 1),
+        'approval_rate': round(approval_rate, 1)
+    }
+    
+    # Save to Supabase (async, don't wait)
+    try:
+        analytics_service.save_analytics_snapshot(request.client_id, metrics)
+    except Exception as e:
+        # Log but don't fail the request
+        print(f"Warning: Could not save analytics to Supabase: {e}")
+    
+    return jsonify({
+        **metrics,
         'revenue_by_month': revenue_by_month
     })
 
