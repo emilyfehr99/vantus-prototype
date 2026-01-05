@@ -277,7 +277,7 @@ export default function Dashboard() {
                     </span>
                     {entry.officerName && (
                       <span className={styles.feedDetails}>
-                        Geotag: {entry.location ? `${entry.location.lat.toFixed(4)}N, ${entry.location.lng.toFixed(4)}W` : 'N/A'} // ANALYST_TOKEN: {Math.random().toString(36).substr(2, 5).toUpperCase()}
+                        Geotag: {entry.location ? `${entry.location.lat.toFixed(4)}N, ${entry.location.lng.toFixed(4)}W` : 'N/A'} {/* ANALYST_TOKEN: */} {Math.random().toString(36).substr(2, 5).toUpperCase()}
                       </span>
                     )}
                   </div>
