@@ -319,8 +319,9 @@ export default function Dashboard() {
           <div className={styles.feedContent}>
             {feedEntries.length === 0 ? (
               <div className={styles.feedEmpty}>
-                <p>Waiting for activity...</p>
-                <p className={styles.feedEmptySub}>System monitoring active</p>
+                <div className={styles.feedEmptyIcon}>⚡</div>
+                <p className={styles.feedEmptyMain}>SYSTEM MONITORING</p>
+                <p className={styles.feedEmptySub}>Standby - Awaiting activity</p>
               </div>
             ) : (
               feedEntries.map((entry) => (
