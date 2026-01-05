@@ -1,0 +1,49 @@
+name: Full System Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-all:
+    runs-on: ubuntu-latest
+    name: Test All Components
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+
+    - name: Install Bridge Server dependencies
+      working-directory: ./bridge-server
+      run: npm ci
+
+    - name: Install Dashboard dependencies
+      working-directory: ./vantus-dashboard
+      run: npm ci
+
+    - name: Install Mobile App dependencies
+      working-directory: ./vantus-app
+      run: npm ci
+
+    - name: Build Dashboard
+      working-directory: ./vantus-dashboard
+      run: npm run build
+      env:
+        NEXT_PUBLIC_BRIDGE_URL: http://localhost:3001
+
+    - name: Verify all components
+      run: |
+        echo "✅ Bridge Server: $(cd bridge-server && node -e "console.log(require('./package.json').name)")"
+        echo "✅ Dashboard: $(cd vantus-dashboard && node -e "console.log(require('./package.json').name)")"
+        echo "✅ Mobile App: $(cd vantus-app && node -e "console.log(require('./package.json').name)")"
+        echo ""
+        echo "All components verified successfully!"
+

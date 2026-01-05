@@ -1,0 +1,57 @@
+name: Dashboard CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'vantus-dashboard/**'
+      - '.github/workflows/dashboard.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'vantus-dashboard/**'
+      - '.github/workflows/dashboard.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: vantus-dashboard/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./vantus-dashboard
+      run: npm ci
+
+    - name: Run linting
+      working-directory: ./vantus-dashboard
+      run: npm run lint
+
+    - name: Build project
+      working-directory: ./vantus-dashboard
+      run: npm run build
+      env:
+        NEXT_PUBLIC_BRIDGE_URL: http://localhost:3001
+
+    - name: Check build output
+      working-directory: ./vantus-dashboard
+      run: |
+        if [ -d ".next" ]; then
+          echo "✅ Build successful"
+        else
+          echo "❌ Build failed - .next directory not found"
+          exit 1
+        fi
+

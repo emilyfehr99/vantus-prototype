@@ -1,0 +1,59 @@
+name: Mobile App CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'vantus-app/**'
+      - '.github/workflows/mobile-app.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'vantus-app/**'
+      - '.github/workflows/mobile-app.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: vantus-app/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./vantus-app
+      run: npm ci
+
+    - name: Check package.json validity
+      working-directory: ./vantus-app
+      run: |
+        node -e "require('./package.json')"
+        echo "✅ package.json is valid"
+
+    - name: Verify app.json
+      working-directory: ./vantus-app
+      run: |
+        node -e "require('./app.json')"
+        echo "✅ app.json is valid"
+
+    - name: Check for required files
+      working-directory: ./vantus-app
+      run: |
+        if [ -f "App.js" ] && [ -f "package.json" ] && [ -f "app.json" ]; then
+          echo "✅ All required files present"
+        else
+          echo "❌ Missing required files"
+          exit 1
+        fi
+
