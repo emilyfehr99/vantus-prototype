@@ -101,11 +101,21 @@ export default function Dashboard() {
       
       setOfficers(prev => new Map(prev).set(data.officerName, data));
       
+      // Build detailed alert message
+      let alertMessage = `CRITICAL: ${data.officerName} - WEAPON DETECTED`;
+      if (data.threatAssessment) {
+        alertMessage += ` [${data.threatAssessment.threatLevel} THREAT]`;
+      }
+      if (data.objectDetection?.detected) {
+        const objects = data.objectDetection.detections?.map(d => d.class).join(', ') || 'object';
+        alertMessage += ` [${objects} detected]`;
+      }
+      
       addFeedEntry({
         type: 'alert',
         officerName: data.officerName,
         location: data.location,
-        message: `CRITICAL: ${data.officerName} - WEAPON DETECTED`,
+        message: alertMessage,
       });
       
       if (audioRef.current) {
