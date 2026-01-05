@@ -857,6 +857,163 @@ getMapPosition(lat, lng) {
 
 ---
 
+## 🚀 Advanced Features (Sensor Fusion & Resilience)
+
+### Feature 1: Pose Estimation & Behavioral Analysis
+
+**Problem Solved**: The "Intelligence Gap" - Cops don't just get shot by guns; they get ambushed during struggles. Object detection alone isn't enough.
+
+**Implementation**:
+- **Service**: `services/poseService.js`
+- **Technology**: Placeholder for MediaPipe Pose or YOLO-Pose (ready for integration)
+- **Detection**: "Bladed Stance" analysis (one foot back, shoulders squared)
+- **Sensor Fusion**: Combines pose analysis with heart rate data
+
+**Threat Assessment Logic**:
+```javascript
+// Threat scoring system
+- Bladed Stance Detected: +50 points
+- Heart Rate Spike (>20 BPM): +30 points
+- Combined Indicator: +20 bonus points
+- Total Score >= 70: HIGH threat level
+```
+
+**Key Functions**:
+- `analyzePose(imageUri)`: Detects pose and analyzes for bladed stance
+- `assessThreatLevel(poseAnalysis, heartRate, baseline)`: Combines pose + heart rate for threat scoring
+- Returns threat level: `LOW`, `MEDIUM`, or `HIGH`
+
+**Integration**: Integrated into `App.js` detection loop - runs alongside object detection for comprehensive threat assessment.
+
+---
+
+### Feature 2: Text-to-Speech (Two-Way Agent)
+
+**Problem Solved**: The "Voice Gap" - Solo officers need to hear that help is coming without looking at their screen.
+
+**Implementation**:
+- **Package**: `expo-speech` (v11.3.0)
+- **Event**: `BACKUP_CONFIRMED` from bridge server
+- **Usage**: Officer receives voice message in earpiece when backup is dispatched
+
+**Flow**:
+1. Dashboard operator clicks "DISPATCH BACKUP" button
+2. Dashboard emits `DISPATCH_BACKUP` event to bridge server
+3. Bridge server broadcasts `BACKUP_CONFIRMED` to all clients
+4. Mobile app receives event and speaks message via TTS
+5. Officer hears: "Officer Alpha, Priority 1 Backup is en route. ETA 4 minutes."
+
+**Code Location**: `App.js` - Socket listener for `BACKUP_CONFIRMED` event
+
+**Configuration**:
+- Language: English
+- Pitch: 1.0 (normal)
+- Rate: 0.9 (slightly slower for clarity)
+
+---
+
+### Feature 3: Offline Buffer & Reconnection Logic
+
+**Problem Solved**: The "Resilience Gap" - Manitoba has massive cellular dead zones. If an officer enters a concrete basement and the socket drops, the "Virtual Partner" is dead.
+
+**Implementation**:
+- **Service**: `services/offlineBuffer.js`
+- **Storage**: AsyncStorage (native) or localStorage (web fallback)
+- **Buffer Size**: Max 100 alerts
+- **Expiry**: 60 seconds (alerts older than 60s are discarded)
+
+**Features**:
+- **Automatic Buffering**: When offline, alerts are stored locally
+- **Auto-Dump**: When connection restored, all buffered alerts are sent automatically
+- **Status Tracking**: Connection status monitored and displayed in UI
+- **Retry Logic**: Failed sends are kept in buffer for retry
+
+**Key Functions**:
+- `addAlert(alertData)`: Buffers alert when offline
+- `dumpAlerts(sendFunction)`: Sends all buffered alerts when connection restored
+- `getStatus()`: Returns buffer count and connection status
+
+**UI Integration**: Shows "Offline (X alerts buffered)" when disconnected
+
+---
+
+### Feature 4: Forensic Export (PDF Reports)
+
+**Problem Solved**: The "Admissibility Gap" - To pass the "Admissibility Wall," you cannot just show a feed. You must provide a court-ready document.
+
+**Implementation**:
+- **Utility**: `utils/pdfGenerator.ts`
+- **Format**: HTML-to-PDF via browser print dialog
+- **Compliance**: SB 524 compliant structure
+
+**Report Contents**:
+1. **Alert Information**: Alert ID, Officer Name, Timestamp, Location
+2. **Object Detection Details**: All detected objects with confidence scores
+3. **Sensor Data**: Heart rate at time of alert, pose analysis results
+4. **Threat Assessment**: Threat level, threat score, behavioral indicators
+5. **Forensic Integrity**: Cryptographic hash (SHA-256) of report data
+6. **Timeline**: Related feed entries from activity log
+7. **Legal Notice**: SB 524 compliance statement
+
+**Hash Generation**:
+- Input: `timestamp + officerName + location + detectionData`
+- Output: 64-character hexadecimal hash
+- Purpose: Prove report hasn't been tampered with
+
+**Usage**: Click "GENERATE CASE REPORT" button on dashboard when alert is active
+
+**File Structure**:
+```
+Report includes:
+- All AI confidence scores
+- Raw sensor data (heart rate)
+- Cryptographic hash of video frames
+- Timestamped timeline
+- Legal compliance notice
+```
+
+---
+
+### Feature 5: Privacy-by-Design (Rolling Buffer)
+
+**Problem Solved**: The "Privacy Gap" - Unions will fight you if they think you are recording them eating lunch or talking to their spouse.
+
+**Implementation**:
+- **Service**: `services/videoBuffer.js`
+- **Buffer Duration**: 30 seconds rolling buffer
+- **Frame Rate**: ~1 frame per second (30 frames max)
+- **Storage**: Only saves to permanent storage when threat detected
+
+**Logic**:
+1. **Continuous Buffering**: Camera frames added to rolling buffer every 2 seconds
+2. **Automatic Cleanup**: Frames older than 30 seconds are automatically discarded
+3. **Threat Trigger**: When threat detected, entire buffer (last 30 seconds) is saved permanently
+4. **Privacy Mode**: When detection stops, buffer is cleared (no permanent storage)
+
+**Storage Structure**:
+```
+vantus_buffer/
+  alert_[timestamp]/
+    frame_0_[timestamp].jpg
+    frame_1_[timestamp].jpg
+    ...
+    metadata.json (includes frame timestamps, detection results, hash)
+```
+
+**Key Functions**:
+- `addFrame(imageUri, metadata)`: Adds frame to rolling buffer
+- `saveBuffer(alertId)`: Saves entire buffer when threat detected
+- `clear()`: Clears buffer (privacy mode - no permanent storage)
+- `generateHash(frames)`: Creates cryptographic hash for forensic integrity
+
+**Privacy Guarantees**:
+- No footage saved unless threat detected
+- 30-second pre-threat buffer ensures context is captured
+- Automatic cleanup of non-threat footage
+- Manual clear option for officer control
+
+---
+
 ## 🔒 Security Considerations
 
 ### Current Prototype Limitations
