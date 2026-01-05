@@ -388,12 +388,19 @@ Vantus is a real-time tactical threat detection and alerting system prototype co
 
 **Framework**: Next.js with Pages Router  
 **Entry Point**: `pages/index.tsx`  
-**App Wrapper**: `pages/_app.tsx`  
+**App Wrapper**: `pages/_app.tsx` - Minimal wrapper, only imports global CSS  
+**Document Wrapper**: `pages/_document.tsx` - Handles font loading and HTML structure  
 **Styling**: CSS Modules (`styles/Dashboard.module.css`)
 
-**Fonts Loaded**:
-- **Inter**: Primary font (weights 400, 700, 900)
-- **JetBrains Mono**: Monospace font for technical data
+**Font Loading Strategy**:
+- **Location**: Fonts loaded in `_document.tsx` (Next.js best practice)
+- **Implementation**: Google Fonts via `<link>` tags in `<Head>` component
+- **Fonts Loaded**:
+  - **Inter**: Primary font (weights 400, 700, 900)
+  - **JetBrains Mono**: Monospace font for technical data (weights 400, 700)
+- **Preconnect**: Optimized with `preconnect` to `fonts.googleapis.com` and `fonts.gstatic.com`
+- **CrossOrigin**: Anonymous cross-origin attribute for security
+- **Display**: `swap` for better performance (text visible during font load)
 
 #### 3.2 Real-Time Connection System
 
@@ -559,6 +566,9 @@ getMapPosition(lat, lng) {
 - **Timestamp**: In brackets `[12:02:07]`, gray color, monospace
 - **Message**: Left border (2px), padding-left, color-coded by type
 - **Details**: Officer name and location (if available)
+  - **Geotag Format**: `{lat}N, {lng}W` (e.g., "49.8951N, 97.1384W")
+  - **Analyst Token**: Random 5-character token for tracking (generated per entry)
+  - **JSX Comment**: Uses proper JSX comment syntax `{/* */}` for code comments
 
 **Entry Types**:
 1. **Alert** (Red):
@@ -907,4 +917,30 @@ getMapPosition(lat, lng) {
 ---
 
 This breakdown covers every feature, implementation detail, and technical aspect of the Vantus Prototype system. Each component is designed to work independently while seamlessly integrating via Socket.io for real-time communication.
+
+---
+
+## 📝 Recent Updates
+
+### 2026-01-05: Code Quality Improvements
+
+1. **Font Loading Optimization**:
+   - Moved font imports from `_app.tsx` to `_document.tsx`
+   - Follows Next.js best practices for font loading
+   - Improves performance by loading fonts once per page load
+
+2. **JSX Syntax Fix**:
+   - Fixed invalid JSX comment syntax in feed entry details
+   - Changed from `//` to `{/* */}` format
+   - Ensures compliance with React/ESLint rules
+
+3. **CI/CD Workflow Fixes**:
+   - Added package-lock.json files for proper dependency caching
+   - Made cache steps optional to prevent workflow failures
+   - Fixed linting errors to ensure all workflows pass
+
+4. **Documentation**:
+   - Created comprehensive feature breakdown (this document)
+   - Added GitHub Actions workflows for automated testing
+   - Updated README with setup instructions
 
