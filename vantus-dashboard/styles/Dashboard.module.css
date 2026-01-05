@@ -35,13 +35,13 @@
 .logoContainer {
   display: flex;
   align-items: center;
-  height: 60px;
+  height: 150px; /* Increased from 60px - 2.5x for better visibility */
 }
 
 .logo {
   height: 100%;
   width: auto;
-  max-width: 230px;
+  max-width: 600px; /* Increased from 230px for better visibility */
   object-fit: contain;
   /* Remove filter to show logo in original colors */
 }
@@ -313,25 +313,127 @@
 .alertInfo h2 {
   color: #ff3b30;
   font-size: 24px;
-  margin: 0 0 1rem 0;
+  margin: 0 0 1.5rem 0;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 900;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 59, 48, 0.3);
+  padding-bottom: 1rem;
+}
+
+.alertInfo h3 {
+  color: #00ff41;
+  font-size: 14px;
+  margin: 1.5rem 0 0.75rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+  padding-bottom: 0.5rem;
+}
+
+.alertInfo h3:first-of-type {
+  margin-top: 0;
 }
 
 .alertInfo p {
   color: #ffffff;
   margin: 0.5rem 0;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.6;
+}
+
+.alertInfo p strong {
+  color: #00ff41;
+  font-weight: 600;
+}
+
+.alertSection {
+  margin-bottom: 1.5rem;
+}
+
+.threatLevel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: 4px;
+}
+
+.threatLevelLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.threatLevelValue {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.75rem;
+  border-radius: 2px;
+}
+
+.threatLevelHIGH {
+  color: #ff3b30;
+  background: rgba(255, 59, 48, 0.2);
+}
+
+.threatLevelMEDIUM {
+  color: #ffaa00;
+  background: rgba(255, 170, 0, 0.2);
+}
+
+.threatLevelLOW {
+  color: #00ff41;
+  background: rgba(0, 255, 65, 0.2);
+}
+
+.detectionList {
+  margin: 0.75rem 0;
+}
+
+.detectionItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  margin: 0.5rem 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  font-size: 12px;
+}
+
+.confidenceScore {
+  color: #00ff41;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+.videoBufferPath {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  word-break: break-all;
+  margin-top: 0.25rem;
 }
 
 .alertActions {
   display: flex;
   gap: 1rem;
-  margin-top: 1.5rem;
+  margin-top: 2rem;
   flex-wrap: wrap;
   justify-content: center;
+  border-top: 1px solid rgba(255, 59, 48, 0.3);
+  padding-top: 1.5rem;
 }
 
 .actionButton {

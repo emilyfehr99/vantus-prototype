@@ -14,8 +14,31 @@ interface ThreatData {
   };
   timestamp: string;
   heartRate?: number;
-  threatAssessment?: any;
+  threatAssessment?: {
+    threatLevel: string;
+    threatScore: number;
+    bladedStance: boolean;
+    heartRateSpike: number;
+    combined: boolean;
+    confidence: number;
+  };
+  objectDetection?: {
+    detected: boolean;
+    detections: Array<{
+      class: string;
+      score: number;
+    }>;
+    allDetections: Array<any>;
+  };
+  poseAnalysis?: {
+    detected: boolean;
+    bladedStance: boolean;
+    confidence: number;
+    keypoints: Array<any>;
+  };
+  videoBuffer?: string;
   alertId?: string;
+  simulated?: boolean;
 }
 
 interface FeedEntry {
@@ -267,14 +290,79 @@ export default function Dashboard() {
                 <div className={styles.alertFlash}></div>
                 <div className={styles.alertInfo}>
                   <h2>CRITICAL THREAT DETECTED</h2>
-                  <p>Officer: {threatData.officerName}</p>
-                  <p>Location: {threatData.location.lat.toFixed(4)}, {threatData.location.lng.toFixed(4)}</p>
-                  {threatData.heartRate && (
-                    <p>Heart Rate: {threatData.heartRate} BPM</p>
-                  )}
+                  
+                  <div className={styles.alertSection}>
+                    <h3>OFFICER INFORMATION</h3>
+                    <p><strong>Officer:</strong> {threatData.officerName}</p>
+                    <p><strong>Location:</strong> {threatData.location.lat.toFixed(4)}°N, {Math.abs(threatData.location.lng).toFixed(4)}°W</p>
+                    <p><strong>Timestamp:</strong> {new Date(threatData.timestamp).toLocaleString()}</p>
+                    {threatData.alertId && (
+                      <p><strong>Alert ID:</strong> {threatData.alertId}</p>
+                    )}
+                  </div>
+
                   {threatData.threatAssessment && (
-                    <p>Threat Level: {threatData.threatAssessment.threatLevel}</p>
+                    <div className={styles.alertSection}>
+                      <h3>THREAT ASSESSMENT</h3>
+                      <div className={styles.threatLevel}>
+                        <span className={styles.threatLevelLabel}>THREAT LEVEL:</span>
+                        <span className={`${styles.threatLevelValue} ${styles[`threatLevel${threatData.threatAssessment.threatLevel}`]}`}>
+                          {threatData.threatAssessment.threatLevel}
+                        </span>
+                      </div>
+                      <p><strong>Threat Score:</strong> {threatData.threatAssessment.threatScore}/100</p>
+                      <p><strong>Bladed Stance:</strong> {threatData.threatAssessment.bladedStance ? 'YES' : 'NO'}</p>
+                      {threatData.threatAssessment.heartRateSpike > 0 && (
+                        <p><strong>Heart Rate Spike:</strong> +{threatData.threatAssessment.heartRateSpike} BPM</p>
+                      )}
+                      <p><strong>Combined Indicator:</strong> {threatData.threatAssessment.combined ? 'YES (High Probability)' : 'NO'}</p>
+                      <p><strong>Confidence:</strong> {(threatData.threatAssessment.confidence * 100).toFixed(1)}%</p>
+                    </div>
                   )}
+
+                  {threatData.objectDetection && (
+                    <div className={styles.alertSection}>
+                      <h3>OBJECT DETECTION</h3>
+                      <p><strong>Threat Detected:</strong> {threatData.objectDetection.detected ? 'YES' : 'NO'}</p>
+                      {threatData.objectDetection.detections && threatData.objectDetection.detections.length > 0 && (
+                        <div className={styles.detectionList}>
+                          <strong>Detected Objects:</strong>
+                          {threatData.objectDetection.detections.map((det, idx) => (
+                            <div key={idx} className={styles.detectionItem}>
+                              <span>{det.class}</span>
+                              <span className={styles.confidenceScore}>{(det.score * 100).toFixed(1)}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <p><strong>Total Objects:</strong> {threatData.objectDetection.allDetections?.length || 0}</p>
+                    </div>
+                  )}
+
+                  {threatData.poseAnalysis && (
+                    <div className={styles.alertSection}>
+                      <h3>POSE ANALYSIS</h3>
+                      <p><strong>Pose Detected:</strong> {threatData.poseAnalysis.detected ? 'YES' : 'NO'}</p>
+                      <p><strong>Bladed Stance:</strong> {threatData.poseAnalysis.bladedStance ? 'YES' : 'NO'}</p>
+                      <p><strong>Confidence:</strong> {(threatData.poseAnalysis.confidence * 100).toFixed(1)}%</p>
+                    </div>
+                  )}
+
+                  {threatData.heartRate && (
+                    <div className={styles.alertSection}>
+                      <h3>SENSOR DATA</h3>
+                      <p><strong>Heart Rate:</strong> {threatData.heartRate} BPM</p>
+                    </div>
+                  )}
+
+                  {threatData.videoBuffer && (
+                    <div className={styles.alertSection}>
+                      <h3>FORENSIC DATA</h3>
+                      <p><strong>Video Buffer:</strong> Saved</p>
+                      <p className={styles.videoBufferPath}>{threatData.videoBuffer}</p>
+                    </div>
+                  )}
+
                   <div className={styles.alertActions}>
                     <button 
                       className={styles.actionButton}
@@ -339,6 +427,11 @@ export default function Dashboard() {
                     {entry.officerName && (
                       <span className={styles.feedDetails}>
                         Geotag: {entry.location ? `${entry.location.lat.toFixed(4)}N, ${entry.location.lng.toFixed(4)}W` : 'N/A'} {/* ANALYST_TOKEN: */} {Math.random().toString(36).substr(2, 5).toUpperCase()}
+                      </span>
+                    )}
+                    {entry.type === 'alert' && (
+                      <span className={styles.feedDetails}>
+                        {/* ANALYST_TOKEN: */} {Math.random().toString(36).substr(2, 5).toUpperCase()}
                       </span>
                     )}
                   </div>
