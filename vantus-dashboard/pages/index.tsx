@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import styles from '../styles/Dashboard.module.css';
+import { generateCaseReport } from '../utils/pdfGenerator';
 
 // Bridge server URL - update this to match your server
 const BRIDGE_SERVER_URL = process.env.NEXT_PUBLIC_BRIDGE_URL || 'http://localhost:3001';
@@ -143,6 +144,49 @@ export default function Dashboard() {
     };
   };
 
+  // Dispatch backup to officer
+  const dispatchBackup = () => {
+    if (!threatData || !socket || !socket.connected) {
+      alert('No active alert or connection unavailable');
+      return;
+    }
+
+    const backupData = {
+      officerName: threatData.officerName,
+      priority: 1,
+      eta: 4, // minutes
+      message: `Officer ${threatData.officerName}, Priority 1 Backup is en route. ETA 4 minutes.`
+    };
+
+    socket.emit('DISPATCH_BACKUP', backupData);
+    
+    addFeedEntry({
+      type: 'status',
+      message: `Backup dispatched to ${threatData.officerName}`,
+    });
+
+    console.log('Backup dispatched:', backupData);
+  };
+
+  // Generate forensic case report
+  const handleGenerateReport = async () => {
+    if (!threatData) {
+      alert('No alert data available to generate report');
+      return;
+    }
+
+    try {
+      await generateCaseReport(threatData, feedEntries);
+      addFeedEntry({
+        type: 'status',
+        message: `Forensic case report generated for alert ${threatData.alertId || 'N/A'}`,
+      });
+    } catch (error) {
+      console.error('Error generating report:', error);
+      alert('Failed to generate report. Please allow popups and try again.');
+    }
+  };
+
   return (
     <div className={styles.dashboard}>
       {/* Alert sound */}
@@ -229,6 +273,26 @@ export default function Dashboard() {
                   <h2>CRITICAL THREAT DETECTED</h2>
                   <p>Officer: {threatData.officerName}</p>
                   <p>Location: {threatData.location.lat.toFixed(4)}, {threatData.location.lng.toFixed(4)}</p>
+                  {threatData.heartRate && (
+                    <p>Heart Rate: {threatData.heartRate} BPM</p>
+                  )}
+                  {threatData.threatAssessment && (
+                    <p>Threat Level: {threatData.threatAssessment.threatLevel}</p>
+                  )}
+                  <div className={styles.alertActions}>
+                    <button 
+                      className={styles.actionButton}
+                      onClick={dispatchBackup}
+                    >
+                      DISPATCH BACKUP
+                    </button>
+                    <button 
+                      className={styles.actionButton}
+                      onClick={handleGenerateReport}
+                    >
+                      GENERATE CASE REPORT
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

@@ -2,8 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
+import * as Speech from 'expo-speech';
 import { io } from 'socket.io-client';
 import detectionService from './services/detectionService';
+import poseService from './services/poseService';
+import offlineBuffer from './services/offlineBuffer';
+import videoBuffer from './services/videoBuffer';
 
 // Bridge server URL - update this to match your server
 const BRIDGE_SERVER_URL = 'http://localhost:3001';
@@ -14,6 +18,9 @@ const SIMULATED_GPS = { lat: 49.8951, lng: -97.1384 };
 // Simulated officer name
 const OFFICER_NAME = 'OFFICER_ALPHA';
 
+// Simulated baseline heart rate (in production, use actual sensor)
+const BASELINE_HEART_RATE = 70;
+
 export default function App() {
   const [hasPermission, setHasPermission] = useState(null);
   const [alertActive, setAlertActive] = useState(false);
@@ -22,7 +29,11 @@ export default function App() {
   const [detectionActive, setDetectionActive] = useState(false);
   const [modelLoading, setModelLoading] = useState(false);
   const [modelReady, setModelReady] = useState(false);
+  const [poseReady, setPoseReady] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [heartRate, setHeartRate] = useState(BASELINE_HEART_RATE);
   const detectionIntervalRef = useRef(null);
+  const heartRateIntervalRef = useRef(null);
 
   useEffect(() => {
     // Request camera permission
@@ -31,25 +42,41 @@ export default function App() {
       setHasPermission(status === 'granted');
     })();
 
-    // Initialize detection service
-    const initDetection = async () => {
+    // Initialize services
+    const initServices = async () => {
       try {
         setModelLoading(true);
+        
+        // Initialize detection service
         await detectionService.initialize();
         setModelReady(true);
         console.log('Detection model ready');
+        
+        // Initialize pose service
+        await poseService.initialize();
+        setPoseReady(true);
+        console.log('Pose estimation service ready');
+        
+        // Initialize offline buffer
+        await offlineBuffer.initialize();
+        console.log('Offline buffer initialized');
+        
+        // Initialize video buffer
+        await videoBuffer.initialize();
+        console.log('Video buffer initialized');
+        
       } catch (error) {
-        console.error('Failed to initialize detection model:', error);
+        console.error('Failed to initialize services:', error);
         Alert.alert(
-          'Model Loading Error',
-          'Failed to load detection model. Simulated threat mode will still work.'
+          'Initialization Error',
+          'Some services failed to initialize. Basic functionality may be limited.'
         );
       } finally {
         setModelLoading(false);
       }
     };
 
-    initDetection();
+    initServices();
 
     // Connect to bridge server
     const newSocket = io(BRIDGE_SERVER_URL, {
@@ -57,30 +84,70 @@ export default function App() {
       reconnection: true,
     });
 
-    newSocket.on('connect', () => {
+    newSocket.on('connect', async () => {
       console.log('Connected to bridge server');
+      setIsConnected(true);
+      offlineBuffer.setConnectionStatus(true);
+      
+      // Dump any buffered alerts
+      const sentCount = await offlineBuffer.dumpAlerts((alert) => {
+        return new Promise((resolve, reject) => {
+          newSocket.emit('THREAT_DETECTED', alert, (ack) => {
+            if (ack) resolve();
+            else reject(new Error('Server rejected alert'));
+          });
+        });
+      });
+      
+      if (sentCount > 0) {
+        console.log(`Sent ${sentCount} buffered alerts`);
+      }
     });
 
     newSocket.on('disconnect', () => {
       console.log('Disconnected from bridge server');
+      setIsConnected(false);
+      offlineBuffer.setConnectionStatus(false);
+    });
+
+    // Listen for backup confirmation (TTS)
+    newSocket.on('BACKUP_CONFIRMED', (data) => {
+      console.log('BACKUP_CONFIRMED received:', data);
+      const message = data.message || `Officer ${OFFICER_NAME}, Priority ${data.priority || 1} Backup is en route. ETA ${data.eta || 'unknown'} minutes.`;
+      Speech.speak(message, {
+        language: 'en',
+        pitch: 1.0,
+        rate: 0.9,
+      });
     });
 
     setSocket(newSocket);
+
+    // Simulate heart rate monitoring (in production, use actual sensor)
+    heartRateIntervalRef.current = setInterval(() => {
+      // Simulate heart rate fluctuations
+      const baseRate = alertActive ? BASELINE_HEART_RATE + 30 : BASELINE_HEART_RATE;
+      const variation = Math.random() * 10 - 5;
+      setHeartRate(Math.max(60, Math.min(120, baseRate + variation)));
+    }, 2000);
 
     return () => {
       newSocket.close();
       if (detectionIntervalRef.current) {
         clearInterval(detectionIntervalRef.current);
       }
+      if (heartRateIntervalRef.current) {
+        clearInterval(heartRateIntervalRef.current);
+      }
     };
   }, []);
 
   // Simulated threat detection (manual button press)
   const simulateThreat = () => {
-    triggerThreatAlert();
+    triggerThreatAlert({ simulated: true });
   };
 
-  // Real camera detection using TensorFlow.js
+  // Real camera detection with pose analysis
   const detectThreatFromCamera = async () => {
     if (!cameraRef.current || alertActive || !modelReady) {
       if (!modelReady) {
@@ -102,21 +169,55 @@ export default function App() {
         return;
       }
 
+      // Add frame to rolling buffer (Privacy-by-Design)
+      await videoBuffer.addFrame(photo.uri, {
+        timestamp: Date.now(),
+        detectionActive: true
+      });
+
       console.log('Processing frame for detection...');
       
       // Run object detection
-      const result = await detectionService.detectObjects(photo.uri);
+      const objectResult = await detectionService.detectObjects(photo.uri);
       
-      if (result.detected) {
-        console.log('THREAT DETECTED! Cell phone found:', result.detections);
-        triggerThreatAlert();
+      // Run pose analysis (if pose service is ready)
+      let poseResult = null;
+      let threatAssessment = null;
+      
+      if (poseReady) {
+        poseResult = await poseService.analyzePose(photo.uri);
+        threatAssessment = poseService.assessThreatLevel(poseResult, heartRate, BASELINE_HEART_RATE);
+      }
+      
+      // Check for threats
+      const objectThreat = objectResult.detected;
+      const behavioralThreat = threatAssessment && threatAssessment.threatLevel === 'HIGH';
+      
+      if (objectThreat || behavioralThreat) {
+        console.log('THREAT DETECTED!', {
+          object: objectThreat,
+          behavioral: behavioralThreat,
+          threatAssessment
+        });
+        
+        // Save video buffer (last 30 seconds)
+        const alertId = `alert_${Date.now()}`;
+        const bufferPath = await videoBuffer.saveBuffer(alertId);
+        
+        triggerThreatAlert({
+          objectDetection: objectResult,
+          poseAnalysis: poseResult,
+          threatAssessment,
+          videoBuffer: bufferPath,
+          heartRate,
+          alertId
+        });
       } else {
-        console.log('No threat detected. Objects found:', result.allDetections.length);
+        console.log('No threat detected. Objects:', objectResult.allDetections.length, 'Pose:', poseResult?.bladedStance ? 'Bladed' : 'Normal');
       }
       
     } catch (error) {
       console.error('Detection error:', error);
-      // Don't show alert to user for detection errors, just log
     }
   };
 
@@ -140,16 +241,17 @@ export default function App() {
       detectionIntervalRef.current = null;
     }
     setDetectionActive(false);
+    // Clear video buffer when stopping (privacy)
+    videoBuffer.clear();
   };
 
-  const triggerThreatAlert = async () => {
+  const triggerThreatAlert = async (additionalData = {}) => {
     if (alertActive) return;
 
     setAlertActive(true);
 
     // Trigger loud vibration
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    // Repeat vibration for intensity
     setTimeout(() => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }, 200);
@@ -157,18 +259,30 @@ export default function App() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }, 400);
 
-    // Emit THREAT_DETECTED event to bridge server
-    if (socket && socket.connected) {
-      const threatData = {
-        officerName: OFFICER_NAME,
-        location: SIMULATED_GPS,
-        timestamp: new Date().toISOString(),
-      };
+    // Prepare threat data
+    const threatData = {
+      officerName: OFFICER_NAME,
+      location: SIMULATED_GPS,
+      timestamp: new Date().toISOString(),
+      heartRate,
+      ...additionalData
+    };
 
-      socket.emit('THREAT_DETECTED', threatData);
-      console.log('THREAT_DETECTED emitted:', threatData);
+    // Send alert (with offline buffering)
+    if (socket && socket.connected && isConnected) {
+      try {
+        socket.emit('THREAT_DETECTED', threatData);
+        console.log('THREAT_DETECTED emitted:', threatData);
+      } catch (error) {
+        console.error('Error sending alert:', error);
+        // Buffer for retry
+        await offlineBuffer.addAlert(threatData);
+      }
     } else {
-      Alert.alert('Error', 'Not connected to bridge server');
+      // Offline - buffer the alert
+      console.log('Offline - buffering alert');
+      await offlineBuffer.addAlert(threatData);
+      Alert.alert('Offline', 'Alert buffered. Will send when connection restored.');
     }
   };
 
@@ -179,6 +293,9 @@ export default function App() {
       socket.emit('ALERT_CLEARED');
       console.log('ALERT_CLEARED emitted');
     }
+    
+    // Clear video buffer (privacy)
+    videoBuffer.clear();
   };
 
   if (hasPermission === null) {
@@ -206,6 +323,8 @@ export default function App() {
     );
   }
 
+  const bufferStatus = offlineBuffer.getStatus();
+
   return (
     <View style={styles.container}>
       {/* Camera feed in background */}
@@ -215,8 +334,6 @@ export default function App() {
         facing="back"
         onCameraReady={() => {
           console.log('Camera ready');
-          // Optionally start detection automatically
-          // startDetection();
         }}
       />
 
@@ -242,6 +359,12 @@ export default function App() {
             {!modelReady && !modelLoading && (
               <Text style={styles.warningText}>Detection model not available</Text>
             )}
+            {!isConnected && (
+              <Text style={styles.warningText}>
+                Offline ({bufferStatus.count} alerts buffered)
+              </Text>
+            )}
+            <Text style={styles.heartRateText}>HR: {Math.round(heartRate)} BPM</Text>
           </View>
         )}
 
@@ -305,6 +428,11 @@ const styles = StyleSheet.create({
   statusSubtext: {
     color: '#FFFFFF',
     fontSize: 16,
+  },
+  heartRateText: {
+    color: '#FFAA00',
+    fontSize: 14,
+    marginTop: 10,
   },
   alertContainer: {
     alignItems: 'center',
@@ -374,4 +502,3 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 });
-

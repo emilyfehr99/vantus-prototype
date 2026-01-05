@@ -369,6 +369,41 @@
   font-family: 'JetBrains Mono', monospace;
 }
 
+.alertActions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.actionButton {
+  flex: 1;
+  min-width: 150px;
+  padding: 0.75rem 1.5rem;
+  background: rgba(0, 255, 65, 0.1);
+  border: 2px solid #00FF41;
+  color: #00FF41;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 4px;
+}
+
+.actionButton:hover {
+  background: rgba(0, 255, 65, 0.2);
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+  transform: translateY(-2px);
+}
+
+.actionButton:active {
+  transform: translateY(0);
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+}
+
 .mapCoords {
   position: absolute;
   bottom: 1rem;

@@ -47,6 +47,23 @@ io.on('connection', (socket) => {
     log(`DASHBOARD_CLEAR broadcasted to all connected clients`);
   });
 
+  // Listen for backup dispatch from dashboard
+  socket.on('DISPATCH_BACKUP', (data) => {
+    log(`DISPATCH_BACKUP received from ${socket.id}`);
+    log(`Backup data: ${JSON.stringify(data)}`);
+    
+    // Broadcast BACKUP_CONFIRMED to the specific officer
+    if (data.officerName) {
+      io.emit('BACKUP_CONFIRMED', {
+        officerName: data.officerName,
+        priority: data.priority || 1,
+        eta: data.eta || 'unknown',
+        message: data.message || `Officer ${data.officerName}, Priority ${data.priority || 1} Backup is en route. ETA ${data.eta || 'unknown'} minutes.`
+      });
+      log(`BACKUP_CONFIRMED broadcasted for ${data.officerName}`);
+    }
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     log(`Client disconnected: ${socket.id}`);
