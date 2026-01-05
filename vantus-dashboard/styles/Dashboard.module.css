@@ -35,13 +35,13 @@
 .logoContainer {
   display: flex;
   align-items: center;
-  height: 200px; /* Significantly increased for better visibility */
+  height: 190px; /* Decreased by 10px */
 }
 
 .logo {
   height: 100%;
   width: auto;
-  max-width: 800px; /* Significantly increased for better visibility */
+  max-width: 790px; /* Decreased by 10px */
   object-fit: contain;
   /* Remove filter to show logo in original colors */
 }
