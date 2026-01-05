@@ -192,7 +192,13 @@ export default function Dashboard() {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <h1 className={styles.title}>VANTUS TACTICAL COMMAND</h1>
+          <div className={styles.logoContainer}>
+            <img 
+              src="/vantus-logo.png" 
+              alt="Vantus Safety Systems" 
+              className={styles.logo}
+            />
+          </div>
           <div className={styles.statusBar}>
             <span className={`${styles.statusIndicator} ${socket?.connected ? styles.connected : styles.disconnected}`}>
               <span className={styles.statusDot}></span>
