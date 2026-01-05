@@ -35,13 +35,11 @@ export default function Dashboard() {
   const [officers, setOfficers] = useState<Map<string, ThreatData>>(new Map());
   const [currentTime, setCurrentTime] = useState<string>('');
   const [mounted, setMounted] = useState(false);
-  const [uptime, setUptime] = useState(99.98);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const startTimeRef = useRef<Date>(new Date());
+  const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
-    startTimeRef.current = new Date();
     
     // Update time every second
     const updateTime = () => {
@@ -49,15 +47,6 @@ export default function Dashboard() {
     };
     updateTime();
     const timeInterval = setInterval(updateTime, 1000);
-
-    // Calculate uptime
-    const updateUptime = () => {
-      const elapsed = (Date.now() - startTimeRef.current.getTime()) / 1000 / 3600; // hours
-      const uptimeValue = Math.max(99.98 - (elapsed * 0.001), 99.5);
-      setUptime(parseFloat(uptimeValue.toFixed(2)));
-    };
-    updateUptime();
-    const uptimeInterval = setInterval(updateUptime, 60000); // Update every minute
 
     // Connect to bridge server
     const newSocket = io(BRIDGE_SERVER_URL, {
@@ -125,7 +114,6 @@ export default function Dashboard() {
     return () => {
       newSocket.close();
       clearInterval(timeInterval);
-      clearInterval(uptimeInterval);
     };
   }, []);
 
@@ -138,6 +126,20 @@ export default function Dashboard() {
     setFeedEntries(prev => [newEntry, ...prev].slice(0, 50));
   };
 
+  // Convert GPS coordinates to map position (Winnipeg area)
+  const getMapPosition = (lat: number, lng: number) => {
+    const baseLat = 49.8951;
+    const baseLng = -97.1384;
+    const latOffset = (lat - baseLat) * 1000;
+    const lngOffset = (lng - baseLng) * 1000;
+    
+    return {
+      x: 50 + lngOffset * 0.1,
+      y: 50 - latOffset * 0.1,
+    };
+  };
+
+  // Dispatch backup to officer
   const dispatchBackup = () => {
     if (!threatData || !socket || !socket.connected) {
       alert('No active alert or connection unavailable');
@@ -159,6 +161,7 @@ export default function Dashboard() {
     });
   };
 
+  // Generate forensic case report
   const handleGenerateReport = async () => {
     if (!threatData) {
       alert('No alert data available to generate report');
@@ -189,162 +192,175 @@ export default function Dashboard() {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <div className={styles.logo}>
-            <div className={styles.logoIcon}>V</div>
-            <div className={styles.logoText}>
-              <div className={styles.logoMain}>VANTUS</div>
-              <div className={styles.logoSub}>SAFETY SYSTEMS</div>
-            </div>
+          <h1 className={styles.title}>VANTUS TACTICAL COMMAND</h1>
+          <div className={styles.statusBar}>
+            <span className={`${styles.statusIndicator} ${socket?.connected ? styles.connected : styles.disconnected}`}>
+              <span className={styles.statusDot}></span>
+              {socket?.connected ? 'ONLINE' : 'OFFLINE'}
+            </span>
+            <span className={styles.systemTime}>
+              {mounted ? currentTime : '--:--:--'}
+            </span>
           </div>
         </div>
-        <nav className={styles.nav}>
-          <a href="#" className={styles.navLink}>Interdiction Tech</a>
-          <a href="#" className={styles.navLink}>Procurement</a>
-          <a href="#" className={styles.navLink}>Field Results</a>
-          <a href="#" className={styles.navLink}>Threat Library</a>
-          <button className={styles.agentButton}>AGENT ACCESS</button>
-        </nav>
+        <div className={styles.headerRight}>
+          {alertActive ? (
+            <div className={styles.alertBanner}>
+              <span className={styles.alertPulse}></span>
+              CRITICAL ALERT ACTIVE
+            </div>
+          ) : (
+            <div className={styles.secureBanner}>
+              SYSTEM SECURE
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Main Content */}
-      <main className={styles.mainContent}>
-        {/* Corner Brackets */}
-        <div className={styles.cornerBracket} style={{ top: 0, left: 0 }}></div>
-        <div className={styles.cornerBracket} style={{ top: 0, right: 0, transform: 'scaleX(-1)' }}></div>
+      <div className={styles.mainContent}>
+        {/* Tactical Map */}
+        <div className={styles.mapContainer}>
+          <div ref={mapRef} className={styles.tacticalMap}>
+            {/* Grid overlay */}
+            <div className={styles.gridOverlay}></div>
+            
+            {/* Map center marker */}
+            <div className={styles.mapCenter}>
+              <div className={styles.centerMarker}></div>
+              <div className={styles.centerLabel}>OPERATIONS CENTER</div>
+            </div>
 
-        {/* Status Badge */}
-        <div className={styles.statusBadge}>
-          <span className={styles.statusDot}></span>
-          <span className={styles.statusText}>
-            {alertActive ? 'CRITICAL ALERT ACTIVE' : 'OPERATIONAL INTERDICTION PROTOCOL ALPHA'}
-          </span>
-        </div>
+            {/* Officer markers */}
+            {Array.from(officers.entries()).map(([name, data]) => {
+              const pos = getMapPosition(data.location.lat, data.location.lng);
+              const isAlert = alertActive && threatData?.officerName === name;
+              
+              return (
+                <div
+                  key={name}
+                  className={`${styles.officerMarker} ${isAlert ? styles.alertMarker : ''}`}
+                  style={{
+                    left: `${pos.x}%`,
+                    top: `${pos.y}%`,
+                  }}
+                >
+                  <div className={styles.markerPulse}></div>
+                  <div className={styles.markerIcon}>
+                    {isAlert ? '⚠' : '👤'}
+                  </div>
+                  <div className={styles.markerLabel}>{name}</div>
+                  {isAlert && <div className={styles.alertRipple}></div>}
+                </div>
+              );
+            })}
 
-        {/* Hero Section */}
-        <div className={styles.heroSection}>
-          {alertActive ? (
-            <>
-              <h1 className={styles.heroTitle}>THREAT DETECTED.</h1>
-              <h1 className={styles.heroTitle}>DEPLOY.</h1>
-              <h1 className={styles.heroTitle}>SECURE.</h1>
-              {threatData && (
-                <div className={styles.alertDetails}>
-                  <p className={styles.alertDetail}>
-                    <strong>Officer:</strong> {threatData.officerName}
-                  </p>
-                  <p className={styles.alertDetail}>
-                    <strong>Location:</strong> {threatData.location.lat.toFixed(4)}°N, {Math.abs(threatData.location.lng).toFixed(4)}°W
-                  </p>
+            {/* Threat alert overlay */}
+            {alertActive && threatData && (
+              <div className={styles.alertOverlay}>
+                <div className={styles.alertFlash}></div>
+                <div className={styles.alertInfo}>
+                  <h2>CRITICAL THREAT DETECTED</h2>
+                  <p>Officer: {threatData.officerName}</p>
+                  <p>Location: {threatData.location.lat.toFixed(4)}, {threatData.location.lng.toFixed(4)}</p>
                   {threatData.heartRate && (
-                    <p className={styles.alertDetail}>
-                      <strong>Heart Rate:</strong> {threatData.heartRate} BPM
-                    </p>
+                    <p>Heart Rate: {threatData.heartRate} BPM</p>
                   )}
                   {threatData.threatAssessment && (
-                    <p className={styles.alertDetail}>
-                      <strong>Threat Level:</strong> {threatData.threatAssessment.threatLevel}
-                    </p>
+                    <p>Threat Level: {threatData.threatAssessment.threatLevel}</p>
                   )}
+                  <div className={styles.alertActions}>
+                    <button 
+                      className={styles.actionButton}
+                      onClick={dispatchBackup}
+                    >
+                      DISPATCH BACKUP
+                    </button>
+                    <button 
+                      className={styles.actionButton}
+                      onClick={handleGenerateReport}
+                    >
+                      GENERATE CASE REPORT
+                    </button>
+                  </div>
                 </div>
-              )}
-              <div className={styles.alertActions}>
-                <button className={styles.primaryButton} onClick={dispatchBackup}>
-                  DISPATCH BACKUP
-                </button>
-                <button className={styles.secondaryButton} onClick={handleGenerateReport}>
-                  GENERATE CASE REPORT
-                </button>
               </div>
-            </>
-          ) : (
-            <>
-              <h1 className={styles.heroTitle}>DETECT.</h1>
-              <h1 className={styles.heroTitle}>NEUTRALIZE.</h1>
-              <h1 className={styles.heroTitle}>PROTECT.</h1>
-              <p className={styles.heroDescription}>
-                Real-time AI threat detection system for frontline interdiction. 
-                Identify and neutralize threats in under 2 seconds.
-              </p>
-            </>
-          )}
+            )}
+
+            {/* Map coordinates display */}
+            <div className={styles.mapCoords}>
+              <div className={styles.coordLabel}>GRID REFERENCE</div>
+              <div className={styles.coordValue}>
+                {threatData 
+                  ? `${threatData.location.lat.toFixed(4)}°N, ${threatData.location.lng.toFixed(4)}°W`
+                  : '49.8951°N, 97.1384°W'
+                }
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Activity Feed */}
-        <div className={styles.activityFeed}>
+        {/* Feed Panel */}
+        <div className={styles.feedPanel}>
           <div className={styles.feedHeader}>
-            <h3 className={styles.feedTitle}>ACTIVITY LOG</h3>
+            <h2>ACTIVITY LOG</h2>
             <div className={styles.feedStatus}>
               <span className={styles.feedDot}></span>
               LIVE
             </div>
           </div>
+          
           <div className={styles.feedContent}>
             {feedEntries.length === 0 ? (
               <div className={styles.feedEmpty}>
                 <p>Waiting for activity...</p>
+                <p className={styles.feedEmptySub}>System monitoring active</p>
               </div>
             ) : (
-              feedEntries.slice(0, 10).map((entry) => (
+              feedEntries.map((entry) => (
                 <div
                   key={entry.id}
                   className={`${styles.feedEntry} ${styles[`feedEntry${entry.type.charAt(0).toUpperCase() + entry.type.slice(1)}`]}`}
                 >
-                  <span className={styles.feedTime}>
+                  <span className={styles.feedTimestamp}>
                     [{new Date(entry.timestamp).toLocaleTimeString('en-GB', { hour12: false })}]
                   </span>
-                  <span className={styles.feedMessage}>{entry.message}</span>
-                  {entry.officerName && entry.location && (
-                    <span className={styles.feedLocation}>
-                      {entry.location.lat.toFixed(4)}N, {entry.location.lng.toFixed(4)}W
+                  <div className={styles.feedMessage}>
+                    <span className={styles.feedType}>
+                      {entry.message}
                     </span>
-                  )}
+                    {entry.officerName && (
+                      <span className={styles.feedDetails}>
+                        Geotag: {entry.location ? `${entry.location.lat.toFixed(4)}N, ${entry.location.lng.toFixed(4)}W` : 'N/A'} {/* ANALYST_TOKEN: */} {Math.random().toString(36).substr(2, 5).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))
             )}
           </div>
-        </div>
 
-        {/* Status Panel - Bottom Left */}
-        <div className={styles.statusPanel}>
-          <div className={styles.statusItem}>
-            <span className={styles.statusIcon}>⚡</span>
-            <span className={styles.statusLabel}>SENSORS:</span>
-            <span className={styles.statusValue}>
-              {socket?.connected ? 'ONLINE' : 'OFFLINE'}
-            </span>
-          </div>
-          {threatData ? (
-            <>
-              <div className={styles.statusItem}>
-                <span className={styles.statusLabel}>LAT:</span>
-                <span className={styles.statusValue}>{threatData.location.lat.toFixed(4)}° N</span>
-              </div>
-              <div className={styles.statusItem}>
-                <span className={styles.statusLabel}>LON:</span>
-                <span className={styles.statusValue}>{Math.abs(threatData.location.lng).toFixed(4)}° W</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className={styles.statusItem}>
-                <span className={styles.statusLabel}>LAT:</span>
-                <span className={styles.statusValue}>49.8951° N</span>
-              </div>
-              <div className={styles.statusItem}>
-                <span className={styles.statusLabel}>LON:</span>
-                <span className={styles.statusValue}>97.1384° W</span>
-              </div>
-            </>
-          )}
-          <div className={styles.statusItem}>
-            <span className={styles.statusLabel}>UPTIME:</span>
-            <span className={styles.statusValue}>{uptime}%</span>
+          {/* Feed Footer Stats */}
+          <div className={styles.feedFooter}>
+            <div className={styles.feedStat}>
+              <span className={styles.feedStatLabel}>Active Officers:</span>
+              <span className={styles.feedStatValue}>{officers.size}</span>
+            </div>
+            <div className={styles.feedStat}>
+              <span className={styles.feedStatLabel}>Alerts Today:</span>
+              <span className={styles.feedStatValue}>
+                {feedEntries.filter(e => e.type === 'alert').length}
+              </span>
+            </div>
+            <div className={styles.feedStat}>
+              <span className={styles.feedStatLabel}>System Status:</span>
+              <span className={`${styles.feedStatValue} ${alertActive ? styles.statAlert : styles.statSecure}`}>
+                {alertActive ? 'ALERT' : 'SECURE'}
+              </span>
+            </div>
           </div>
         </div>
-
-        {/* Vertical Text - Left Edge */}
-        <div className={styles.verticalText}>VANTUS_CORE_</div>
-      </main>
+      </div>
     </div>
   );
 }
