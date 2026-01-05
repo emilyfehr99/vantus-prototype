@@ -8,6 +8,9 @@ import detectionService from './services/detectionService';
 import poseService from './services/poseService';
 import offlineBuffer from './services/offlineBuffer';
 import videoBuffer from './services/videoBuffer';
+import wakeWordService from './services/wakeWordService';
+import dutyCycleService from './services/dutyCycleService';
+import imageProcessing from './services/imageProcessing';
 
 // Bridge server URL - update this to match your server
 const BRIDGE_SERVER_URL = 'http://localhost:3001';
@@ -32,6 +35,10 @@ export default function App() {
   const [poseReady, setPoseReady] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [heartRate, setHeartRate] = useState(BASELINE_HEART_RATE);
+  const [wakeWordReady, setWakeWordReady] = useState(false);
+  const [dutyCycleMode, setDutyCycleMode] = useState('STANDBY');
+  const [batteryLevel, setBatteryLevel] = useState(100);
+  const [lowLightMode, setLowLightMode] = useState(false);
   const detectionIntervalRef = useRef(null);
   const heartRateIntervalRef = useRef(null);
 
@@ -64,6 +71,34 @@ export default function App() {
         // Initialize video buffer
         await videoBuffer.initialize();
         console.log('Video buffer initialized');
+        
+        // Initialize wake-word service
+        await wakeWordService.initialize();
+        setWakeWordReady(wakeWordService.isReady());
+        console.log('Wake-word service initialized');
+        
+        // Initialize duty cycle service
+        await dutyCycleService.initialize();
+        dutyCycleService.setModeChangeCallback((newMode, oldMode) => {
+          setDutyCycleMode(newMode);
+          console.log(`Duty cycle changed: ${oldMode} -> ${newMode}`);
+          
+          // Adjust detection based on mode
+          if (newMode === 'STANDBY') {
+            stopDetection();
+          } else if (oldMode === 'STANDBY' && newMode !== 'STANDBY') {
+            // Auto-start when exiting standby
+            if (!detectionActive) {
+              startDetection();
+            }
+          }
+        });
+        setDutyCycleMode(dutyCycleService.getMode());
+        console.log('Duty cycle service initialized');
+        
+        // Initialize image processing
+        await imageProcessing.initialize();
+        console.log('Image processing service initialized');
         
       } catch (error) {
         console.error('Failed to initialize services:', error);
@@ -128,8 +163,28 @@ export default function App() {
       // Simulate heart rate fluctuations
       const baseRate = alertActive ? BASELINE_HEART_RATE + 30 : BASELINE_HEART_RATE;
       const variation = Math.random() * 10 - 5;
-      setHeartRate(Math.max(60, Math.min(120, baseRate + variation)));
+      const newHeartRate = Math.max(60, Math.min(120, baseRate + variation));
+      setHeartRate(newHeartRate);
+      dutyCycleService.updateHeartRate(newHeartRate);
     }, 2000);
+    
+    // Monitor battery level
+    const batteryInterval = setInterval(() => {
+      const batteryStatus = dutyCycleService.getBatteryStatus();
+      setBatteryLevel(batteryStatus.level);
+    }, 5000);
+    
+    // Start wake-word listening
+    if (wakeWordReady) {
+      wakeWordService.startListening((command) => {
+        console.log('Wake-word command received:', command);
+        if (command === 'START') {
+          startDetection();
+        } else if (command === 'STOP') {
+          stopDetection();
+        }
+      });
+    }
 
     return () => {
       newSocket.close();
@@ -185,7 +240,7 @@ export default function App() {
       let threatAssessment = null;
       
       if (poseReady) {
-        poseResult = await poseService.analyzePose(photo.uri);
+        poseResult = await poseService.analyzePose(processedUri);
         threatAssessment = poseService.assessThreatLevel(poseResult, heartRate, BASELINE_HEART_RATE);
       }
       
@@ -228,10 +283,30 @@ export default function App() {
     }
     
     setDetectionActive(true);
-    // Run detection every 2 seconds
-    detectionIntervalRef.current = setInterval(() => {
-      detectThreatFromCamera();
-    }, 2000);
+    
+    // Use adaptive interval from duty cycle service
+    const updateDetectionInterval = () => {
+      const interval = dutyCycleService.getDetectionInterval();
+      if (interval && detectionActive) {
+        if (detectionIntervalRef.current) {
+          clearInterval(detectionIntervalRef.current);
+        }
+        detectionIntervalRef.current = setInterval(() => {
+          detectThreatFromCamera();
+        }, interval);
+      }
+    };
+    
+    // Initial interval
+    updateDetectionInterval();
+    
+    // Update interval when duty cycle changes
+    dutyCycleService.setModeChangeCallback((newMode) => {
+      setDutyCycleMode(newMode);
+      if (detectionActive) {
+        updateDetectionInterval();
+      }
+    });
   };
 
   // Stop detection loop
@@ -365,6 +440,15 @@ export default function App() {
               </Text>
             )}
             <Text style={styles.heartRateText}>HR: {Math.round(heartRate)} BPM</Text>
+            <Text style={styles.statusSubtext}>
+              Mode: {dutyCycleMode} | Battery: {batteryLevel}%
+            </Text>
+            {lowLightMode && (
+              <Text style={styles.warningText}>🌙 Low-Light Enhanced</Text>
+            )}
+            {wakeWordReady && (
+              <Text style={styles.statusSubtext}>🎤 Wake-word: "Vantus Overwatch"</Text>
+            )}
           </View>
         )}
 
@@ -449,12 +533,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    paddingVertical: 20,
-    paddingHorizontal: 40,
-    borderRadius: 10,
-    marginVertical: 10,
-    minWidth: 200,
+    paddingVertical: 28, // Increased for glove-friendly (was 20)
+    paddingHorizontal: 50, // Increased for glove-friendly (was 40)
+    borderRadius: 12, // Slightly larger radius
+    marginVertical: 12, // More spacing
+    minWidth: 280, // Increased minimum width (was 200)
+    minHeight: 70, // Minimum height for large touch target
     alignItems: 'center',
+    justifyContent: 'center',
   },
   simulateButton: {
     backgroundColor: '#333333',
@@ -476,8 +562,9 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 22, // Increased from 20 for better visibility
     fontWeight: 'bold',
+    letterSpacing: 1, // Better readability
   },
   text: {
     color: '#FFFFFF',

@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const cadRelay = require('./services/cadRelay');
 
 const app = express();
 app.use(cors());
@@ -31,13 +32,27 @@ io.on('connection', (socket) => {
   log(`Client connected: ${socket.id}`);
 
   // Listen for THREAT_DETECTED from mobile clients
-  socket.on('THREAT_DETECTED', (data) => {
+  socket.on('THREAT_DETECTED', async (data) => {
     log(`THREAT_DETECTED received from ${socket.id}`);
     log(`Threat data: ${JSON.stringify(data)}`);
     
     // Broadcast DASHBOARD_ALERT to all connected web clients (dashboards)
     io.emit('DASHBOARD_ALERT', data);
     log(`DASHBOARD_ALERT broadcasted to all connected clients`);
+    
+    // Send to CAD system (if configured)
+    if (cadRelay.isConfigured()) {
+      try {
+        const cadResult = await cadRelay.sendToCAD(data);
+        if (cadResult.success) {
+          log(`CAD alert sent successfully: ${cadResult.cadCallId}`);
+        } else {
+          log(`CAD alert failed: ${cadResult.error}`);
+        }
+      } catch (error) {
+        log(`CAD relay error: ${error.message}`);
+      }
+    }
   });
 
   // Listen for alert clear from mobile clients
@@ -73,6 +88,14 @@ io.on('connection', (socket) => {
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: getTimestamp() });
+});
+
+// CAD status endpoint
+app.get('/cad/status', (req, res) => {
+  res.json({
+    cad: cadRelay.getInfo(),
+    timestamp: getTimestamp()
+  });
 });
 
 // Start server
