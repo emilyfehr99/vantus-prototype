@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert, ActivityInd
 import * as LocalAuthentication from 'expo-local-authentication';
 import rosterService from '../services/rosterService';
 import { DEMO_BADGES } from '../utils/constants';
+import logger from '../utils/logger';
 
 export default function AuthenticationScreen({ onAuthenticated }) {
   const [badgeNumber, setBadgeNumber] = useState('');
@@ -41,7 +42,7 @@ export default function AuthenticationScreen({ onAuthenticated }) {
         setAuthenticating(false);
       }
     } catch (error) {
-      console.error('Biometric authentication error:', error);
+      logger.error('Biometric authentication error', error);
       Alert.alert('Authentication Error', 'Biometric authentication failed');
       setAuthenticating(false);
     }
@@ -61,7 +62,7 @@ export default function AuthenticationScreen({ onAuthenticated }) {
         }
       } catch (error) {
         // Fallback to demo validation if roster service fails
-        console.warn('Roster service error, using demo validation:', error);
+        logger.warn('Roster service error, using demo validation', error);
         isValid = DEMO_BADGES.includes(badge);
       }
       
@@ -86,7 +87,7 @@ export default function AuthenticationScreen({ onAuthenticated }) {
       setAuthenticating(false);
       onAuthenticated(badge);
     } catch (error) {
-      console.error('Identity verification error:', error);
+      logger.error('Identity verification error', error);
       Alert.alert('Verification Error', 'Failed to verify identity with department roster');
       setAuthenticating(false);
     }

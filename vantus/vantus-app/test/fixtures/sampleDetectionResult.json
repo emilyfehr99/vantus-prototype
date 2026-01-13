@@ -1,0 +1,13 @@
+{
+  "detected": true,
+  "category": "weapon",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "confidence": 0.85,
+  "detections": [
+    {
+      "class": "handgun",
+      "confidence": 0.85,
+      "bbox": [100, 100, 200, 200]
+    }
+  ]
+}

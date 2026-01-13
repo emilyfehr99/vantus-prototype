@@ -5,6 +5,10 @@
  */
 
 import configService from '../utils/config';
+import { calculateStats, mean, median, standardDeviation, iqr, mad } from '../utils/mathUtils';
+import { getTimeDifferenceSeconds, getTimeOfDay } from '../utils/dateUtils';
+import { calculateSpeedFromGPS, getDistanceBetweenPoints, isWithinRadius } from '../utils/gpsUtils';
+import logger from '../utils/logger';
 
 class BaselineCalibration {
   constructor() {
@@ -111,9 +115,8 @@ class BaselineCalibration {
    * Get time of day context
    */
   getTimeOfDay() {
-    const hour = new Date().getHours();
     const baselineConfig = configService.getBaselineConfig();
-    return (hour >= baselineConfig.dayTimeStart && hour < baselineConfig.dayTimeEnd) ? 'day' : 'night';
+    return getTimeOfDay(baselineConfig.dayTimeStart, baselineConfig.dayTimeEnd);
   }
 
   /**

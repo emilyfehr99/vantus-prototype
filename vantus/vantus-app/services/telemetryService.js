@@ -4,6 +4,7 @@
  */
 import * as Location from 'expo-location';
 import * as FileSystem from 'expo-file-system';
+import logger from '../utils/logger';
 
 class TelemetryService {
   constructor() {
@@ -31,7 +32,7 @@ class TelemetryService {
    */
   async startSession(officerName) {
     if (this.isSessionActive) {
-      console.warn('Session already active');
+      logger.warn('Session already active');
       return;
     }
 
@@ -47,7 +48,7 @@ class TelemetryService {
     // Request location permissions
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
-      console.warn('Location permission not granted');
+      logger.warn('Location permission not granted');
     }
 
     // Start location tracking
@@ -56,7 +57,7 @@ class TelemetryService {
     // Start periodic telemetry logging
     this.startTelemetryLogging();
 
-    console.log(`Session started: ${this.sessionId}`);
+    logger.info(`Session started: ${this.sessionId}`);
     return this.sessionId;
   }
 
@@ -65,7 +66,7 @@ class TelemetryService {
    */
   stopSession() {
     if (!this.isSessionActive) {
-      console.warn('No active session');
+      logger.warn('No active session');
       return null;
     }
 
@@ -96,7 +97,7 @@ class TelemetryService {
     this.sessionId = null;
     this.sessionStartTime = null;
 
-    console.log(`Session stopped: ${sessionData.sessionId}`);
+    logger.info(`Session stopped: ${sessionData.sessionId}`);
     return sessionData;
   }
 
@@ -247,7 +248,7 @@ class TelemetryService {
    */
   addAudioTranscript(transcript, metadata = {}) {
     if (!this.isSessionActive) {
-      console.warn('No active session');
+      logger.warn('No active session');
       return;
     }
 
@@ -270,7 +271,7 @@ class TelemetryService {
    */
   addMarkerEvent(eventType, description, metadata = {}) {
     if (!this.isSessionActive) {
-      console.warn('No active session');
+      logger.warn('No active session');
       return;
     }
 

@@ -4,6 +4,7 @@
  */
 
 import autoDispatch from './autoDispatch';
+import logger from '../utils/logger';
 
 class WelfareCheck {
   constructor() {
@@ -43,7 +44,7 @@ class WelfareCheck {
     this.responseReceived = false;
 
     // Log the prompt
-    console.log('WELFARE CHECK: Status check - Are you okay?');
+    logger.info('WELFARE CHECK: Status check - Are you okay?');
     
     // Trigger voice prompt (if voice advisory is available)
     // Note: Voice advisory would need a welfare check prompt method
@@ -74,12 +75,12 @@ class WelfareCheck {
     switch (responseType) {
       case 'ok':
         // Officer is okay
-        console.log('Welfare check: Officer confirmed OK');
+        logger.info('Welfare check: Officer confirmed OK');
         return { status: 'ok', action: 'cleared' };
 
       case 'need_backup':
         // Officer needs backup (non-emergency)
-        console.log('Welfare check: Officer requested backup');
+        logger.info('Welfare check: Officer requested backup');
         autoDispatch.manualDispatch(null, telemetryState, officerInfo);
         return { status: 'backup_requested', action: 'dispatched' };
 
@@ -138,7 +139,7 @@ class WelfareCheck {
     this.welfarePromptActive = false;
     this.clearWelfareTimer();
 
-    console.log('WELFARE EMERGENCY: Officer did not respond - triggering OFFICER DOWN protocol');
+    logger.error('WELFARE EMERGENCY: Officer did not respond - triggering OFFICER DOWN protocol');
 
     // Get last known vitals and location
     const lastKnownVitals = this.getLastBiometrics(telemetryState);

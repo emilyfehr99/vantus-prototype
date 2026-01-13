@@ -1,0 +1,91 @@
+{
+  "sessionId": "session_1705312200000",
+  "officerId": "OFFICER_12345",
+  "startTime": "2024-01-15T10:00:00.000Z",
+  "endTime": "2024-01-15T11:00:00.000Z",
+  "duration": 3600,
+  "telemetryData": [
+    {
+      "timestamp": "2024-01-15T10:00:00.000Z",
+      "sessionId": "session_1705312200000",
+      "location": {
+        "lat": 49.8951,
+        "lng": -97.1384,
+        "accuracy": 8.5,
+        "altitude": 225.3,
+        "heading": 45.2
+      },
+      "movement": {
+        "speed": 1.8,
+        "acceleration": 0.3,
+        "isMoving": true
+      },
+      "context": {
+        "inVehicle": false,
+        "onFoot": true
+      }
+    }
+  ],
+  "markerEvents": [
+    {
+      "id": "marker_1705312500000",
+      "timestamp": "2024-01-15T10:15:00.000Z",
+      "sessionId": "session_1705312200000",
+      "eventType": "traffic_stop",
+      "description": "Traffic stop on Main Street",
+      "location": {
+        "lat": 49.8961,
+        "lng": -97.1394,
+        "accuracy": 10.2
+      },
+      "metadata": {
+        "manual": true,
+        "source": "officer"
+      }
+    }
+  ],
+  "audioTranscripts": [
+    {
+      "timestamp": "2024-01-15T10:15:30.000Z",
+      "sessionId": "session_1705312200000",
+      "transcript": "License and registration please",
+      "metadata": {
+        "confidence": 0.92,
+        "language": "en",
+        "source": "speech_to_text"
+      }
+    }
+  ],
+  "baseline": {
+    "officerId": "OFFICER_12345",
+    "context": "on_foot",
+    "timeOfDay": "day",
+    "timestamp": "2024-01-15T10:00:00.000Z",
+    "movement": {
+      "averageSpeed": 1.5,
+      "medianSpeed": 1.4,
+      "stdDevSpeed": 0.3,
+      "iqrSpeed": 0.45,
+      "madSpeed": 0.23,
+      "abruptStops": [],
+      "stationaryDurations": [5, 10, 15, 20, 25],
+      "pacingPatterns": []
+    },
+    "biometric": {
+      "heartRateBaseline": 72,
+      "heartRateStdDev": 5,
+      "heartRateIqr": 8
+    },
+    "audio": {
+      "averageSpeechRate": 160,
+      "phraseRepetitionRate": 0.08
+    },
+    "routine": {
+      "durations": {
+        "traffic_stop": 420,
+        "checkpoint": 900,
+        "suspicious_activity": 240
+      }
+    }
+  }
+}

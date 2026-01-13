@@ -4,6 +4,7 @@
  */
 
 import * as Speech from 'expo-speech';
+import logger from '../utils/logger';
 
 class VoiceAdvisory {
   constructor() {
@@ -84,7 +85,7 @@ class VoiceAdvisory {
         },
       });
     } catch (error) {
-      console.error('Voice advisory error:', error);
+      logger.error('Voice advisory error', error);
       this.isSpeaking = false;
       this.processQueue();
     }

@@ -6,6 +6,8 @@
  * when the CAD system API is available.
  */
 
+const logger = require('../utils/logger');
+
 class CADService {
   constructor() {
     this.apiUrl = null; // Will be set from config
@@ -24,9 +26,9 @@ class CADService {
     this.enabled = !!apiUrl && !!apiKey;
     
     if (this.enabled) {
-      console.log('CAD Service initialized and enabled');
+      logger.info('CAD Service initialized and enabled');
     } else {
-      console.warn('CAD Service initialized but not enabled (missing API URL or key)');
+      logger.warn('CAD Service initialized but not enabled (missing API URL or key)');
     }
   }
 
@@ -47,7 +49,7 @@ class CADService {
    */
   async dispatchBackup(dispatchPayload) {
     if (!this.enabled) {
-      console.warn('CAD Service not enabled - dispatch not sent');
+      logger.warn('CAD Service not enabled - dispatch not sent');
       return { success: false, error: 'CAD service not configured' };
     }
 
@@ -66,10 +68,10 @@ class CADService {
       }
 
       const data = await response.json();
-      console.log('CAD dispatch successful:', data);
+      logger.info('CAD dispatch successful', { data });
       return { success: true, data };
     } catch (error) {
-      console.error('CAD dispatch error:', error);
+      logger.error('CAD dispatch error', error);
       
       // Retry logic could be added here
       return { success: false, error: error.message };
@@ -102,7 +104,7 @@ class CADService {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Get dispatch status error:', error);
+      logger.error('Get dispatch status error', error);
       return null;
     }
   }

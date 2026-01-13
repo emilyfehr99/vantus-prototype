@@ -5,6 +5,7 @@
  */
 
 import modelRegistry from './modelRegistry';
+import logger from '../utils/logger';
 
 class ModelLoader {
   constructor() {
@@ -34,13 +35,13 @@ class ModelLoader {
         // modelRegistry.setModelPath(category, modelPath);
         
         // For now, mark as ready (will be replaced with actual loading)
-        console.log(`Weapon model loading from: ${modelPath}`);
+        logger.info(`Weapon model loading from: ${modelPath}`);
         modelRegistry.setModelStatus(category, 'ready');
         modelRegistry.setModelPath(category, modelPath);
         
         return { success: true, category };
       } catch (error) {
-        console.error('Failed to load weapon model:', error);
+        logger.error('Failed to load weapon model', error);
         modelRegistry.setModelStatus(category, 'error');
         throw error;
       } finally {
@@ -75,13 +76,13 @@ class ModelLoader {
         // );
         // modelRegistry.registerModel(category, detector);
         
-        console.log(`Stance model loading from: ${modelPath}`);
+        logger.info(`Stance model loading from: ${modelPath}`);
         modelRegistry.setModelStatus(category, 'ready');
         modelRegistry.setModelPath(category, modelPath);
         
         return { success: true, category };
       } catch (error) {
-        console.error('Failed to load stance model:', error);
+        logger.error('Failed to load stance model', error);
         modelRegistry.setModelStatus(category, 'error');
         throw error;
       } finally {
@@ -110,13 +111,13 @@ class ModelLoader {
         // TODO: Load MoveNet model (can share with stance)
         // Or load separate instance for hands detection
         
-        console.log(`Hands model loading from: ${modelPath}`);
+        logger.info(`Hands model loading from: ${modelPath}`);
         modelRegistry.setModelStatus(category, 'ready');
         modelRegistry.setModelPath(category, modelPath);
         
         return { success: true, category };
       } catch (error) {
-        console.error('Failed to load hands model:', error);
+        logger.error('Failed to load hands model', error);
         modelRegistry.setModelStatus(category, 'error');
         throw error;
       } finally {
@@ -148,13 +149,13 @@ class ModelLoader {
         // const model = await tf.loadLayersModel(modelPath);
         // modelRegistry.registerModel(category, model);
         
-        console.log(`Audio model loading from: ${modelPath}`);
+        logger.info(`Audio model loading from: ${modelPath}`);
         modelRegistry.setModelStatus(category, 'ready');
         modelRegistry.setModelPath(category, modelPath);
         
         return { success: true, category };
       } catch (error) {
-        console.error('Failed to load audio model:', error);
+        logger.error('Failed to load audio model', error);
         modelRegistry.setModelStatus(category, 'error');
         throw error;
       } finally {

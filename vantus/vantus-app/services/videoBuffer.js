@@ -7,6 +7,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Camera from 'expo-camera';
 import * as Crypto from 'expo-crypto';
 import { CameraView } from 'expo-camera';
+import logger from '../utils/logger';
 
 class VideoBuffer {
   constructor() {
@@ -49,8 +50,7 @@ class VideoBuffer {
 
         // In production, this would start actual video recording
         // For now, mark as recording (will be implemented with proper recording API)
-        console.log('Video buffer started (placeholder - requires recording API)');
-        console.log('Buffer path:', bufferPath);
+        logger.info('Video buffer started (placeholder - requires recording API)', { bufferPath });
         
         // Placeholder: In production would use:
         // const { recording } = await Camera.Recording.createAsync({
@@ -60,7 +60,7 @@ class VideoBuffer {
         // this.recording = recording;
       }
     } catch (error) {
-      console.error('Failed to start video buffer:', error);
+      logger.error('Failed to start video buffer', error);
       this.isRecording = false;
     }
   }
@@ -77,9 +77,9 @@ class VideoBuffer {
       
       this.isRecording = false;
       this.recording = null;
-      console.log('Video buffer stopped');
+      logger.info('Video buffer stopped');
     } catch (error) {
-      console.error('Failed to stop video buffer:', error);
+      logger.error('Failed to stop video buffer', error);
       this.isRecording = false;
     }
   }
@@ -89,7 +89,7 @@ class VideoBuffer {
    */
   async triggerClipSave(triggerEvent) {
     if (!this.isRecording) {
-      console.warn('Cannot save clip - buffer not recording');
+      logger.warn('Cannot save clip - buffer not recording');
       // Still try to save (buffer might have data)
     }
 
@@ -117,10 +117,10 @@ class VideoBuffer {
       // Restart buffer
       await this.startBuffer();
 
-      console.log('Clip saved (placeholder):', savedClip);
+      logger.info('Clip saved (placeholder)', { savedClip });
       return savedClip;
     } catch (error) {
-      console.error('Failed to save triggered clip:', error);
+      logger.error('Failed to save triggered clip', error);
       // Restart buffer even if save failed
       await this.startBuffer();
       return null;
@@ -150,7 +150,7 @@ class VideoBuffer {
         key: key, // Would be stored securely in production
       };
     } catch (error) {
-      console.error('Failed to encrypt clip:', error);
+      logger.error('Failed to encrypt clip', error);
       throw error;
     }
   }
@@ -162,7 +162,7 @@ class VideoBuffer {
   async combineVideos(preTriggerUri, postTriggerUri) {
     // In production, use FFmpeg or similar to combine videos
     // For now, return pre-trigger (would be combined in production)
-    console.log('Combining videos:', { preTriggerUri, postTriggerUri });
+    logger.debug('Combining videos', { preTriggerUri, postTriggerUri });
     
     // Placeholder - would use FFmpeg in production
     // const combined = await ffmpeg.combine([preTriggerUri, postTriggerUri]);
@@ -200,11 +200,11 @@ class VideoBuffer {
 
       this.triggeredClips.push(clipInfo);
 
-      console.log('Clip saved:', clipInfo);
+      logger.info('Clip saved', { clipInfo });
 
       return clipInfo;
     } catch (error) {
-      console.error('Failed to save clip:', error);
+      logger.error('Failed to save clip', error);
       throw error;
     }
   }
@@ -228,7 +228,7 @@ class VideoBuffer {
       this.triggeredClips = this.triggeredClips.filter(c => c.id !== clipId);
       return true;
     } catch (error) {
-      console.error('Failed to delete clip:', error);
+      logger.error('Failed to delete clip', error);
       return false;
     }
   }

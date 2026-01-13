@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator, Animated, TouchableOpacity } from 'react-native';
 import { CameraView } from 'expo-camera';
 import * as Audio from 'expo-av';
+import logger from '../utils/logger';
 
 export default function CalibrationScreen({ badgeNumber, onCalibrationComplete }) {
   const [step, setStep] = useState(0);
@@ -95,7 +96,7 @@ export default function CalibrationScreen({ badgeNumber, onCalibrationComplete }
       clearInterval(interval);
       completeCalibration();
     } catch (error) {
-      console.error('Calibration error:', error);
+      logger.error('Calibration error', error);
       // Continue even if some baselines fail
       completeCalibration();
     }
@@ -118,9 +119,9 @@ export default function CalibrationScreen({ badgeNumber, onCalibrationComplete }
       // 4. Collect samples over 10 seconds
       // 5. Calculate average
       
-      console.log('Heart rate baseline captured (simulated):', simulatedHeartRate);
+      logger.info('Heart rate baseline captured (simulated)', { simulatedHeartRate });
     } catch (error) {
-      console.error('Heart rate capture error:', error);
+      logger.error('Heart rate capture error', error);
       setHeartRate(null);
     }
   };
@@ -130,7 +131,7 @@ export default function CalibrationScreen({ badgeNumber, onCalibrationComplete }
       // Request audio permissions
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
-        console.log('Audio permission not granted');
+        logger.warn('Audio permission not granted');
         setAudioBaseline(null);
         return;
       }
@@ -157,7 +158,7 @@ export default function CalibrationScreen({ badgeNumber, onCalibrationComplete }
       // For now, just mark as captured
       setAudioBaseline('captured');
     } catch (error) {
-      console.error('Audio baseline capture error:', error);
+      logger.error('Audio baseline capture error', error);
       setAudioBaseline(null);
     }
   };
@@ -171,7 +172,7 @@ export default function CalibrationScreen({ badgeNumber, onCalibrationComplete }
         setLightingBaseline('captured');
       }
     } catch (error) {
-      console.error('Lighting baseline capture error:', error);
+      logger.error('Lighting baseline capture error', error);
       setLightingBaseline(null);
     }
   };
@@ -189,7 +190,7 @@ export default function CalibrationScreen({ badgeNumber, onCalibrationComplete }
     };
 
     // In production, would store this in secure storage
-    console.log('Calibration complete:', calibrationData);
+    logger.info('Calibration complete', { calibrationData });
 
     // Proceed to standby mode
     onCalibrationComplete(calibrationData);

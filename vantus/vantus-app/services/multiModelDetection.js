@@ -6,6 +6,7 @@
 
 import modelRegistry from './modelRegistry';
 import baselineCalibration from './baselineCalibration';
+import logger from '../utils/logger';
 
 class MultiModelDetection {
   constructor() {
@@ -46,7 +47,7 @@ class MultiModelDetection {
         model: model.modelType,
       };
     } catch (error) {
-      console.error('Weapon detection error:', error);
+      logger.error('Weapon detection error', error);
       return {
         detected: false,
         category: 'weapon',
@@ -119,7 +120,7 @@ class MultiModelDetection {
         model: model.modelType,
       };
     } catch (error) {
-      console.error('Stance detection error:', error);
+      logger.error('Stance detection error', error);
       return {
         detected: false,
         category: 'stance',
@@ -202,7 +203,7 @@ class MultiModelDetection {
         model: model.modelType,
       };
     } catch (error) {
-      console.error('Hands detection error:', error);
+      logger.error('Hands detection error', error);
       return {
         detected: false,
         category: 'hands',
@@ -310,7 +311,7 @@ class MultiModelDetection {
         model: model.modelType,
       };
     } catch (error) {
-      console.error('Biometric detection error:', error);
+      logger.error('Biometric detection error', error);
       return {
         detected: false,
         category: 'biometric',
@@ -354,7 +355,7 @@ class MultiModelDetection {
         model: model.modelType,
       };
     } catch (error) {
-      console.error('Audio detection error:', error);
+      logger.error('Audio detection error', error);
       return {
         detected: false,
         category: 'audio',

@@ -6,6 +6,8 @@
  * when the geocoding service is configured.
  */
 
+const logger = require('../utils/logger');
+
 class GeocodingService {
   constructor() {
     this.apiUrl = null; // Will be set from config
@@ -70,7 +72,7 @@ class GeocodingService {
 
       return address;
     } catch (error) {
-      console.error('Reverse geocoding error:', error);
+      logger.error('Reverse geocoding error', error);
       return null;
     }
   }

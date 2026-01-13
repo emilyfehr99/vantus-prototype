@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import styles from '../styles/Dashboard.module.css';
+import logger from '../utils/logger';
 
 // Bridge server URL - update this to match your server
 // Bridge server URL - from environment or default
@@ -63,18 +64,18 @@ export default function Dashboard() {
     });
 
     newSocket.on('connect', () => {
-      console.log('Dashboard connected to bridge server');
+      logger.info('Dashboard connected to bridge server');
       // Fetch initial officer states
       fetchOfficerStates();
     });
 
     newSocket.on('disconnect', () => {
-      console.log('Dashboard disconnected from bridge server');
+      logger.info('Dashboard disconnected from bridge server');
     });
 
     // Listen for contextual signals
     newSocket.on('CONTEXTUAL_SIGNALS_UPDATE', (data: { officerName: string; signals: ContextualSignal[]; timestamp: string }) => {
-      console.log('CONTEXTUAL_SIGNALS_UPDATE received:', data);
+      logger.info('CONTEXTUAL_SIGNALS_UPDATE received', { data });
       
       setOfficers(prev => {
         const updated = new Map(prev);
@@ -96,7 +97,7 @@ export default function Dashboard() {
 
     // Listen for marker events
     newSocket.on('MARKER_EVENT_UPDATE', (data: { officerName: string; marker: MarkerEvent }) => {
-      console.log('MARKER_EVENT_UPDATE received:', data);
+      logger.info('MARKER_EVENT_UPDATE received', { data });
       // Could add marker events to officer state if needed
     });
 
@@ -136,7 +137,7 @@ export default function Dashboard() {
 
     // Legacy support for old alert system
     newSocket.on('DASHBOARD_ALERT', (data: any) => {
-      console.log('Legacy DASHBOARD_ALERT received:', data);
+      logger.info('Legacy DASHBOARD_ALERT received', { data });
       // Convert to contextual signal for compatibility
       const signal: ContextualSignal = {
         signalType: 'legacy_alert',
@@ -208,7 +209,7 @@ export default function Dashboard() {
         return updated;
       });
     } catch (error) {
-      console.error('Failed to fetch officer states:', error);
+      logger.error('Failed to fetch officer states', error);
     }
   };
 
@@ -438,7 +439,7 @@ export default function Dashboard() {
                         (summary.signalsByCategory[s.signalCategory] || 0) + 1;
                     });
                     
-                    console.log('Post-shift summary:', summary);
+                    logger.info('Post-shift summary', { summary });
                     alert(`Post-Shift Summary:\n\nOfficer: ${selectedOfficerData.officerName}\nTotal Signals: ${selectedOfficerData.signals.length}\nCategories: ${Object.keys(summary.signalsByCategory).length}\n\nNote: This summary is for contextual awareness only, not performance evaluation.`);
                   }}
                   title="Generate a post-shift summary of contextual signals. This is for review purposes only, not for performance evaluation or disciplinary action."

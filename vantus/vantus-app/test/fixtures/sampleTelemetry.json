@@ -1,0 +1,20 @@
+{
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "sessionId": "session_1705312200000",
+  "location": {
+    "lat": 49.8951,
+    "lng": -97.1384,
+    "accuracy": 8.5,
+    "altitude": 225.3,
+    "heading": 45.2
+  },
+  "movement": {
+    "speed": 1.8,
+    "acceleration": 0.3,
+    "isMoving": true
+  },
+  "context": {
+    "inVehicle": false,
+    "onFoot": true
+  }
+}

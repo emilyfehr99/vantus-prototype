@@ -5,6 +5,7 @@ const cors = require('cors');
 const auditLogger = require('./services/auditLogger');
 const cadService = require('./services/cadService');
 const geocodingService = require('./services/geocodingService');
+const logger = require('./utils/logger');
 
 const app = express();
 app.use(cors());
@@ -24,9 +25,9 @@ const PORT = process.env.PORT || 3001;
 // CAD Service
 if (process.env.CAD_API_URL && process.env.CAD_API_KEY) {
   cadService.initialize(process.env.CAD_API_URL, process.env.CAD_API_KEY);
-  console.log('CAD Service initialized and enabled');
+  logger.info('CAD Service initialized and enabled');
 } else {
-  console.log('CAD Service not configured (missing CAD_API_URL or CAD_API_KEY)');
+  logger.info('CAD Service not configured (missing CAD_API_URL or CAD_API_KEY)');
 }
 
 // Geocoding Service
@@ -35,9 +36,9 @@ if (process.env.GEOCODING_API_URL) {
     process.env.GEOCODING_API_URL,
     process.env.GEOCODING_API_KEY || null
   );
-  console.log('Geocoding Service initialized');
+  logger.info('Geocoding Service initialized');
 } else {
-  console.log('Geocoding Service not configured (missing GEOCODING_API_URL)');
+  logger.info('Geocoding Service not configured (missing GEOCODING_API_URL)');
 }
 
 // Geocoding Service
@@ -52,14 +53,14 @@ if (process.env.GEOCODING_API_URL) {
 const activeSessions = new Map(); // sessionId -> sessionData
 const officerStates = new Map(); // officerName -> state
 
-// Helper function to get timestamp
+// Helper function to get timestamp (using logger's timestamp)
 function getTimestamp() {
-  return new Date().toISOString();
+  return logger.getTimestamp();
 }
 
-// Log function with timestamp
+// Log function with timestamp (using logger)
 function log(message) {
-  console.log(`[${getTimestamp()}] ${message}`);
+  logger.info(message);
 }
 
 // Socket.io connection handling
@@ -191,7 +192,7 @@ io.on('connection', (socket) => {
           dispatchPayload.location.address = address;
         }
       } catch (error) {
-        console.error('Geocoding error:', error);
+        logger.error('Geocoding error', error);
       }
     }
     
@@ -201,7 +202,7 @@ io.on('connection', (socket) => {
         await cadService.dispatchBackup(dispatchPayload);
         log('CAD dispatch sent successfully');
       } catch (error) {
-        console.error('CAD dispatch error:', error);
+        logger.error('CAD dispatch error', error);
         // Continue even if CAD fails - still emit to dashboards
       }
     } else {

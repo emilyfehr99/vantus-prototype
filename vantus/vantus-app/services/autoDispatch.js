@@ -3,6 +3,8 @@
  * Handles automatic backup dispatch based on critical conditions
  */
 
+import logger from '../utils/logger';
+
 // Note: Using require for configService to avoid circular dependencies
 // In production, consider refactoring to use ES6 imports with proper dependency management
 
@@ -16,6 +18,10 @@ class AutoDispatch {
 
   /**
    * Check if auto-dispatch conditions are met
+   * @param {Object} detectionResults - Detection results from AI models
+   * @param {Object} telemetryState - Current telemetry state (location, movement, etc.)
+   * @param {Object} officerInfo - Officer information (badge number, name, unit)
+   * @returns {Promise<boolean>} True if auto-dispatch should be triggered
    */
   async checkAutoDispatchConditions(detectionResults, telemetryState, officerInfo) {
     const conditions = [];
@@ -65,6 +71,8 @@ class AutoDispatch {
 
   /**
    * Check if threat level is critical
+   * @param {Object} detectionResults - Detection results from AI models
+   * @returns {boolean} True if threat level is critical
    */
   isThreatLevelCritical(detectionResults) {
     if (!detectionResults || !detectionResults.detections) return false;
@@ -88,6 +96,8 @@ class AutoDispatch {
 
   /**
    * Check if heart rate is elevated (>160 BPM for >10 seconds)
+   * @param {Object} telemetryState - Current telemetry state
+   * @returns {Promise<boolean>} True if heart rate is elevated for required duration
    */
   async isHeartRateElevated(telemetryState) {
     if (!telemetryState || !telemetryState.calibrationData) return false;
@@ -173,6 +183,11 @@ class AutoDispatch {
 
   /**
    * Dispatch backup (auto-dispatch)
+   * @param {Object} condition - Condition that triggered dispatch
+   * @param {Object} detectionResults - Detection results from AI models
+   * @param {Object} telemetryState - Current telemetry state
+   * @param {Object} officerInfo - Officer information
+   * @returns {Promise<Object>} Dispatch payload
    */
   async dispatchBackup(condition, detectionResults, telemetryState, officerInfo) {
     const dispatchPayload = this.createDispatchPayload(
@@ -190,7 +205,7 @@ class AutoDispatch {
 
     // Send to bridge server
     // In production, this would also send to CAD system
-    console.log('AUTO-DISPATCH TRIGGERED:', dispatchPayload);
+    logger.info('AUTO-DISPATCH TRIGGERED', { dispatchPayload });
 
     // Return payload for sending
     return dispatchPayload;
@@ -198,6 +213,11 @@ class AutoDispatch {
 
   /**
    * Create dispatch payload
+   * @param {Object} condition - Condition that triggered dispatch
+   * @param {Object} detectionResults - Detection results from AI models
+   * @param {Object} telemetryState - Current telemetry state
+   * @param {Object} officerInfo - Officer information
+   * @returns {Object} Formatted dispatch payload
    */
   createDispatchPayload(condition, detectionResults, telemetryState, officerInfo) {
     const location = telemetryState?.lastLocation || { lat: 0, lng: 0, accuracy: 0 };

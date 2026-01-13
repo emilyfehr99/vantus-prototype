@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const logger = require('../utils/logger');
 
 class AuditLogger {
   constructor() {
@@ -37,7 +38,7 @@ class AuditLogger {
     fs.appendFileSync(logFile, JSON.stringify(logEntry) + '\n');
 
     // Also log to console for development
-    console.log(`[AUDIT] ${timestamp} ${entry.eventType || 'UNKNOWN'}`);
+    logger.info(`[AUDIT] ${entry.eventType || 'UNKNOWN'}`);
 
     return logEntry;
   }
@@ -157,7 +158,7 @@ class AuditLogger {
           try {
             logs.push(JSON.parse(line));
           } catch (e) {
-            console.error('Error parsing log line:', e);
+            logger.error('Error parsing log line', e);
           }
         });
       }

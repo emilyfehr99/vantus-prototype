@@ -6,6 +6,8 @@
  * when the department roster API is available.
  */
 
+import logger from '../utils/logger';
+
 class RosterService {
   constructor() {
     this.apiUrl = null; // Will be set from config
@@ -44,7 +46,7 @@ class RosterService {
   async verifyOfficer(badgeNumber, pin) {
     if (!this.apiUrl) {
       // Fallback to demo validation if API not configured
-      console.warn('Roster API not configured, using demo validation');
+      logger.warn('Roster API not configured, using demo validation');
       return this._demoVerify(badgeNumber, pin);
     }
 
@@ -65,7 +67,7 @@ class RosterService {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Roster verification error:', error);
+      logger.error('Roster verification error', error);
       throw error;
     }
   }
@@ -96,7 +98,7 @@ class RosterService {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Get officer metadata error:', error);
+      logger.error('Get officer metadata error', error);
       return null;
     }
   }

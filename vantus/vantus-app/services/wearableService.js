@@ -6,6 +6,8 @@
  * when the wearable platform is chosen and SDK is integrated.
  */
 
+import logger from '../utils/logger';
+
 class WearableService {
   constructor() {
     this.platform = null; // 'ios' | 'android' | null
@@ -35,7 +37,7 @@ class WearableService {
     // For Android: Google Fit integration
     // For React Native: expo-sensors or react-native-health
 
-    console.log(`Wearable Service initialized for platform: ${this.platform || 'unknown'}`);
+    logger.info(`Wearable Service initialized for platform: ${this.platform || 'unknown'}`);
   }
 
   /**
@@ -48,13 +50,13 @@ class WearableService {
       // iOS: HealthKit authorization
       // Android: Google Fit authorization
       
-      console.log('Requesting wearable permissions...');
+      logger.info('Requesting wearable permissions...');
       
       // Placeholder: In production, this would call the actual SDK
       // For now, return true to allow development
       return true;
     } catch (error) {
-      console.error('Wearable permission request error:', error);
+      logger.error('Wearable permission request error', error);
       return false;
     }
   }
@@ -68,7 +70,7 @@ class WearableService {
       // Platform-specific permission checks would go here
       return true; // Placeholder
     } catch (error) {
-      console.error('Wearable permission check error:', error);
+      logger.error('Wearable permission check error', error);
       return false;
     }
   }
@@ -100,10 +102,10 @@ class WearableService {
       // Android: Google Fit listener
       // React Native: expo-sensors subscription
 
-      console.log('Subscribed to heart rate data');
+      logger.info('Subscribed to heart rate data');
       return true;
     } catch (error) {
-      console.error('Heart rate subscription error:', error);
+      logger.error('Heart rate subscription error', error);
       this.subscribed = false;
       return false;
     }
@@ -117,9 +119,9 @@ class WearableService {
       // Platform-specific unsubscription would go here
       this.subscribed = false;
       this.heartRateCallback = null;
-      console.log('Unsubscribed from heart rate data');
+      logger.info('Unsubscribed from heart rate data');
     } catch (error) {
-      console.error('Heart rate unsubscription error:', error);
+      logger.error('Heart rate unsubscription error', error);
     }
   }
 
@@ -138,7 +140,7 @@ class WearableService {
       // For now, return null (will be replaced with actual SDK call)
       return null;
     } catch (error) {
-      console.error('Get current heart rate error:', error);
+      logger.error('Get current heart rate error', error);
       return null;
     }
   }
@@ -152,7 +154,7 @@ class WearableService {
       // Platform-specific connection check would go here
       return this.connected;
     } catch (error) {
-      console.error('Wearable connection check error:', error);
+      logger.error('Wearable connection check error', error);
       return false;
     }
   }

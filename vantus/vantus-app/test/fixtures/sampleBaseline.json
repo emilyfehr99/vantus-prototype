@@ -1,0 +1,32 @@
+{
+  "officerId": "OFFICER_12345",
+  "context": "on_foot",
+  "timeOfDay": "day",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "movement": {
+    "averageSpeed": 1.5,
+    "medianSpeed": 1.4,
+    "stdDevSpeed": 0.3,
+    "iqrSpeed": 0.45,
+    "madSpeed": 0.23,
+    "abruptStops": [],
+    "stationaryDurations": [5, 10, 15, 20, 25],
+    "pacingPatterns": []
+  },
+  "biometric": {
+    "heartRateBaseline": 72,
+    "heartRateStdDev": 5,
+    "heartRateIqr": 8
+  },
+  "audio": {
+    "averageSpeechRate": 160,
+    "phraseRepetitionRate": 0.08
+  },
+  "routine": {
+    "durations": {
+      "traffic_stop": 420,
+      "checkpoint": 900,
+      "suspicious_activity": 240
+    }
+  }
+}
