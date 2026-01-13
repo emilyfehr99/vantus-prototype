@@ -1,0 +1,77 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+.expo/
+.expo-shared/
+web-build/
+
+# Environment variables
+.env
+.env.local
+.env*.local
+client-config.js
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Vercel
+.vercel
+
+# Python (if any)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Audio/Media (if large)
+*.mp3
+*.wav
+*.mp4
+
+# Model files (if large)
+*.pt
+*.pth
+*.h5
+*.pb
+*.tflite
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Video files (if large)
+*.mp4
+*.mov
+*.avi
