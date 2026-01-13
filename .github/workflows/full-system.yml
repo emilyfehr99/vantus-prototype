@@ -22,28 +22,28 @@ jobs:
         node-version: '20.x'
 
     - name: Install Bridge Server dependencies
-      working-directory: ./bridge-server
+      working-directory: ./vantus/bridge-server
       run: npm ci
 
     - name: Install Dashboard dependencies
-      working-directory: ./vantus-dashboard
+      working-directory: ./vantus/vantus-dashboard
       run: npm ci
 
     - name: Install Mobile App dependencies
-      working-directory: ./vantus-app
+      working-directory: ./vantus/vantus-app
       run: npm ci
 
     - name: Build Dashboard
-      working-directory: ./vantus-dashboard
+      working-directory: ./vantus/vantus-dashboard
       run: npm run build
       env:
         NEXT_PUBLIC_BRIDGE_URL: http://localhost:3001
 
     - name: Verify all components
       run: |
-        echo "✅ Bridge Server: $(cd bridge-server && node -e "console.log(require('./package.json').name)")"
-        echo "✅ Dashboard: $(cd vantus-dashboard && node -e "console.log(require('./package.json').name)")"
-        echo "✅ Mobile App: $(cd vantus-app && node -e "console.log(require('./package.json').name)")"
+        echo "✅ Bridge Server: $(cd vantus/bridge-server && node -e "console.log(require('./package.json').name)")"
+        echo "✅ Dashboard: $(cd vantus/vantus-dashboard && node -e "console.log(require('./package.json').name)")"
+        echo "✅ Mobile App: $(cd vantus/vantus-app && node -e "console.log(require('./package.json').name)")"
         echo ""
         echo "All components verified successfully!"
 
