@@ -1,0 +1,713 @@
+/* Vantus Safety - Tactical Dashboard */
+/* Clean, modern defense-tech aesthetic with Vantus Safety fonts and colors */
+
+.dashboard {
+  width: 100vw;
+  height: 100vh;
+  background: #000000;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 3rem;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 100;
+  min-height: 70px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.logoContainer {
+  display: flex;
+  align-items: center;
+  height: 190px; /* Decreased by 10px */
+}
+
+.logo {
+  height: 100%;
+  width: auto;
+  max-width: 790px; /* Decreased by 10px */
+  object-fit: contain;
+  /* Remove filter to show logo in original colors */
+}
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding-left: 2rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  height: 100%;
+}
+
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.statusIndicator.connected {
+  color: #00ff41;
+}
+
+.statusIndicator.disconnected {
+  color: #ff3b30;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.statusIndicator.connected .statusDot {
+  background: #00ff41;
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.7);
+}
+
+.statusIndicator.disconnected .statusDot {
+  background: #ff3b30;
+  box-shadow: 0 0 8px rgba(255, 59, 48, 0.7);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.systemTime {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.05em;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+}
+
+.alertBanner,
+.secureBanner {
+  padding: 0.625rem 1.25rem;
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: fit-content;
+}
+
+.alertBanner {
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid #ff3b30;
+  color: #ff3b30;
+}
+
+.alertPulse {
+  width: 8px;
+  height: 8px;
+  background: #ff3b30;
+  border-radius: 50%;
+  animation: pulse 1s infinite;
+}
+
+.secureBanner {
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px solid #00ff41;
+  color: #00ff41;
+}
+
+/* Main Content */
+.mainContent {
+  flex: 1;
+  display: flex;
+  background: #000000;
+  overflow: hidden;
+}
+
+/* Map Container */
+.mapContainer {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tacticalMap {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: #020202;
+  overflow: hidden;
+}
+
+.gridOverlay {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(0, 255, 65, 0.03) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0, 255, 65, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.mapCenter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 5;
+}
+
+.centerMarker {
+  width: 12px;
+  height: 12px;
+  background: #00ff41;
+  border-radius: 50%;
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.7);
+  animation: pulse 2s infinite;
+}
+
+.centerLabel {
+  margin-top: 0.5rem;
+  font-size: 11px;
+  color: #00ff41;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 0.25rem 0.5rem;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+.officerMarker {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+}
+
+.markerPulse {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 123, 255, 0.3);
+  animation: ripple 2s infinite;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.markerIcon {
+  font-size: 20px;
+  z-index: 1;
+}
+
+.markerLabel {
+  margin-top: 0.3rem;
+  font-size: 11px;
+  color: #ffffff;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 0.2rem 0.4rem;
+  border-radius: 2px;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.officerMarker.alertMarker .markerPulse {
+  background: rgba(255, 59, 48, 0.5);
+  animation: ripple 1s infinite;
+}
+
+.alertRipple {
+  position: absolute;
+  inset: -15px;
+  border: 2px solid #ff3b30;
+  border-radius: 50%;
+  animation: ripple 1.5s infinite;
+  opacity: 0;
+}
+
+.alertOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.alertFlash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 59, 48, 0.2);
+  animation: alertFlash 0.5s infinite;
+}
+
+@keyframes alertFlash {
+  0%, 100% { opacity: 0.1; }
+  50% { opacity: 0.3; }
+}
+
+.alertInfo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.95);
+  border: 2px solid #ff3b30;
+  padding: 2.5rem;
+  border-radius: 4px;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(255, 59, 48, 0.9);
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+  min-width: 400px;
+  max-width: 90%;
+}
+
+.alertInfo h2 {
+  color: #ff3b30;
+  font-size: 24px;
+  margin: 0 0 1.5rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 900;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 59, 48, 0.3);
+  padding-bottom: 1rem;
+}
+
+.alertInfo h3 {
+  color: #00ff41;
+  font-size: 14px;
+  margin: 1.5rem 0 0.75rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+  padding-bottom: 0.5rem;
+}
+
+.alertInfo h3:first-of-type {
+  margin-top: 0;
+}
+
+.alertInfo p {
+  color: #ffffff;
+  margin: 0.5rem 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.alertInfo p strong {
+  color: #00ff41;
+  font-weight: 600;
+}
+
+.alertSection {
+  margin-bottom: 1.5rem;
+}
+
+.threatLevel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: 4px;
+}
+
+.threatLevelLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.threatLevelValue {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.75rem;
+  border-radius: 2px;
+}
+
+.threatLevelHIGH {
+  color: #ff3b30;
+  background: rgba(255, 59, 48, 0.2);
+}
+
+.threatLevelMEDIUM {
+  color: #ffaa00;
+  background: rgba(255, 170, 0, 0.2);
+}
+
+.threatLevelLOW {
+  color: #00ff41;
+  background: rgba(0, 255, 65, 0.2);
+}
+
+.detectionList {
+  margin: 0.75rem 0;
+}
+
+.detectionItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  margin: 0.5rem 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  font-size: 12px;
+}
+
+.confidenceScore {
+  color: #00ff41;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+.videoBufferPath {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  word-break: break-all;
+  margin-top: 0.25rem;
+}
+
+.alertActions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  border-top: 1px solid rgba(255, 59, 48, 0.3);
+  padding-top: 1.5rem;
+}
+
+.actionButton {
+  flex: 1;
+  min-width: 150px;
+  padding: 0.75rem 1.5rem;
+  background: rgba(0, 255, 65, 0.1);
+  border: 2px solid #00ff41;
+  color: #00ff41;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 2px;
+}
+
+.actionButton:hover {
+  background: rgba(0, 255, 65, 0.2);
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+}
+
+.mapCoords {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.875rem 1.25rem;
+  border-radius: 4px;
+  z-index: 8;
+  backdrop-filter: blur(5px);
+}
+
+.coordLabel {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.coordValue {
+  font-size: 14px;
+  color: #00ff41;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  font-family: 'Courier New', monospace;
+}
+
+/* Feed Panel */
+.feedPanel {
+  width: 400px;
+  background: #000000;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
+  z-index: 9;
+}
+
+.feedHeader {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #000000;
+  flex-shrink: 0;
+}
+
+.feedHeader h2 {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: #ffffff;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.feedStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 10px;
+  color: #00ff41;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.feedDot {
+  width: 6px;
+  height: 6px;
+  background: #00ff41;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.feedContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.875rem;
+  background: #000000;
+  min-height: 0; /* Allows flex child to shrink */
+}
+
+/* Custom scrollbar for feed */
+.feedContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.feedContent::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.feedContent::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.feedContent::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 65, 0.5);
+}
+
+.feedEmpty {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 3rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.feedEmptyIcon {
+  font-size: 32px;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+  filter: grayscale(1);
+}
+
+.feedEmptyMain {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 0.5rem 0;
+}
+
+.feedEmptySub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.feedEntry {
+  display: flex;
+  flex-direction: column;
+  padding-left: 1rem;
+  border-left: 2px solid;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.feedEntryStatus {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.feedEntryAlert {
+  border-color: #ff3b30;
+  color: #ff3b30;
+  background-color: rgba(255, 59, 48, 0.05);
+}
+
+.feedEntryClear {
+  border-color: #00ff41;
+  color: #00ff41;
+  background-color: rgba(0, 255, 65, 0.05);
+}
+
+.feedTimestamp {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  margin-bottom: 0.25rem;
+  letter-spacing: 0.05em;
+  font-family: 'Courier New', monospace;
+}
+
+.feedMessage {
+  color: inherit;
+  font-weight: 400;
+}
+
+.feedEntryAlert .feedMessage {
+  font-weight: 600;
+}
+
+.feedType {
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+.feedDetails {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 0.3rem;
+  letter-spacing: 0.05em;
+  font-family: 'Courier New', monospace;
+}
+
+.feedFooter {
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  background: #000000;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  flex-shrink: 0;
+}
+
+.feedStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.feedStatLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.feedStatValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.statSecure {
+  color: #00ff41;
+}
+
+.statAlert {
+  color: #ff3b30;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .mainContent {
+    flex-direction: column;
+  }
+
+  .mapContainer {
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    height: 60vh;
+  }
+
+  .feedPanel {
+    width: 100%;
+    height: 40vh;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}

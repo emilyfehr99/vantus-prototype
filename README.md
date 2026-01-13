@@ -1,93 +1,208 @@
-# StrideSync Dashboard
+# Vantus Prototype: Local-Link Architecture
 
-A comprehensive company website and client portal dashboard for StrideSync Hockey, featuring biomechanics analysis, performance tracking, and player management.
+A 3-part real-time situational overwatch system demonstrating threat detection and alerting without a database.
 
-## Features
+## 🎯 Overview
 
-### Company Website
-- Modern landing page with hero section
-- Services showcase with individual service pages
-- About Us section
-- Testimonials
-- Contact form
-- Careers page
-- Resources page
+Vantus is a prototype system that provides real-time threat detection and alerting for tactical operations. The system consists of three interconnected components that communicate via Socket.io for real-time event streaming.
 
-### Client Portal Dashboard
-- **Player Profile**: View player stats, team info, and session status
-- **Biomechanics Analysis**: Interactive radar chart showing key biomechanical metrics
-- **Quick Stats**: Overview of recent performance metrics
-- **Player Wellness Survey**: Track sleep quality, energy levels, and recovery
-- **Performance Alerts**: Important notifications about performance metrics
-- **Session History**: View past training sessions with details
-- **Injury Prediction**: Risk assessment based on biomechanics data
-- **Skeleton Overlay Analysis**: Before/after skeleton video comparison with movement selector
-- **Resources Page**: Training guides, video library, and tools
-- **About Us Page**: Company information and location
-
-## Setup
-
-1. Install dependencies:
-```bash
-pip install flask flask-socketio
-```
-
-2. Add your logo file:
-   - Place `logo.png` in the `static/` directory
-   - The logo is currently ignored by `.gitignore` (add with `git add -f static/logo.png` if needed)
-
-3. Run the application:
-```bash
-python3 company_website.py
-```
-
-4. Access the website:
-   - Company website: http://localhost:5001
-   - Client portal login: http://localhost:5001/login
-   - Default credentials: `alexander@stridesync.com` / `password123`
-
-## Project Structure
+## 🏗️ Architecture
 
 ```
-├── company_website.py          # Main Flask application
-├── templates/
-│   ├── company_index.html      # Company landing page
-│   ├── login.html              # Client portal login
-│   ├── original_client_portal.html  # Main client dashboard
-│   ├── client_about.html       # Client portal About page
-│   ├── service_page.html       # Individual service pages
-│   ├── careers.html            # Careers page
-│   ├── resources.html          # Resources page
-│   └── contact_success.html    # Contact form success page
-├── static/
-│   ├── company_style.css       # Company website styles
-│   ├── company_script.js       # Company website JavaScript
-│   ├── client_portal_styles.css # Client portal styles
-│   ├── client_portal_script.js  # Client portal JavaScript
-│   └── logo.png                # Company logo (add manually)
-└── README.md                   # This file
+┌─────────────────┐         ┌──────────────┐         ┌─────────────────┐
+│   Mobile App    │────────▶│ Bridge Server│────────▶│   Dashboard     │
+│  (React Native) │         │  (Node.js)   │         │   (Next.js)     │
+└─────────────────┘         └──────────────┘         └─────────────────┘
 ```
 
-## Color Scheme
+## 📦 Components
 
-- Primary Blue: `#2563eb`
-- Dark Blue: `#1e40af`
-- White: `#ffffff`
-- Gray: `#6b7280`
-- Green: `#10b981`
+### 1. Bridge Server (`/bridge-server`)
+**Technology**: Node.js + Socket.io  
+**Port**: 3001
 
-## Technologies Used
+Real-time event bridge that relays threat alerts between mobile clients and dashboard clients.
 
-- Flask (Python web framework)
-- Bootstrap 5
-- Chart.js (for biomechanics radar chart)
-- Font Awesome (icons)
-- HTML5/CSS3/JavaScript
+**Features**:
+- Listens for `THREAT_DETECTED` events from mobile clients
+- Broadcasts `DASHBOARD_ALERT` events to all connected dashboard clients
+- Handles `ALERT_CLEARED` events
+- Logs all events with timestamps
+- Health check endpoint
 
-## Notes
+### 2. Mobile App (`/vantus-app`)
+**Technology**: React Native Expo  
+**Platform**: iOS, Android, Web
 
-- The client portal uses session-based authentication
-- The dashboard is designed for a specific client (Alexander Andre) but can be customized
-- All styling follows a consistent blue/white theme
-- The sidebar menu opens from the right side
-- Performance data is currently static but can be connected to a backend API
+Mobile application for threat detection with camera-based object detection.
+
+**Features**:
+- Privacy Mode (black background interface)
+- Live camera feed using expo-camera
+- Real-time threat detection using TensorFlow.js + COCO-SSD
+- Simulated threat button for testing
+- Vibration alerts on threat detection
+- Socket.io client connection
+- GPS simulation (Winnipeg coordinates)
+
+### 3. Dashboard (`/vantus-dashboard`)
+**Technology**: Next.js  
+**Port**: 3000
+
+High-tech tactical command dashboard for real-time threat monitoring.
+
+**Features**:
+- Tactical map view with grid overlay
+- Real-time officer position markers
+- Live activity feed with color-coded entries
+- Visual and audio alert system
+- System status indicators
+- Professional tactical UI design
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+ installed
+- npm or yarn
+- For mobile app: Expo CLI or Expo Go app
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd vantus
+   ```
+
+2. **Install Bridge Server dependencies**
+   ```bash
+   cd bridge-server
+   npm install
+   ```
+
+3. **Install Dashboard dependencies**
+   ```bash
+   cd ../vantus-dashboard
+   npm install
+   ```
+
+4. **Install Mobile App dependencies**
+   ```bash
+   cd ../vantus-app
+   npm install
+   ```
+
+### Running the System
+
+1. **Start Bridge Server** (Terminal 1)
+   ```bash
+   cd bridge-server
+   npm start
+   ```
+   Server runs on `http://localhost:3001`
+
+2. **Start Dashboard** (Terminal 2)
+   ```bash
+   cd vantus-dashboard
+   npm run dev
+   ```
+   Dashboard available at `http://localhost:3000`
+
+3. **Start Mobile App** (Terminal 3)
+   ```bash
+   cd vantus-app
+   npm start
+   ```
+   Then:
+   - Press `w` for web browser
+   - Press `i` for iOS simulator
+   - Press `a` for Android emulator
+   - Scan QR code with Expo Go app
+
+## 🧪 Testing
+
+### Test Simulated Threat
+1. Open the mobile app
+2. Grant camera permissions
+3. Tap "SIMULATED THREAT" button
+4. Watch dashboard for alert
+
+### Test Real Detection
+1. Wait for detection model to load
+2. Tap "START DETECTION"
+3. Point camera at a cell phone
+4. Alert triggers automatically when detected
+
+## 📡 Event Flow
+
+### Threat Detection Flow
+1. Mobile app detects threat → emits `THREAT_DETECTED`
+2. Bridge server receives → logs event → broadcasts `DASHBOARD_ALERT`
+3. Dashboard receives → flashes red, plays sound, displays alert
+
+### Alert Clear Flow
+1. Mobile app user taps "STOP" → emits `ALERT_CLEARED`
+2. Bridge server receives → logs event → broadcasts `DASHBOARD_CLEAR`
+3. Dashboard receives → returns to secure state
+
+## 🎨 Design
+
+The dashboard features a high-tech tactical military aesthetic:
+- Dark theme with safety green (#00FF41) accents
+- Inter font for body text, JetBrains Mono for technical data
+- Grid overlay on tactical map
+- Scanline and noise effects
+- Professional tactical UI elements
+
+## 📁 Project Structure
+
+```
+vantus/
+├── bridge-server/          # Socket.io bridge server
+│   ├── server.js
+│   ├── package.json
+│   └── README.md
+├── vantus-app/             # React Native mobile app
+│   ├── App.js
+│   ├── services/
+│   │   └── detectionService.js
+│   ├── package.json
+│   └── README.md
+├── vantus-dashboard/        # Next.js tactical dashboard
+│   ├── pages/
+│   │   └── index.tsx
+│   ├── styles/
+│   │   └── Dashboard.module.css
+│   ├── package.json
+│   └── README.md
+├── .gitignore
+└── README.md
+```
+
+## 🔧 Configuration
+
+### Bridge Server URL
+Update in:
+- `vantus-app/App.js`: `BRIDGE_SERVER_URL`
+- `vantus-dashboard/pages/index.tsx`: `BRIDGE_SERVER_URL` or `NEXT_PUBLIC_BRIDGE_URL` env var
+
+For physical devices, use your computer's local IP address instead of `localhost`.
+
+## 🛠️ Technology Stack
+
+- **Bridge Server**: Node.js, Express, Socket.io
+- **Mobile App**: React Native, Expo, TensorFlow.js, COCO-SSD
+- **Dashboard**: Next.js, TypeScript, Socket.io Client
+
+## 📝 License
+
+This is a prototype demonstration project.
+
+## 🤝 Contributing
+
+This is a prototype project. For production use, additional security, error handling, and testing would be required.
+
+## 📧 Contact
+
+For questions or feedback about this prototype, please refer to the project documentation.
+

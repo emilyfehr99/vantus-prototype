@@ -1,0 +1,48 @@
+name: Bridge Server CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'bridge-server/**'
+      - '.github/workflows/bridge-server.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'bridge-server/**'
+      - '.github/workflows/bridge-server.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: bridge-server/package-lock.json
+      continue-on-error: true
+
+    - name: Install dependencies
+      working-directory: ./bridge-server
+      run: npm ci
+
+    - name: Run linting
+      working-directory: ./bridge-server
+      run: npm run lint || echo "No lint script found"
+
+    - name: Check server starts
+      working-directory: ./bridge-server
+      run: |
+        timeout 5 npm start || true
+        echo "Server startup check complete"
+

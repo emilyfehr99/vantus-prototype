@@ -1,61 +1,74 @@
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-.venv
-*.log
-*.json
-*.png
-*.jpg
-*.jpeg
-.DS_Store
-*.pdf
-nhl_postgame_reports/*.pdf
-*.csv
-*.zip
+# Dependencies
+node_modules/
+# package-lock.json - Keep these for reproducible builds
+yarn.lock
 
-# IDE files
-.idea/
+# Build outputs
+.next/
+out/
+dist/
+build/
+.expo/
+.expo-shared/
+web-build/
+
+# Environment variables
+.env
+.env.local
+.env*.local
+
+# IDE
 .vscode/
+.idea/
 *.swp
 *.swo
 *~
 
-# Other projects (not part of StrideSync Dashboard)
-all-three-zones-api/
-Computer-Vision-for-Hockey/
-automated-post-game-reports/
-biomechanical_dashboard/
-detection/
-nhl_clean_repo/
-third_party/
-nhlapi/
-nhlpackageattempt/
-ajhl-system/
-cup/
-cvat-audit-extension/
-game_data_*/
-goalie_analysis_app/
-hockey-practice-planner/
-hockey-practice-pro/
-nhl_postgame_reports/
-real_nhl_logos/
-src/
-stride_analysis_app/
+# OS
+.DS_Store
+Thumbs.db
 
-# Keep logo.png for dashboard
-!static/logo.png
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Keep nhl_edge_data.json for daily predictions workflow
-!nhl_edge_data.json
+# Testing
+coverage/
+.nyc_output/
 
-# Keep win_probability_predictions_v2.json for dashboard predictions
-!win_probability_predictions_v2.json
+# Temporary files
+*.tmp
+*.temp
+.cache/
 
-# Keep vercel.json for Vercel deployment
-!vercel.json
-!**/vercel.json
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Expo
+.expo/
+.expo-shared/
+
+# Vercel
+.vercel
+
+# Python (if any)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Audio/Media (if large)
+*.mp3
+*.wav
+*.mp4
+
+# Model files (if large)
+*.pt
+*.pth
+*.h5
+*.pb
+
