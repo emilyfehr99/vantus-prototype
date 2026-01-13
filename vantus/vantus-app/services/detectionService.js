@@ -2,6 +2,7 @@ import * as tf from '@tensorflow/tfjs';
 import * as cocoSsd from '@tensorflow-models/coco-ssd';
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
+import logger from '../utils/logger';
 
 // COCO-SSD class IDs
 // Class 67 = 'cell phone'
@@ -20,23 +21,23 @@ class DetectionService {
     }
 
     try {
-      console.log('Initializing TensorFlow.js...');
+      logger.info('Initializing TensorFlow.js...');
       
       // Initialize TensorFlow.js backend
       await tf.ready();
-      console.log('TensorFlow.js ready');
+      logger.info('TensorFlow.js ready');
 
       // Load COCO-SSD model
       // Using MobileNet v2 for better mobile performance
-      console.log('Loading COCO-SSD model...');
+      logger.info('Loading COCO-SSD model...');
       this.model = await cocoSsd.load({
         base: 'mobilenet_v2',
       });
       
-      console.log('COCO-SSD model loaded successfully');
+      logger.info('COCO-SSD model loaded successfully');
       this.isInitialized = true;
     } catch (error) {
-      console.error('Error initializing detection service:', error);
+      logger.error('Error initializing detection service', error);
       // Don't throw - allow app to work with simulated mode
       this.isInitialized = false;
     }
@@ -59,7 +60,7 @@ class DetectionService {
         return await this.detectObjectsNative(imageUri);
       }
     } catch (error) {
-      console.error('Error detecting objects:', error);
+      logger.error('Error detecting objects', error);
       return {
         detected: false,
         detections: [],
@@ -92,7 +93,7 @@ class DetectionService {
             allDetections: predictions,
           });
         } catch (error) {
-          console.error('Error in detection:', error);
+          logger.error('Error in detection', error);
           resolve({
             detected: false,
             detections: [],
@@ -129,7 +130,7 @@ class DetectionService {
       // Use the web method with data URL (works in React Native context)
       return await this.detectObjectsWeb(dataUrl);
     } catch (error) {
-      console.error('Error in native detection:', error);
+      logger.error('Error in native detection', error);
       return {
         detected: false,
         detections: [],

@@ -5,6 +5,7 @@
  */
 
 import * as Constants from './constants';
+import logger from './logger';
 
 // Try to load client-specific config (if exists)
 let CLIENT_CONFIG = null;
@@ -14,7 +15,7 @@ try {
   CLIENT_CONFIG = null; // Will be set when client-config.js is available
 } catch (error) {
   // Client config not available, use defaults
-  console.log('Client config not found, using defaults');
+  logger.debug('Client config not found, using defaults');
 }
 
 /**
@@ -223,7 +224,7 @@ class ConfigService {
     }
     
     if (warnings.length > 0) {
-      console.warn('Configuration warnings:', warnings);
+      logger.warn('Configuration warnings', { warnings });
     }
     
     return warnings.length === 0;

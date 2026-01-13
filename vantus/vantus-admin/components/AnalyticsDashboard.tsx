@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import logger from '../utils/logger';
 
 const BRIDGE_SERVER_URL = process.env.NEXT_PUBLIC_BRIDGE_URL || 'http://localhost:3001';
 
@@ -52,7 +53,7 @@ export default function AnalyticsDashboard() {
       const data = await response.json();
       setSummary(data);
     } catch (error) {
-      console.error('Failed to fetch audit summary:', error);
+      logger.error('Failed to fetch audit summary', error);
     } finally {
       setLoading(false);
     }
@@ -76,7 +77,7 @@ export default function AnalyticsDashboard() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Failed to export logs:', error);
+      logger.error('Failed to export logs', error);
       alert('Failed to export logs');
     }
   };

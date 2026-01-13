@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import logger from '../utils/logger';
 
 export default function PolicyControl() {
   const [dataRetentionDays, setDataRetentionDays] = useState(90);
@@ -17,14 +18,14 @@ export default function PolicyControl() {
       privacyMode,
       updatedAt: new Date().toISOString(),
     };
-    console.log('Saving policies:', policies);
+    logger.info('Saving policies', { policies });
     alert('Policies saved successfully');
   };
 
   const handleDeleteData = () => {
     if (confirm('Are you sure you want to delete data older than the retention period? This action cannot be undone.')) {
       // In production, this would trigger data deletion
-      console.log('Deleting data older than', dataRetentionDays, 'days');
+      logger.info('Deleting data older than retention period', { dataRetentionDays });
       alert('Data deletion initiated');
     }
   };

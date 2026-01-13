@@ -20,6 +20,7 @@ import videoBuffer from './services/videoBuffer';
 import welfareCheck from './services/welfareCheck';
 import configService from './utils/config';
 import { getOfficerId, getServerUrl } from './utils/constants';
+import logger from './utils/logger';
 
 // Bridge server URL - now from config
 const BRIDGE_SERVER_URL = configService.getServerUrl('bridge') || 'http://localhost:3001';
@@ -90,9 +91,9 @@ export default function App() {
         setModelLoading(true);
         await detectionService.initialize();
         setModelReady(true);
-        console.log('Legacy detection model ready');
+        logger.info('Legacy detection model ready');
       } catch (error) {
-        console.error('Failed to initialize detection model:', error);
+        logger.error('Failed to initialize detection model', error);
         // Don't show alert - models may not be available yet
       } finally {
         setModelLoading(false);
@@ -114,12 +115,12 @@ export default function App() {
         // Only load if paths are provided
         if (Object.keys(modelPaths).length > 0) {
           await modelLoader.loadAllModels(modelPaths);
-          console.log('Multi-model detection system initialized');
+          logger.info('Multi-model detection system initialized');
         } else {
-          console.log('Model paths not configured - models will load when available');
+          logger.info('Model paths not configured - models will load when available');
         }
       } catch (error) {
-        console.error('Failed to initialize multi-model detection:', error);
+        logger.error('Failed to initialize multi-model detection', error);
         // Models will remain in 'pending' status
       }
     };
@@ -138,7 +139,7 @@ export default function App() {
     });
 
     newSocket.on('disconnect', () => {
-      console.log('Disconnected from bridge server');
+      logger.info('Disconnected from bridge server');
       voiceAdvisory.connectionLost();
     });
 
@@ -174,7 +175,7 @@ export default function App() {
   const detectThreatFromCamera = async () => {
     if (!cameraRef.current || alertActive || !modelReady) {
       if (!modelReady) {
-        console.log('Model not ready yet');
+        logger.debug('Model not ready yet');
       }
       return;
     }
@@ -188,24 +189,24 @@ export default function App() {
       });
 
       if (!photo || !photo.uri) {
-        console.log('No photo data available');
+        logger.warn('No photo data available');
         return;
       }
 
-      console.log('Processing frame for detection...');
+      logger.debug('Processing frame for detection...');
       
       // Run object detection
       const result = await detectionService.detectObjects(photo.uri);
       
       if (result.detected) {
-        console.log('THREAT DETECTED! Cell phone found:', result.detections);
+        logger.warn('THREAT DETECTED! Cell phone found', { detections: result.detections });
         triggerThreatAlert();
       } else {
-        console.log('No threat detected. Objects found:', result.allDetections.length);
+        logger.debug('No threat detected', { objectCount: result.allDetections.length });
       }
       
     } catch (error) {
-      console.error('Detection error:', error);
+      logger.error('Detection error', error);
       // Don't show alert to user for detection errors, just log
     }
   };
@@ -264,9 +265,9 @@ export default function App() {
         });
       }
       
-      console.log('Session started:', sessionId);
+      logger.info('Session started', { sessionId });
     } catch (error) {
-      console.error('Failed to start session:', error);
+      logger.error('Failed to start session', error);
       Alert.alert('Error', 'Failed to start session');
     }
   };
@@ -311,7 +312,7 @@ export default function App() {
         voiceAdvisory.backupDispatched();
       }
     } catch (error) {
-      console.error('Auto-dispatch check error:', error);
+      logger.error('Auto-dispatch check error', error);
     }
   };
 
@@ -365,7 +366,7 @@ export default function App() {
 
       Alert.alert('Backup Dispatched', 'Emergency backup has been requested');
     } catch (error) {
-      console.error('Manual dispatch error:', error);
+      logger.error('Manual dispatch error', error);
       Alert.alert('Error', 'Failed to dispatch backup');
     }
   };
@@ -422,9 +423,9 @@ export default function App() {
         sessionData.markerEvents
       );
       baselineCalibration.updateBaseline(officerName, sessionData.sessionId);
-      console.log('Baseline updated for session:', sessionData.sessionId);
+      logger.info('Baseline updated for session', { sessionId: sessionData.sessionId });
     } catch (error) {
-      console.error('Failed to update baseline:', error);
+      logger.error('Failed to update baseline', error);
     }
     
     // Send session end to bridge
@@ -442,7 +443,7 @@ export default function App() {
       });
     }
     
-    console.log('Session stopped:', sessionData.sessionId);
+    logger.info('Session stopped', { sessionId: sessionData.sessionId });
   };
 
   // Analyze and send contextual signals (baseline-relative)
@@ -512,9 +513,9 @@ export default function App() {
           });
         }
         
-        console.log('Multi-model detection results:', detectionResults);
+        logger.debug('Multi-model detection results', { detectionResults });
       } catch (error) {
-        console.error('Multi-model detection error:', error);
+        logger.error('Multi-model detection error', error);
         // Continue even if detection fails
       }
     })();
@@ -624,7 +625,7 @@ export default function App() {
       };
 
       socket.emit('THREAT_DETECTED', threatData);
-      console.log('THREAT_DETECTED emitted:', threatData);
+      logger.warn('THREAT_DETECTED emitted', { threatData });
       
       // Trigger video clip save
       videoBuffer.triggerClipSave({
@@ -641,7 +642,7 @@ export default function App() {
     
     if (socket && socket.connected) {
       socket.emit('ALERT_CLEARED');
-      console.log('ALERT_CLEARED emitted');
+      logger.info('ALERT_CLEARED emitted');
     }
   };
 
@@ -714,7 +715,7 @@ export default function App() {
         style={styles.camera}
         facing="back"
         onCameraReady={() => {
-          console.log('Camera ready');
+          logger.info('Camera ready');
           // Optionally start detection automatically
           // startDetection();
         }}
