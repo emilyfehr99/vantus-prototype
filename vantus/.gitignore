@@ -1,7 +1,7 @@
 # Dependencies
 node_modules/
-package-lock.json
-yarn.lock
+# package-lock.json - Keep for CI/CD (npm ci requires it)
+# yarn.lock
 
 # Build outputs
 .next/
