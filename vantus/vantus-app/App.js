@@ -1118,6 +1118,24 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
+  statsContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 5,
+  },
+  statsText: {
+    color: '#00FF41',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  statsSubtext: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 5,
+  },
   stopButton: {
     backgroundColor: '#FF0000',
   },
