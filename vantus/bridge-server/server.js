@@ -22,12 +22,19 @@ const upload = multer({
     fileSize: 500 * 1024 * 1024, // 500MB max file size
   },
   fileFilter: (req, file, cb) => {
-    // Accept video files
-    const allowedMimes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
-    if (allowedMimes.includes(file.mimetype)) {
+    // Accept video files - check both mimetype and extension
+    const allowedMimes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'video/x-matroska'];
+    const allowedExtensions = ['.mp4', '.mov', '.avi', '.webm', '.mkv', '.m4v'];
+    
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    const isValidMime = allowedMimes.includes(file.mimetype);
+    const isValidExtension = allowedExtensions.includes(fileExtension);
+    
+    // Accept if either mimetype or extension is valid (curl might not send correct mimetype)
+    if (isValidMime || isValidExtension) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only video files are allowed.'), false);
+      cb(new Error(`Invalid file type. Only video files are allowed. Received: ${file.mimetype}, extension: ${fileExtension}`), false);
     }
   },
 });
