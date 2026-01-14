@@ -124,6 +124,37 @@ export default function Dashboard() {
       }
     };
 
+    const fetchOfficerStates = async () => {
+      try {
+        const response = await fetch(`${BRIDGE_SERVER_URL}/api/officers`);
+        const data = await response.json();
+        
+        setOfficers((prev: Map<string, OfficerState>) => {
+          const updated = new Map(prev);
+          data.officers.forEach((officer: any) => {
+            const existing = updated.get(officer.officerName) || {
+              officerName: officer.officerName,
+              sessionId: null,
+              lastContact: new Date(),
+              location: null,
+              signals: [],
+            };
+            
+            existing.sessionId = officer.sessionId;
+            existing.lastContact = new Date(officer.lastContact);
+            if (officer.location) {
+              existing.location = officer.location;
+            }
+            
+            updated.set(officer.officerName, existing);
+          });
+          return updated;
+        });
+      } catch (error) {
+        logger.error('Failed to fetch officer states', error);
+      }
+    };
+
     newSocket.on('connect', () => {
       logger.info('Dashboard connected to bridge server');
       // Fetch initial officer states
@@ -416,14 +447,6 @@ export default function Dashboard() {
       // Log that dispatch was prevented
     });
 
-    setSocket(newSocket);
-
-    return () => {
-      newSocket.close();
-      clearInterval(timeInterval);
-    };
-  }, []);
-
     // Legacy support for old alert system
     newSocket.on('DASHBOARD_ALERT', (data: any) => {
       logger.info('Legacy DASHBOARD_ALERT received', { data });
@@ -499,36 +522,6 @@ export default function Dashboard() {
     }
   };
 
-  const fetchOfficerStates = async () => {
-    try {
-      const response = await fetch(`${BRIDGE_SERVER_URL}/api/officers`);
-      const data = await response.json();
-      
-      setOfficers(prev => {
-        const updated = new Map(prev);
-        data.officers.forEach((officer: any) => {
-          const existing = updated.get(officer.officerName) || {
-            officerName: officer.officerName,
-            sessionId: null,
-            lastContact: new Date(),
-            location: null,
-            signals: [],
-          };
-          
-          existing.sessionId = officer.sessionId;
-          existing.lastContact = new Date(officer.lastContact);
-          if (officer.location) {
-            existing.location = officer.location;
-          }
-          
-          updated.set(officer.officerName, existing);
-        });
-        return updated;
-      });
-    } catch (error) {
-      logger.error('Failed to fetch officer states', error);
-    }
-  };
 
   // Convert GPS coordinates to map position
   const getMapPosition = (lat: number, lng: number) => {
