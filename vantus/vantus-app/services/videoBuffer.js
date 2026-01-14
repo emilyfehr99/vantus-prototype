@@ -8,7 +8,13 @@ import * as Camera from 'expo-camera';
 import * as Crypto from 'expo-crypto';
 import { CameraView } from 'expo-camera';
 import logger from '../utils/logger';
-import videoEncryption from './videoEncryption';
+// Use production encryption if available, fallback to basic
+let videoEncryption;
+try {
+  videoEncryption = require('./videoEncryptionProduction').default;
+} catch (e) {
+  videoEncryption = require('./videoEncryption').default;
+}
 import videoEncryption from './videoEncryption';
 
 class VideoBuffer {
