@@ -705,7 +705,7 @@ export default function Dashboard() {
               </div>
               
               {/* Triage Gate Countdown */}
-              {selectedOfficerData.triageCountdown && selectedOfficer && (
+              {selectedOfficerData.triageCountdown && selectedOfficer !== null && (
                 <TriageGateCountdown
                   officerName={selectedOfficer}
                   countdownId={selectedOfficerData.triageCountdown.id}
@@ -717,13 +717,13 @@ export default function Dashboard() {
               )}
 
               {/* Live Feed Viewer */}
-              {selectedOfficerData.liveStream && selectedOfficerData.liveStream.active && selectedOfficer && (
+              {selectedOfficerData.liveStream && selectedOfficerData.liveStream.active && selectedOfficer !== null && (
                 <LiveFeedViewer
                   officerName={selectedOfficer}
                   streamUrl={selectedOfficerData.liveStream.streamUrl}
                   tacticalIntent={selectedOfficerData.liveStream.tacticalIntent}
                   onClose={() => {
-                    if (!selectedOfficer) return;
+                    if (selectedOfficer === null) return;
                     setOfficers(prev => {
                       const updated = new Map(prev);
                       const officer = updated.get(selectedOfficer);
