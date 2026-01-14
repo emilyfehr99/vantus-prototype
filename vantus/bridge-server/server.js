@@ -19,6 +19,7 @@ const videoBatchProcessor = require('./services/videoBatchProcessor');
 const integrationFramework = require('./services/integrationFramework');
 const trainingMode = require('./services/trainingMode');
 const patternLearning = require('./services/patternLearning');
+const accuracyMonitoring = require('./services/accuracyMonitoring');
 const logger = require('./utils/logger');
 
 const app = express();
@@ -824,9 +825,41 @@ app.post('/api/feedback', (req, res) => {
     }
 
     patternLearning.recordFeedback(signalId, feedback);
+    
+    // Record accuracy outcome if provided
+    if (feedback.type && feedback.confidence !== undefined) {
+      const wasCorrect = feedback.type === 'true_positive';
+      accuracyMonitoring.recordOutcome(
+        feedback.patternType || 'unknown',
+        feedback.confidence,
+        wasCorrect
+      );
+    }
+    
     res.json({ success: true });
   } catch (error) {
     logger.error('Feedback error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Accuracy Monitoring
+app.get('/api/accuracy/metrics', (req, res) => {
+  try {
+    const metrics = accuracyMonitoring.getMetrics();
+    res.json({ success: true, metrics });
+  } catch (error) {
+    logger.error('Accuracy metrics error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/accuracy/report', (req, res) => {
+  try {
+    const report = accuracyMonitoring.getAccuracyReport();
+    res.json({ success: true, report });
+  } catch (error) {
+    logger.error('Accuracy report error', error);
     res.status(500).json({ error: error.message });
   }
 });

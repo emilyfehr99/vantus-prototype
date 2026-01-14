@@ -6,6 +6,12 @@
 
 const logger = require('../utils/logger');
 const llmVisionService = require('../services/llmVisionService');
+const accuracyEnsemble = require('../services/accuracyEnsemble');
+const multiLayerValidation = require('../services/multiLayerValidation');
+const signalPersistence = require('../services/signalPersistence');
+const signalQualityScoring = require('../services/signalQualityScoring');
+const confidenceCalibration = require('../services/confidenceCalibration');
+const adaptiveThresholds = require('../services/adaptiveThresholds');
 
 class DetectionProcessor {
   constructor() {
@@ -50,32 +56,113 @@ class DetectionProcessor {
       if (enableVehicleDetection) detectionTypes.push('vehicle');
       if (enableEnvironmentDetection) detectionTypes.push('environment');
 
-      // Single LLM vision call for all detections (more efficient)
+      // Use ensemble for high accuracy (multiple passes, consensus)
       if (detectionTypes.length > 0 && frame.base64) {
-        const analysis = await llmVisionService.analyzeImage(frame.base64, {
-          frameTime: frame.videoTime,
-          officerName,
+        const ensembleResult = await accuracyEnsemble.processEnsemble(frame, {
           detectionTypes,
+          officerName,
         });
 
-        // Add all detection results
-        if (enableWeaponDetection && analysis.weapon) {
-          results.detections.weapon = analysis.weapon;
-        }
-        if (enableStanceDetection && analysis.stance) {
-          results.detections.stance = analysis.stance;
-        }
-        if (enableHandDetection && analysis.hands) {
-          results.detections.hands = analysis.hands;
-        }
-        if (enableCrowdDetection && analysis.crowd) {
-          results.detections.crowd = analysis.crowd;
-        }
-        if (enableVehicleDetection && analysis.vehicle) {
-          results.detections.vehicle = analysis.vehicle;
-        }
-        if (enableEnvironmentDetection && analysis.environment) {
-          results.detections.environment = analysis.environment;
+        // Only use detections that passed ensemble consensus
+        if (ensembleResult.consensus && ensembleResult.detections) {
+          // Apply adaptive thresholds and multi-layer validation
+          const validatedDetections = {};
+          
+          for (const [type, detection] of Object.entries(ensembleResult.detections)) {
+            if (!detection.detected) continue;
+            
+            const confidence = detection.confidence || 0;
+            const detectionType = detection.category || type;
+            
+            // Check adaptive threshold
+            const passesThreshold = adaptiveThresholds.passesThreshold(
+              detectionType,
+              confidence,
+              { officerName, ...context }
+            );
+            
+            if (!passesThreshold) {
+              logger.debug('Detection failed adaptive threshold', {
+                type: detectionType,
+                confidence,
+                threshold: adaptiveThresholds.getThreshold(detectionType, { officerName }),
+              });
+              continue;
+            }
+
+            // Multi-layer validation
+            const validation = await multiLayerValidation.validate(detection, {
+              officerName,
+              frameData: frame,
+              ...context,
+            });
+
+            if (!validation.passed) {
+              logger.debug('Detection failed multi-layer validation', {
+                type: detectionType,
+                reasons: validation.reasons,
+              });
+              continue;
+            }
+
+            // Quality scoring
+            const quality = signalQualityScoring.scoreSignal(detection, {
+              officerName,
+              persistence: signalPersistence.checkPersistence(officerName || 'unknown', detection),
+            });
+
+            if (!quality.passes) {
+              logger.debug('Detection failed quality scoring', {
+                type: detectionType,
+                qualityScore: quality.totalScore,
+              });
+              continue;
+            }
+
+            // All checks passed - add detection
+            validatedDetections[type] = {
+              ...detection,
+              confidence: validation.finalConfidence,
+              qualityScore: quality.totalScore,
+              validation: {
+                passed: true,
+                layers: validation.layers.length,
+                layersPassed: validation.layers.filter(l => l.passed).length,
+              },
+            };
+          }
+
+          // Add validated detections to results
+          if (enableWeaponDetection && validatedDetections.weapon) {
+            results.detections.weapon = validatedDetections.weapon;
+          }
+          if (enableStanceDetection && validatedDetections.stance) {
+            results.detections.stance = validatedDetections.stance;
+          }
+          if (enableHandDetection && validatedDetections.hands) {
+            results.detections.hands = validatedDetections.hands;
+          }
+          if (enableCrowdDetection && validatedDetections.crowd) {
+            results.detections.crowd = validatedDetections.crowd;
+          }
+          if (enableVehicleDetection && validatedDetections.vehicle) {
+            results.detections.vehicle = validatedDetections.vehicle;
+          }
+          if (enableEnvironmentDetection && validatedDetections.environment) {
+            results.detections.environment = validatedDetections.environment;
+          }
+
+          // Add ensemble metadata
+          results.ensemble = {
+            consensus: ensembleResult.consensus,
+            consensusRate: ensembleResult.consensusRate,
+            analyses: ensembleResult.analyses,
+          };
+        } else {
+          logger.debug('Ensemble consensus not met, skipping detections', {
+            consensus: ensembleResult.consensus,
+            confidence: ensembleResult.confidence,
+          });
         }
       }
 
