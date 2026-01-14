@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import logger from '../utils/logger';
 
-const BRIDGE_SERVER_URL = process.env.NEXT_PUBLIC_BRIDGE_URL || 'http://localhost:3001';
+import { getServerUrl } from '../utils/client-config';
+const BRIDGE_SERVER_URL = getServerUrl('bridge');
 
 interface AuditSummary {
   totalEvents: number;

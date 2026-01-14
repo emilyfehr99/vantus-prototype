@@ -19,7 +19,8 @@ import autoDispatch from './services/autoDispatch';
 import videoBuffer from './services/videoBuffer';
 import welfareCheck from './services/welfareCheck';
 import configService from './utils/config';
-import { getOfficerId, getServerUrl } from './utils/constants';
+import { getServerUrl } from './utils/constants';
+import { generateOfficerId } from './utils/client-config';
 import logger from './utils/logger';
 import llmService from './services/llmService';
 import signalFusion from './services/signalFusion';
@@ -268,7 +269,7 @@ export default function App() {
   const startSession = async () => {
     try {
       // Use badge number as officer identifier
-      const officerName = getOfficerId(badgeNumber);
+      const officerName = generateOfficerId(badgeNumber);
       const sessionId = await telemetryService.startSession(officerName);
       setSessionActive(true);
       setAppMode('active');
@@ -512,7 +513,7 @@ export default function App() {
     
     // Update baseline calibration at session end
     try {
-      const officerName = getOfficerId(badgeNumber);
+      const officerName = generateOfficerId(badgeNumber);
       baselineCalibration.accumulateSessionData(
         sessionData.sessionId,
         sessionData.telemetryData,

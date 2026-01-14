@@ -119,7 +119,7 @@ class RosterService {
           unit: null, // Would come from roster
           rank: 'Officer',
           department: 'DEMO',
-          id: `OFFICER_${badgeNumber}`,
+          id: badgeNumber, // Will be formatted by client-config when used
         },
       };
     }

@@ -1,10 +1,16 @@
 /**
  * PIN Security Utilities
  * Secure PIN hashing and verification
+ * 
+ * NOTE: For production, install and use react-native-bcrypt or react-native-argon2
+ * Current implementation uses SHA-256 with salt (acceptable but not ideal)
+ * 
+ * Production setup:
+ * npm install react-native-bcrypt
+ * OR
+ * npm install react-native-argon2
  */
 
-// For React Native, we'll use a simple bcrypt-like approach
-// In production, use expo-crypto or react-native-bcrypt
 import * as Crypto from 'expo-crypto';
 
 /**
@@ -21,8 +27,13 @@ export async function hashPIN(pin) {
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
-    // Create hash (in production, use proper bcrypt)
-    // For now, we'll use a simple SHA-256 with salt
+    // Create hash
+    // TODO: In production, use bcrypt or argon2:
+    // const hash = await bcrypt.hash(pin, 10); // bcrypt with 10 rounds
+    // OR
+    // const hash = await argon2.hash(pin, { type: argon2.argon2id }); // argon2
+    
+    // Current: SHA-256 with salt (acceptable but not ideal)
     const hashInput = pin + saltHex;
     const hash = await Crypto.digestStringAsync(
       Crypto.CryptoDigestAlgorithm.SHA256,

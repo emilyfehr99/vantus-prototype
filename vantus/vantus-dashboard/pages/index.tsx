@@ -15,8 +15,9 @@ import FactTimelineView from '../components/FactTimelineView';
 import DictationCommandLog from '../components/DictationCommandLog';
 
 // Bridge server URL - update this to match your server
-// Bridge server URL - from environment or default
-const BRIDGE_SERVER_URL = process.env.NEXT_PUBLIC_BRIDGE_URL || 'http://localhost:3001';
+// Bridge server URL - from config
+import { getServerUrl, getDepartmentCenter } from '../utils/client-config';
+const BRIDGE_SERVER_URL = getServerUrl('bridge');
 
 interface OfficerState {
   officerName: string;
@@ -495,8 +496,9 @@ export default function Dashboard() {
   // Convert GPS coordinates to map position
   const getMapPosition = (lat: number, lng: number) => {
     // Map center - should come from config (defaulting to Winnipeg for now)
-    const baseLat = parseFloat(process.env.NEXT_PUBLIC_MAP_CENTER_LAT || '49.8951');
-    const baseLng = parseFloat(process.env.NEXT_PUBLIC_MAP_CENTER_LNG || '-97.1384');
+    const center = getDepartmentCenter();
+    const baseLat = center.lat;
+    const baseLng = center.lng;
     const latOffset = (lat - baseLat) * 1000;
     const lngOffset = (lng - baseLng) * 1000;
     

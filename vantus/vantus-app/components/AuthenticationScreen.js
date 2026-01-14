@@ -63,13 +63,10 @@ export default function AuthenticationScreen({ onAuthenticated }) {
           officerData = result.officer;
         }
       } catch (error) {
-        // Fallback to demo validation if roster service fails (only in demo mode)
-        logger.warn('Roster service error, using demo validation', error);
-        if (isDemoMode()) {
-          isValid = getDemoBadges().includes(badge);
-        } else {
-          isValid = false; // In production, fail if roster service is unavailable
-        }
+        // In production, fail if roster service is unavailable
+        // Demo mode fallback removed for security
+        logger.error('Roster service error - authentication failed', error);
+        isValid = false;
       }
       
       if (!isValid) {
