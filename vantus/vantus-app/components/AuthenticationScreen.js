@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert, ActivityInd
 import * as LocalAuthentication from 'expo-local-authentication';
 import rosterService from '../services/rosterService';
 import { DEMO_BADGES } from '../utils/constants';
+import { isDemoMode, getDemoBadges } from '../utils/client-config';
 import { isValidBadgeNumber, isValidPIN } from '../utils/validationUtils';
 import logger from '../utils/logger';
 
@@ -62,9 +63,13 @@ export default function AuthenticationScreen({ onAuthenticated }) {
           officerData = result.officer;
         }
       } catch (error) {
-        // Fallback to demo validation if roster service fails
+        // Fallback to demo validation if roster service fails (only in demo mode)
         logger.warn('Roster service error, using demo validation', error);
-        isValid = DEMO_BADGES.includes(badge);
+        if (isDemoMode()) {
+          isValid = getDemoBadges().includes(badge);
+        } else {
+          isValid = false; // In production, fail if roster service is unavailable
+        }
       }
       
       if (!isValid) {
@@ -181,11 +186,13 @@ export default function AuthenticationScreen({ onAuthenticated }) {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Demo Mode: Use badge numbers 12345, 67890, 11111, or 22222
-        </Text>
-      </View>
+      {isDemoMode() && (
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Demo Mode: Use badge numbers {getDemoBadges().join(', ')}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
