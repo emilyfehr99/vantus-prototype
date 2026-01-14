@@ -431,7 +431,7 @@ export default function App() {
     // Send session end to bridge
     if (socket && socket.connected) {
       socket.emit('SESSION_ENDED', {
-        officerName: `OFFICER_${badgeNumber}`,
+        officerName: getOfficerId(badgeNumber),
         badgeNumber: badgeNumber,
         sessionId: sessionData.sessionId,
         timestamp: new Date().toISOString(),
@@ -458,7 +458,7 @@ export default function App() {
     
     // Generate baseline-relative signals
     // This uses per-officer baselines, not global thresholds
-    const officerName = `OFFICER_${badgeNumber}`;
+    const officerName = getOfficerId(badgeNumber);
     const signals = baselineRelativeSignals.generateAllSignals(
       state,
       movementData,
@@ -590,7 +590,7 @@ export default function App() {
     // Send marker to bridge
     if (socket && socket.connected) {
       socket.emit('MARKER_EVENT', {
-        officerName: `OFFICER_${badgeNumber}`,
+        officerName: getOfficerId(badgeNumber),
         badgeNumber: badgeNumber,
         marker,
       });
