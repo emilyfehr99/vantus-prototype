@@ -9,7 +9,7 @@ import configService from '../utils/config';
 
 class LLMService {
   constructor() {
-    this.provider = null; // 'openrouter' | 'together' | 'deepseek' | null
+    this.provider = null; // 'openrouter' | 'together' | 'deepseek' | 'golem' | null
     this.apiKey = null;
     this.apiUrl = null;
     this.model = null;
@@ -18,19 +18,20 @@ class LLMService {
 
   /**
    * Initialize the LLM service
-   * @param {string} provider - LLM provider ('openrouter', 'together', 'deepseek')
+   * @param {string} provider - LLM provider ('openrouter', 'together', 'deepseek', 'golem')
    * @param {string} apiKey - API key for the provider
    * @param {string} model - Model name to use
+   * @param {string} apiUrl - Custom API URL (optional, for providers like Golem)
    */
-  initialize(provider, apiKey, model = null) {
+  initialize(provider, apiKey, model = null, apiUrl = null) {
     this.provider = provider;
     this.apiKey = apiKey;
     this.model = model || this.getDefaultModel(provider);
-    this.apiUrl = this.getApiUrl(provider);
+    this.apiUrl = this.getApiUrl(provider, apiUrl);
     this.enabled = !!apiKey;
 
     if (this.enabled) {
-      logger.info('LLM Service initialized', { provider, model: this.model });
+      logger.info('LLM Service initialized', { provider, model: this.model, apiUrl: this.apiUrl });
     } else {
       logger.warn('LLM Service not configured - audio analysis will use fallback methods');
     }
@@ -46,6 +47,7 @@ class LLMService {
       openrouter: 'meta-llama/llama-3.2-3b-instruct:free',
       together: 'meta-llama/Llama-3-8b-chat-hf',
       deepseek: 'deepseek-chat',
+      golem: 'golem-default', // Will use provided model or default
     };
     return defaults[provider] || defaults.openrouter;
   }
@@ -53,13 +55,17 @@ class LLMService {
   /**
    * Get API URL for provider
    * @param {string} provider - Provider name
+   * @param {string} customUrl - Custom API URL (optional, for providers like Golem)
    * @returns {string} API URL
    */
-  getApiUrl(provider) {
+  getApiUrl(provider, customUrl = null) {
+    if (customUrl) return customUrl;
+    
     const urls = {
       openrouter: 'https://openrouter.ai/api/v1/chat/completions',
       together: 'https://api.together.xyz/v1/chat/completions',
       deepseek: 'https://api.deepseek.com/v1/chat/completions',
+      golem: process.env.GOLEM_API_URL || 'https://api.golem.ai/v1/chat/completions', // Default, should be configured
     };
     return urls[provider] || urls.openrouter;
   }
@@ -141,6 +147,12 @@ Return JSON format:
     if (this.provider === 'openrouter') {
       headers['HTTP-Referer'] = 'https://vantus.ai';
       headers['X-Title'] = 'Vantus AI Partner';
+    }
+    
+    // Golem may require different headers (adjust based on your Golem instance)
+    if (this.provider === 'golem') {
+      // Add any Golem-specific headers here if needed
+      // Most OpenAI-compatible APIs use the same format
     }
 
     const body = {

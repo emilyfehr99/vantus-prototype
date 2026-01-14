@@ -195,7 +195,7 @@ export const CLIENT_CONFIG = {
   // LLM CONFIGURATION (For Audio Analysis)
   // ============================================
   llm: {
-    // Provider: 'openrouter' | 'together' | 'deepseek'
+    // Provider: 'openrouter' | 'together' | 'deepseek' | 'golem'
     provider: process.env.LLM_PROVIDER || null,
     
     // API key for LLM provider
@@ -203,6 +203,9 @@ export const CLIENT_CONFIG = {
     
     // Model name (optional - will use default for provider if not specified)
     model: process.env.LLM_MODEL || null,
+    
+    // Custom API URL (required for Golem, optional for others)
+    apiUrl: process.env.LLM_API_URL || null,
     
     // Example configurations:
     // OpenRouter (free tier):
@@ -219,6 +222,12 @@ export const CLIENT_CONFIG = {
     //   provider: 'deepseek',
     //   apiKey: 'your-deepseek-api-key',
     //   model: 'deepseek-chat',
+    //
+    // Golem (requires custom API URL):
+    //   provider: 'golem',
+    //   apiKey: 'your-golem-api-key',
+    //   model: 'your-model-name',
+    //   apiUrl: 'https://your-golem-instance.com/api/v1/chat/completions',
   },
 };
 

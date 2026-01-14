@@ -79,6 +79,33 @@ llm: {
 }
 ```
 
+### 4. Golem
+
+**Setup:**
+1. Access Golem via [openapps.pro/apps/golem](https://openapps.pro/apps/golem)
+2. Get your API key and endpoint URL
+3. Configure with custom API URL
+
+**Configuration:**
+```javascript
+llm: {
+  provider: 'golem',
+  apiKey: 'your-golem-api-key',
+  model: 'your-model-name', // Model name as provided by Golem
+  apiUrl: 'https://your-golem-instance.com/api/v1/chat/completions', // Golem API endpoint
+}
+```
+
+**Environment Variables:**
+```bash
+LLM_PROVIDER=golem
+LLM_API_KEY=your-golem-api-key
+LLM_MODEL=your-model-name
+LLM_API_URL=https://your-golem-instance.com/api/v1/chat/completions
+```
+
+**Note:** Golem requires a custom API URL since it may be self-hosted or have different endpoints. Make sure to use the correct endpoint URL provided by your Golem instance.
+
 ---
 
 ## Configuration Methods

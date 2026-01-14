@@ -85,7 +85,8 @@ export default function App() {
         llmService.initialize(
           llmConfig.provider,
           llmConfig.apiKey,
-          llmConfig.model
+          llmConfig.model,
+          llmConfig.apiUrl // Custom API URL for providers like Golem
         );
         logger.info('LLM service initialized for audio analysis');
       } else {
