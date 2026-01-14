@@ -38,7 +38,7 @@ export default function DictationCommandLog({ commands, officerName }: Dictation
               <div className={styles.commandTime}>{timeStr}</div>
               <div className={styles.commandType}>{commandData.type || 'COMMAND'}</div>
               {commandData.transcript && (
-                <div className={styles.commandTranscript}>"{commandData.transcript}"</div>
+                <div className={styles.commandTranscript}>&ldquo;{commandData.transcript}&rdquo;</div>
               )}
               {commandData.result && (
                 <div className={styles.commandResult}>
