@@ -586,7 +586,20 @@ export default function App() {
     });
     
     // Use fused signals (they include validated signals that weren't fused)
-    const signals = fusedSignals.length > 0 ? fusedSignals : validatedSignals;
+    let signals = fusedSignals.length > 0 ? fusedSignals : validatedSignals;
+    
+    // Final accuracy gate: Only send signals with 70%+ confidence after all validation
+    signals = signals.filter(signal => {
+      const finalConfidence = signal.probability || signal.confidence || 0;
+      if (finalConfidence < 0.70) {
+        logger.debug('Signal filtered: confidence too low', {
+          category: signal.signalCategory || signal.category,
+          confidence: finalConfidence,
+        });
+        return false;
+      }
+      return true;
+    });
     
     // Run multi-model detections (weapon, stance, hands, biometric, audio)
     // Note: Models may not be loaded yet, but system is ready

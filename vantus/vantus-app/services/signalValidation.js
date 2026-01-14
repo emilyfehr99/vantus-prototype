@@ -81,8 +81,26 @@ class SignalValidation {
       validation.adjustedConfidence *= 0.5; // Significant reduction
     }
 
+    // 7. High-confidence requirement for critical signals
+    const criticalCheck = this.validateCriticalSignal(signal);
+    validation.validationChecks.push(criticalCheck);
+    if (!criticalCheck.passed && criticalCheck.isCritical) {
+      validation.warnings.push('Critical signal requires higher confidence');
+      // Require 85%+ confidence for critical signals
+      if (validation.adjustedConfidence < 0.85) {
+        validation.valid = false;
+        validation.adjustedConfidence = 0;
+      }
+    }
+
     // Clamp adjusted confidence
     validation.adjustedConfidence = Math.max(0, Math.min(1, validation.adjustedConfidence));
+    
+    // Final accuracy gate: Require 70%+ confidence after all adjustments
+    if (validation.adjustedConfidence < 0.70) {
+      validation.valid = false;
+      validation.warnings.push('Confidence too low after validation (<70%)');
+    }
 
     // Store validation history
     this.validationHistory.push({
@@ -391,6 +409,41 @@ class SignalValidation {
     }
     
     logger.info('False positive recorded', { category, reason, count: pattern.count });
+  }
+
+  /**
+   * Validate critical signal requirements
+   * @param {Object} signal - Signal to validate
+   * @returns {Object} Validation check result
+   */
+  validateCriticalSignal(signal) {
+    const signalCategory = signal.signalCategory || signal.category || '';
+    const isCritical = signalCategory.includes('weapon') || 
+                       signalCategory.includes('threat') ||
+                       signalCategory.includes('critical');
+    
+    if (!isCritical) {
+      return {
+        check: 'critical',
+        passed: true,
+        isCritical: false,
+        reason: 'Signal is not critical',
+      };
+    }
+
+    const confidence = signal.probability || signal.confidence || 0;
+    const passed = confidence >= 0.85; // 85% minimum for critical signals
+
+    return {
+      check: 'critical',
+      passed,
+      isCritical: true,
+      reason: passed
+        ? 'Critical signal meets high confidence requirement (≥85%)'
+        : 'Critical signal requires higher confidence (≥85%)',
+      requiredConfidence: 0.85,
+      currentConfidence: confidence,
+    };
   }
 
   /**
