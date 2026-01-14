@@ -24,3 +24,6 @@ export { default as configService } from './config';
 // Logger
 export { default as logger } from './logger';
 export * from './logger';
+
+// Error codes
+export * from './errorCodes';

@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert, ActivityInd
 import * as LocalAuthentication from 'expo-local-authentication';
 import rosterService from '../services/rosterService';
 import { DEMO_BADGES } from '../utils/constants';
+import { isValidBadgeNumber, isValidPIN } from '../utils/validationUtils';
 import logger from '../utils/logger';
 
 export default function AuthenticationScreen({ onAuthenticated }) {
@@ -74,9 +75,8 @@ export default function AuthenticationScreen({ onAuthenticated }) {
 
       // If using PIN (not biometric), verify PIN
       if (!biometricUsed && pinCode) {
-        // In production, verify PIN with department system
-        // For demo, accept any 4+ digit PIN
-        if (pinCode.length < 4) {
+        // Validate PIN format
+        if (!isValidPIN(pinCode, 4)) {
           Alert.alert('Invalid PIN', 'PIN must be at least 4 digits');
           setAuthenticating(false);
           return;
@@ -94,8 +94,15 @@ export default function AuthenticationScreen({ onAuthenticated }) {
   };
 
   const handleLogin = async () => {
-    if (!badgeNumber.trim()) {
-      Alert.alert('Badge Number Required', 'Please enter your badge number');
+    // Validate badge number format
+    if (!badgeNumber.trim() || !isValidBadgeNumber(badgeNumber)) {
+      Alert.alert('Invalid Badge Number', 'Please enter a valid badge number');
+      return;
+    }
+    
+    // Validate PIN if provided
+    if (pin && !isValidPIN(pin, 4)) {
+      Alert.alert('Invalid PIN', 'PIN must be at least 4 digits');
       return;
     }
 
