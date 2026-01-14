@@ -8,6 +8,7 @@ import modelRegistry from './modelRegistry';
 import baselineCalibration from './baselineCalibration';
 import logger from '../utils/logger';
 import llmService from './llmService';
+import ragService from './ragService';
 
 class MultiModelDetection {
   constructor() {
@@ -386,7 +387,7 @@ class MultiModelDetection {
 
   /**
    * Custom audio classifier for aggressive patterns
-   * Uses LLM service for transcript analysis if available, otherwise fallback
+   * Uses LLM service with RAG enhancement for transcript analysis if available, otherwise fallback
    * @param {Object} modelInstance - Model instance (not used for LLM)
    * @param {string} transcript - Audio transcript
    * @param {Object} features - Audio features (not used for LLM)
@@ -395,18 +396,30 @@ class MultiModelDetection {
    * @returns {Promise<Object|null>} Detection result or null
    */
   async runAudioDetection(modelInstance, transcript, features, threshold, officerContext = {}) {
-    // Try LLM-based analysis first (if available)
+    // Try RAG-enhanced LLM analysis first (if available)
     if (llmService.isAvailable() && transcript) {
       try {
         // Get recent transcripts for context (if available)
         const recentTranscripts = this.getRecentTranscripts();
         
-        // Analyze transcript using LLM with officer context
-        const analysis = await llmService.analyzeAudioTranscript(
-          transcript, 
-          recentTranscripts,
-          officerContext
-        );
+        // Use RAG-enhanced analysis if available
+        let analysis;
+        if (ragService.isAvailable()) {
+          analysis = await ragService.analyzeWithRAG(
+            transcript,
+            officerContext,
+            async (t, rt, oc) => {
+              return await llmService.analyzeAudioTranscript(t, rt, oc);
+            }
+          );
+        } else {
+          // Direct LLM analysis without RAG
+          analysis = await llmService.analyzeAudioTranscript(
+            transcript, 
+            recentTranscripts,
+            officerContext
+          );
+        }
         
         // Check if pattern matches threshold
         if (analysis.confidence >= threshold && analysis.pattern !== 'normal') {
@@ -417,6 +430,7 @@ class MultiModelDetection {
             speechRate: analysis.speechRate,
             patternStrength: analysis.patternStrength,
             source: analysis.source, // 'llm' | 'fallback'
+            ragEnhanced: analysis.ragEnhanced || false,
           };
         }
       } catch (error) {

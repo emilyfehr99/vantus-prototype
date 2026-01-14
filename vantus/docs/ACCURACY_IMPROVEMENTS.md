@@ -16,7 +16,26 @@ This document outlines features and improvements to enhance the accuracy and rel
 
 ---
 
-## 1. Multi-Modal Signal Fusion
+## 1. RAG (Retrieval Augmented Generation) ✅ IMPLEMENTED
+
+### Purpose
+Enhance LLM analysis by retrieving relevant knowledge from knowledge base before generating responses.
+
+### Implementation
+- **RAG Service**: Retrieves pattern knowledge, context guides, historical insights, and false positive patterns
+- **Prompt Enhancement**: Adds retrieved knowledge to LLM prompts
+- **Knowledge Integration**: Seamlessly integrates with existing LLM service
+- **Automatic Fallback**: Works even if knowledge base is unavailable
+
+### Benefits
+- Higher accuracy through historical knowledge
+- Better context understanding
+- Reduced false positives
+- Continuous improvement as knowledge base grows
+
+---
+
+## 2. Multi-Modal Signal Fusion
 
 ### Purpose
 Combine signals from multiple sources (movement, audio, biometric, visual) to improve accuracy and reduce false positives.

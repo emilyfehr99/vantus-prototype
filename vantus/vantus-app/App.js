@@ -25,6 +25,7 @@ import llmService from './services/llmService';
 import signalFusion from './services/signalFusion';
 import signalValidation from './services/signalValidation';
 import knowledgeBase from './services/knowledgeBase';
+import ragService from './services/ragService';
 
 // Bridge server URL - now from config
 const BRIDGE_SERVER_URL = configService.getServerUrl('bridge') || 'http://localhost:3001';
@@ -112,8 +113,21 @@ export default function App() {
       }
     };
     
+    // Initialize RAG service (depends on Knowledge Base)
+    const initRAG = () => {
+      const kbConfig = configService.getKnowledgeBaseConfig();
+      const ragEnabled = kbConfig.enabled && kbConfig.apiUrl; // RAG requires knowledge base
+      ragService.initialize(ragEnabled);
+      if (ragEnabled) {
+        logger.info('RAG service initialized - knowledge retrieval enabled');
+      } else {
+        logger.info('RAG service not enabled - using direct LLM analysis');
+      }
+    };
+    
     initLLM();
     initKnowledgeBase();
+    initRAG();
     
     // Only request camera permission after calibration
     if (calibrated) {

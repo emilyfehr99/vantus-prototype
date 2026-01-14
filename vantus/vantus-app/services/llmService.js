@@ -13,6 +13,7 @@
 
 import logger from '../utils/logger';
 import configService from '../utils/config';
+import ragService from './ragService';
 
 class LLMService {
   constructor() {
@@ -101,9 +102,10 @@ class LLMService {
 
   /**
    * Analyze audio transcript with Vantus-specific context
+   * Enhanced with RAG (Retrieval Augmented Generation) if available
    * @param {string} transcript - Audio transcript text
    * @param {Array<string>} recentTranscripts - Recent transcripts for context
-   * @param {Object} officerContext - Officer-specific context (baseline, operational context)
+   * @param {Object} officerContext - Officer-specific context (baseline, operational context, ragKnowledge)
    * @returns {Promise<Object>} Analysis result with pattern type and confidence
    */
   async analyzeAudioTranscript(transcript, recentTranscripts = [], officerContext = {}) {
@@ -118,12 +120,27 @@ class LLMService {
         : '';
 
       // Build Vantus-customized prompt with context awareness
-      const prompt = this.buildVantusAnalysisPrompt(transcript, context, officerContext);
+      let prompt = this.buildVantusAnalysisPrompt(transcript, context, officerContext);
+
+      // Enhance prompt with RAG if knowledge was retrieved
+      if (ragService.isAvailable() && officerContext.ragKnowledge) {
+        prompt = ragService.enhancePromptWithRAG(prompt, {
+          retrieved: true,
+          knowledge: officerContext.ragKnowledge,
+        });
+      }
 
       // Call LLM with retry logic
       const response = await this.callLLMWithRetry(prompt);
 
-      return this.parseLLMResponse(response);
+      const analysis = this.parseLLMResponse(response);
+      
+      // Add RAG metadata if used
+      if (ragService.isAvailable() && officerContext.ragKnowledge) {
+        analysis.ragEnhanced = true;
+      }
+
+      return analysis;
     } catch (error) {
       logger.error('LLM audio analysis error', error);
       // Fallback to pattern matching
