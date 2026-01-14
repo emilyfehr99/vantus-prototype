@@ -155,6 +155,39 @@ Important:
     // Remove data URL prefix if present
     const imageData = base64Image.replace(/^data:image\/\w+;base64,/, '');
 
+    // Build messages array - format depends on provider
+    let userContent;
+    
+    if (this.provider === 'openrouter' || this.provider === 'together') {
+      // OpenAI-compatible format
+      userContent = [
+        {
+          type: 'text',
+          text: prompt,
+        },
+        {
+          type: 'image_url',
+          image_url: {
+            url: `data:image/jpeg;base64,${imageData}`,
+          },
+        },
+      ];
+    } else {
+      // Fallback format
+      userContent = [
+        {
+          type: 'text',
+          text: prompt,
+        },
+        {
+          type: 'image_url',
+          image_url: {
+            url: `data:image/jpeg;base64,${imageData}`,
+          },
+        },
+      ];
+    }
+
     const body = {
       model: this.model,
       messages: [
@@ -164,18 +197,7 @@ Important:
         },
         {
           role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: prompt,
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:image/jpeg;base64,${imageData}`,
-              },
-            },
-          ],
+          content: userContent,
         },
       ],
       temperature: 0.2, // Low temperature for consistent detection
