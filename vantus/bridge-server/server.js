@@ -381,6 +381,58 @@ app.post('/api/video/process', upload.single('video'), async (req, res) => {
   }
 });
 
+// Detection processing endpoint
+app.post('/api/detections/process', async (req, res) => {
+  try {
+    const { frames, options = {} } = req.body;
+
+    if (!frames || !Array.isArray(frames) || frames.length === 0) {
+      return res.status(400).json({ error: 'Frames array required' });
+    }
+
+    logger.info('Detection processing request', {
+      frameCount: frames.length,
+      options,
+    });
+
+    const detectionProcessor = require('./api/detectionProcessor');
+    
+    const results = await detectionProcessor.processFrames(frames, {
+      ...options,
+      onProgress: (current, total, result) => {
+        logger.debug(`Processing frame ${current}/${total}`);
+      },
+    });
+
+    // Generate summary
+    const summary = {
+      totalFrames: frames.length,
+      framesProcessed: results.length,
+      detectionsFound: results.filter(r => 
+        Object.values(r.detections || {}).some(d => d.detected)
+      ).length,
+      detectionTypes: {
+        weapon: results.filter(r => r.detections?.weapon?.detected).length,
+        stance: results.filter(r => r.detections?.stance?.detected).length,
+        hands: results.filter(r => r.detections?.hands?.detected).length,
+        audio: results.filter(r => r.detections?.audio?.detected).length,
+      },
+    };
+
+    res.json({
+      success: true,
+      results,
+      summary,
+    });
+  } catch (error) {
+    logger.error('Detection processing error', error);
+    res.status(500).json({
+      error: 'Detection processing failed',
+      message: error.message,
+    });
+  }
+});
+
 // Video metadata endpoint (without processing)
 app.post('/api/video/metadata', upload.single('video'), async (req, res) => {
   try {
