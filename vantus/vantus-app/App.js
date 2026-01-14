@@ -21,6 +21,7 @@ import welfareCheck from './services/welfareCheck';
 import configService from './utils/config';
 import { getOfficerId, getServerUrl } from './utils/constants';
 import logger from './utils/logger';
+import llmService from './services/llmService';
 
 // Bridge server URL - now from config
 const BRIDGE_SERVER_URL = configService.getServerUrl('bridge') || 'http://localhost:3001';
@@ -77,6 +78,23 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Initialize LLM service for audio analysis
+    const initLLM = () => {
+      const llmConfig = configService.getLLMConfig();
+      if (llmConfig.enabled && llmConfig.apiKey && llmConfig.provider) {
+        llmService.initialize(
+          llmConfig.provider,
+          llmConfig.apiKey,
+          llmConfig.model
+        );
+        logger.info('LLM service initialized for audio analysis');
+      } else {
+        logger.info('LLM service not configured - using fallback audio analysis');
+      }
+    };
+    
+    initLLM();
+    
     // Only request camera permission after calibration
     if (calibrated) {
       (async () => {

@@ -7,6 +7,7 @@
 import modelRegistry from './modelRegistry';
 import baselineCalibration from './baselineCalibration';
 import logger from '../utils/logger';
+import llmService from './llmService';
 
 class MultiModelDetection {
   constructor() {
@@ -322,29 +323,16 @@ class MultiModelDetection {
 
   /**
    * Detect aggressive audio patterns
-   * Ready for custom audio classifier integration
+   * Uses LLM service for transcript analysis if available, otherwise fallback
    */
   async detectAggressiveAudio(audioTranscript, audioFeatures, officerName) {
-    const model = modelRegistry.getModel('audio');
-    
-    if (!modelRegistry.isModelReady('audio')) {
-      return {
-        detected: false,
-        category: 'audio',
-        reason: 'Model not loaded',
-        ready: false,
-      };
-    }
-
     try {
-      const modelInstance = modelRegistry.getLoadedModel('audio');
-      const threshold = modelRegistry.getConfidenceThreshold('audio');
+      // Get threshold from model registry (or use default)
+      const threshold = modelRegistry.getConfidenceThreshold('audio') || 0.70;
       
-      // In production, this would:
-      // 1. Extract audio features (or use transcript + features)
-      // 2. Run custom audio classifier
-      // 3. Detect aggressive patterns or screaming
-      const audioPattern = await this.runAudioDetection(modelInstance, audioTranscript, audioFeatures, threshold);
+      // Use LLM service for analysis (works even without model loaded)
+      // LLM service will use fallback if not configured
+      const audioPattern = await this.runAudioDetection(null, audioTranscript, audioFeatures, threshold);
       
       return {
         detected: audioPattern !== null,
@@ -352,7 +340,8 @@ class MultiModelDetection {
         pattern: audioPattern,
         confidence: audioPattern ? audioPattern.confidence : 0,
         threshold: threshold,
-        model: model.modelType,
+        model: audioPattern?.source === 'llm' ? 'llm' : 'fallback',
+        transcript: audioTranscript, // Include transcript for reference
       };
     } catch (error) {
       logger.error('Audio detection error', error);
@@ -366,26 +355,72 @@ class MultiModelDetection {
 
   /**
    * Custom audio classifier for aggressive patterns
-   * Ready for model integration - uncomment when model is available
+   * Uses LLM service for transcript analysis if available, otherwise fallback
    */
   async runAudioDetection(modelInstance, transcript, features, threshold) {
-    // TODO: Integrate custom audio classifier
-    //
-    // Integration steps:
-    // 1. Extract audio features (MFCC, spectral, prosodic)
-    // 2. Optionally use transcript for text-based features
-    // 3. Run classifier model
-    // 4. Return pattern if confidence >= threshold
-    //
-    // Example:
-    // const audioFeatures = this.extractAudioFeatures(audioData);
-    // // audioFeatures = [MFCC coefficients, spectral features, etc.]
-    // const prediction = await modelInstance.predict(audioFeatures);
-    // // prediction = { class: 'aggressive' | 'screaming' | 'normal', confidence: 0.0-1.0 }
-    // return prediction.confidence >= threshold ? prediction : null;
+    // Try LLM-based analysis first (if available)
+    if (llmService.isAvailable() && transcript) {
+      try {
+        // Get recent transcripts for context (if available)
+        const recentTranscripts = this.getRecentTranscripts();
+        
+        // Analyze transcript using LLM
+        const analysis = await llmService.analyzeAudioTranscript(transcript, recentTranscripts);
+        
+        // Check if pattern matches threshold
+        if (analysis.confidence >= threshold && analysis.pattern !== 'normal') {
+          return {
+            class: analysis.pattern, // 'aggressive' | 'screaming' | 'repetitive' | 'unusual_rate'
+            confidence: analysis.confidence,
+            indicators: analysis.indicators,
+            speechRate: analysis.speechRate,
+            source: analysis.source, // 'llm' | 'fallback'
+          };
+        }
+      } catch (error) {
+        logger.error('LLM audio analysis error, using fallback', error);
+      }
+    }
     
-    // Return null until model is integrated
+    // Fallback: Use simple pattern matching
+    return this.fallbackAudioAnalysis(transcript, threshold);
+  }
+  
+  /**
+   * Fallback audio analysis using pattern matching
+   * @param {string} transcript - Audio transcript
+   * @param {number} threshold - Confidence threshold
+   * @returns {Object|null} Detection result or null
+   */
+  fallbackAudioAnalysis(transcript, threshold) {
+    if (!transcript || !transcript.trim()) return null;
+    
+    const analysis = llmService.fallbackAnalysis(transcript, []);
+    
+    if (analysis.confidence >= threshold && analysis.pattern !== 'normal') {
+      return {
+        class: analysis.pattern,
+        confidence: analysis.confidence,
+        indicators: analysis.indicators,
+        speechRate: analysis.speechRate,
+        source: 'fallback',
+      };
+    }
+    
     return null;
+  }
+  
+  /**
+   * Get recent transcripts for context
+   * @returns {Array<string>} Recent transcripts
+   */
+  getRecentTranscripts() {
+    // Extract recent transcripts from detection history
+    const recent = this.detectionHistory
+      .slice(-10)
+      .map(d => d.detections?.audio?.transcript)
+      .filter(t => t && t.trim());
+    return recent;
   }
 
   /**

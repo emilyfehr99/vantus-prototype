@@ -117,6 +117,14 @@ class ConfigService {
         maxDays: CLIENT_CONFIG?.dataRetention?.maxDays || Constants.DATA_RETENTION.MAX_DAYS,
         autoDelete: CLIENT_CONFIG?.dataRetention?.autoDelete !== undefined ? CLIENT_CONFIG.dataRetention.autoDelete : Constants.DATA_RETENTION.AUTO_DELETE,
       },
+      
+      // LLM configuration for audio analysis
+      llm: {
+        provider: CLIENT_CONFIG?.llm?.provider || process.env.LLM_PROVIDER || null, // 'openrouter' | 'together' | 'deepseek'
+        apiKey: CLIENT_CONFIG?.llm?.apiKey || process.env.LLM_API_KEY || null,
+        model: CLIENT_CONFIG?.llm?.model || process.env.LLM_MODEL || null,
+        enabled: !!(CLIENT_CONFIG?.llm?.apiKey || process.env.LLM_API_KEY),
+      },
     };
   }
   
@@ -205,6 +213,13 @@ class ConfigService {
   }
   
   /**
+   * Get LLM configuration
+   */
+  getLLMConfig() {
+    return this.config.llm;
+  }
+  
+  /**
    * Validate configuration
    * Checks for required values and logs warnings
    */
@@ -236,8 +251,6 @@ const configService = new ConfigService();
 
 // Validate on load
 configService.validate();
-
-export default configService;
 
 // Re-export helper functions for convenience
 export { getOfficerId, getServerUrl, getModelPath } from './constants';

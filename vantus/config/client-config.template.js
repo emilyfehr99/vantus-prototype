@@ -190,6 +190,36 @@ export const CLIENT_CONFIG = {
     geocodingApi: process.env.GEOCODING_API_KEY || "",
     // ADD: Other API keys
   },
+
+  // ============================================
+  // LLM CONFIGURATION (For Audio Analysis)
+  // ============================================
+  llm: {
+    // Provider: 'openrouter' | 'together' | 'deepseek'
+    provider: process.env.LLM_PROVIDER || null,
+    
+    // API key for LLM provider
+    apiKey: process.env.LLM_API_KEY || null,
+    
+    // Model name (optional - will use default for provider if not specified)
+    model: process.env.LLM_MODEL || null,
+    
+    // Example configurations:
+    // OpenRouter (free tier):
+    //   provider: 'openrouter',
+    //   apiKey: 'your-openrouter-api-key',
+    //   model: 'meta-llama/llama-3.2-3b-instruct:free',
+    //
+    // Together AI:
+    //   provider: 'together',
+    //   apiKey: 'your-together-api-key',
+    //   model: 'meta-llama/Llama-3-8b-chat-hf',
+    //
+    // DeepSeek:
+    //   provider: 'deepseek',
+    //   apiKey: 'your-deepseek-api-key',
+    //   model: 'deepseek-chat',
+  },
 };
 
 // Helper function to get officer ID
