@@ -207,6 +207,125 @@ io.on('connection', (socket) => {
     io.emit('MARKER_EVENT_UPDATE', data);
   });
 
+  // Enhanced Audio Analysis
+  socket.on('ENHANCED_AUDIO_ANALYSIS', async (data) => {
+    try {
+      const { officerName, transcript, options = {} } = data;
+      
+      const multiSpeaker = await enhancedAudioAnalysis.detectMultiSpeaker(transcript, options);
+      const communication = await enhancedAudioAnalysis.analyzeCommunicationPatterns(transcript, options);
+      const backgroundNoise = await enhancedAudioAnalysis.analyzeBackgroundNoise(transcript, options);
+
+      // Emit signals if detected
+      if (multiSpeaker.detected) {
+        io.emit('ENHANCED_AUDIO_SIGNAL', {
+          officerName,
+          signalType: 'multi_speaker',
+          signal: multiSpeaker,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      if (communication.detected) {
+        io.emit('ENHANCED_AUDIO_SIGNAL', {
+          officerName,
+          signalType: 'communication_pattern',
+          signal: communication,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      if (backgroundNoise.detected) {
+        io.emit('ENHANCED_AUDIO_SIGNAL', {
+          officerName,
+          signalType: 'background_noise',
+          signal: backgroundNoise,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      logger.error('Enhanced audio analysis socket error', error);
+    }
+  });
+
+  // Coordination Analysis
+  socket.on('COORDINATION_ANALYSIS', (data) => {
+    try {
+      const { officerName, lat, lng, otherOfficers = [], options = {} } = data;
+      
+      const proximity = coordinationAnalysis.analyzeOfficerProximity(
+        officerName,
+        lat,
+        lng,
+        otherOfficers,
+        options
+      );
+
+      if (proximity.detected) {
+        io.emit('COORDINATION_SIGNAL', {
+          officerName,
+          signalType: 'officer_proximity',
+          signal: proximity,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      logger.error('Coordination analysis socket error', error);
+    }
+  });
+
+  // Location Analysis
+  socket.on('LOCATION_ANALYSIS', async (data) => {
+    try {
+      const { officerName, lat, lng, options = {} } = data;
+      
+      const classification = await locationIntelligence.classifyLocationType(lat, lng, options);
+      
+      if (classification.detected) {
+        io.emit('LOCATION_SIGNAL', {
+          officerName,
+          signalType: 'location_type',
+          signal: classification,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      logger.error('Location analysis socket error', error);
+    }
+  });
+
+  // Signal Correlation
+  socket.on('SIGNAL_CORRELATION_REQUEST', (data) => {
+    try {
+      const { officerName, currentSignals = [], options = {} } = data;
+      
+      const correlation = signalCorrelation.correlateSignals(
+        officerName,
+        currentSignals,
+        options
+      );
+
+      if (correlation.detected) {
+        io.emit('SIGNAL_CORRELATION', {
+          officerName,
+          signal: correlation,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      logger.error('Signal correlation socket error', error);
+    }
+  });
+
+  // Video Batch Progress
+  videoBatchProcessor.on('jobProgress', (data) => {
+    io.emit('VIDEO_BATCH_PROGRESS', data);
+  });
+
+  videoBatchProcessor.on('jobCompleted', (jobId) => {
+    io.emit('VIDEO_BATCH_COMPLETE', { jobId });
+  });
+
   // Listen for session end
   socket.on('SESSION_ENDED', (data) => {
     log(`SESSION_ENDED received from ${socket.id}`);
