@@ -5,7 +5,14 @@
  */
 
 const logger = require('../utils/logger');
-const llmService = require('./llmService'); // If available, otherwise use local analysis
+// LLM service is optional - will use local analysis if not available
+let llmService = null;
+try {
+  llmService = require('./llmService');
+} catch (error) {
+  // LLM service not available - will use local analysis only
+  logger.info('LLM service not available - using local analysis only');
+}
 
 class EnhancedAudioAnalysis {
   constructor() {
