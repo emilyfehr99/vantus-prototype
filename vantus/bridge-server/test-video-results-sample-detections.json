@@ -1,0 +1,155 @@
+{
+  "videoMetadata": {
+    "duration": 16.689002,
+    "size": 4314277,
+    "bitrate": 2068081,
+    "format": "mov,mp4,m4a,3gp,3g2,mj2",
+    "codec": "h264",
+    "width": 1280,
+    "height": 720,
+    "fps": "30/1"
+  },
+  "frames": [
+    {
+      "frameNumber": 1,
+      "videoTime": 0,
+      "timestamp": "2026-01-14T19:45:46.524Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0.2,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": true,
+          "category": "stance",
+          "confidence": 0.6,
+          "type": "defensive_stance",
+          "description": "Person standing with feet shoulder-width apart and hands held away from body",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": true,
+          "category": "hands",
+          "confidence": 0.67,
+          "pattern": "normal",
+          "description": "Hands are visible, positioned in a relaxed manner.",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 6,
+      "videoTime": 5,
+      "timestamp": "2026-01-14T19:45:46.525Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0.3,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0.2,
+          "type": null,
+          "description": "No clear stance",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0.1,
+          "pattern": null,
+          "description": "No clear hand position visible in this frame",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 11,
+      "videoTime": 10,
+      "timestamp": "2026-01-14T19:45:46.525Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0.1,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0.4,
+          "type": "normal",
+          "description": "The person appears to be walking or standing normally with no indications of a specific stance.",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0.25,
+          "pattern": "normal",
+          "description": "Hands are not in any particular position or pattern",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    }
+  ],
+  "detections": [
+    {
+      "frameNumber": 1,
+      "videoTime": 0,
+      "type": "stance",
+      "detection": {
+        "detected": true,
+        "category": "stance",
+        "confidence": 0.6,
+        "type": "defensive_stance",
+        "description": "Person standing with feet shoulder-width apart and hands held away from body",
+        "model": "llm-vision",
+        "source": "llm"
+      }
+    },
+    {
+      "frameNumber": 1,
+      "videoTime": 0,
+      "type": "hands",
+      "detection": {
+        "detected": true,
+        "category": "hands",
+        "confidence": 0.67,
+        "pattern": "normal",
+        "description": "Hands are visible, positioned in a relaxed manner.",
+        "model": "llm-vision",
+        "source": "llm"
+      }
+    }
+  ],
+  "summary": {
+    "totalFrames": 17,
+    "sampleFrames": 3,
+    "framesProcessed": 3,
+    "detectionsFound": 2,
+    "detectionTypes": {
+      "weapon": 0,
+      "stance": 1,
+      "hands": 1
+    },
+    "note": "Processed 3 sample frames to stay within API limits"
+  }
+}

@@ -1,0 +1,1554 @@
+{
+  "videoMetadata": {
+    "duration": 47.6,
+    "size": 58112698,
+    "bitrate": 9766840,
+    "format": "mov,mp4,m4a,3gp,3g2,mj2",
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "fps": "30/1"
+  },
+  "frames": [
+    {
+      "frameNumber": 1,
+      "videoTime": 0,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 2,
+      "videoTime": 1,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 3,
+      "videoTime": 2,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 4,
+      "videoTime": 3,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 5,
+      "videoTime": 4,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 6,
+      "videoTime": 5,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 7,
+      "videoTime": 6,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 8,
+      "videoTime": 7,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 9,
+      "videoTime": 8,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 10,
+      "videoTime": 9,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 11,
+      "videoTime": 10,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 12,
+      "videoTime": 11,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 13,
+      "videoTime": 12,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 14,
+      "videoTime": 13,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 15,
+      "videoTime": 14,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 16,
+      "videoTime": 15,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 17,
+      "videoTime": 16,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 18,
+      "videoTime": 17,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 19,
+      "videoTime": 18,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 20,
+      "videoTime": 19,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        }
+      }
+    },
+    {
+      "frameNumber": 21,
+      "videoTime": 20,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "description": "",
+          "model": "llm-vision",
+          "source": "llm"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 22,
+      "videoTime": 21,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 23,
+      "videoTime": 22,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 24,
+      "videoTime": 23,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 25,
+      "videoTime": 24,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 26,
+      "videoTime": 25,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 27,
+      "videoTime": 26,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 28,
+      "videoTime": 27,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 29,
+      "videoTime": 28,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 30,
+      "videoTime": 29,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 31,
+      "videoTime": 30,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 32,
+      "videoTime": 31,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 33,
+      "videoTime": 32,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 34,
+      "videoTime": 33,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 35,
+      "videoTime": 34,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 36,
+      "videoTime": 35,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 37,
+      "videoTime": 36,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 38,
+      "videoTime": 37,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 39,
+      "videoTime": 38,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 40,
+      "videoTime": 39,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 41,
+      "videoTime": 40,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 42,
+      "videoTime": 41,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 43,
+      "videoTime": 42,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 44,
+      "videoTime": 43,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 45,
+      "videoTime": 44,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 46,
+      "videoTime": 45,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 47,
+      "videoTime": 46,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    },
+    {
+      "frameNumber": 48,
+      "videoTime": 47,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": [],
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null,
+          "model": "fallback",
+          "source": "fallback"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null,
+          "model": "fallback",
+          "source": "fallback"
+        }
+      }
+    }
+  ],
+  "detections": [],
+  "summary": {
+    "totalFrames": 48,
+    "framesProcessed": 48,
+    "detectionsFound": 0,
+    "detectionTypes": {
+      "weapon": 0,
+      "stance": 0,
+      "hands": 0
+    },
+    "detectionRate": "0.0%"
+  }
+}

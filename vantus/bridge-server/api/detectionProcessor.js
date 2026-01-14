@@ -27,6 +27,9 @@ class DetectionProcessor {
       enableWeaponDetection = true,
       enableStanceDetection = true,
       enableHandDetection = true,
+      enableCrowdDetection = true,
+      enableVehicleDetection = true,
+      enableEnvironmentDetection = true,
       enableAudioDetection = false,
     } = options;
 
@@ -38,27 +41,42 @@ class DetectionProcessor {
     };
 
     try {
-      // In production, this would:
-      // 1. Decode base64 to image
-      // 2. Run through TensorFlow.js models
-      // 3. Return actual detection results
+      // Build detection types array
+      const detectionTypes = [];
+      if (enableWeaponDetection) detectionTypes.push('weapon');
+      if (enableStanceDetection) detectionTypes.push('stance');
+      if (enableHandDetection) detectionTypes.push('hands');
+      if (enableCrowdDetection) detectionTypes.push('crowd');
+      if (enableVehicleDetection) detectionTypes.push('vehicle');
+      if (enableEnvironmentDetection) detectionTypes.push('environment');
 
-      // For now, we'll use the detection structure from multiModelDetection
-      // and simulate processing
+      // Single LLM vision call for all detections (more efficient)
+      if (detectionTypes.length > 0 && frame.base64) {
+        const analysis = await llmVisionService.analyzeImage(frame.base64, {
+          frameTime: frame.videoTime,
+          officerName,
+          detectionTypes,
+        });
 
-      // Weapon Detection
-      if (enableWeaponDetection) {
-        results.detections.weapon = await this.detectWeapons(frame);
-      }
-
-      // Stance Detection
-      if (enableStanceDetection) {
-        results.detections.stance = await this.detectStance(frame);
-      }
-
-      // Hand Detection
-      if (enableHandDetection) {
-        results.detections.hands = await this.detectHands(frame);
+        // Add all detection results
+        if (enableWeaponDetection && analysis.weapon) {
+          results.detections.weapon = analysis.weapon;
+        }
+        if (enableStanceDetection && analysis.stance) {
+          results.detections.stance = analysis.stance;
+        }
+        if (enableHandDetection && analysis.hands) {
+          results.detections.hands = analysis.hands;
+        }
+        if (enableCrowdDetection && analysis.crowd) {
+          results.detections.crowd = analysis.crowd;
+        }
+        if (enableVehicleDetection && analysis.vehicle) {
+          results.detections.vehicle = analysis.vehicle;
+        }
+        if (enableEnvironmentDetection && analysis.environment) {
+          results.detections.environment = analysis.environment;
+        }
       }
 
       // Audio Detection (if audio data available)
@@ -99,6 +117,7 @@ class DetectionProcessor {
 
   /**
    * Detect weapons in frame using LLM vision
+   * @deprecated Use processFrame with enableWeaponDetection instead
    */
   async detectWeapons(frame) {
     if (!frame.base64) {
@@ -115,6 +134,7 @@ class DetectionProcessor {
     try {
       const analysis = await llmVisionService.analyzeImage(frame.base64, {
         frameTime: frame.videoTime,
+        detectionTypes: ['weapon'],
       });
 
       return analysis.weapon || {
@@ -139,6 +159,7 @@ class DetectionProcessor {
 
   /**
    * Detect stance patterns using LLM vision
+   * @deprecated Use processFrame with enableStanceDetection instead
    */
   async detectStance(frame) {
     if (!frame.base64) {
@@ -155,6 +176,7 @@ class DetectionProcessor {
     try {
       const analysis = await llmVisionService.analyzeImage(frame.base64, {
         frameTime: frame.videoTime,
+        detectionTypes: ['stance'],
       });
 
       return analysis.stance || {
@@ -179,6 +201,7 @@ class DetectionProcessor {
 
   /**
    * Detect hand patterns using LLM vision
+   * @deprecated Use processFrame with enableHandDetection instead
    */
   async detectHands(frame) {
     if (!frame.base64) {
@@ -195,6 +218,7 @@ class DetectionProcessor {
     try {
       const analysis = await llmVisionService.analyzeImage(frame.base64, {
         frameTime: frame.videoTime,
+        detectionTypes: ['hands'],
       });
 
       return analysis.hands || {

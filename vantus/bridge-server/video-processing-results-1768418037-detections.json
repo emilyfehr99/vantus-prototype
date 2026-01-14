@@ -1,0 +1,1604 @@
+{
+  "videoMetadata": {
+    "duration": 47.6,
+    "size": 58112698,
+    "bitrate": 9766840,
+    "format": "mov,mp4,m4a,3gp,3g2,mj2",
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "fps": "30/1"
+  },
+  "frames": [
+    {
+      "frameNumber": 1,
+      "videoTime": 0,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 2,
+      "videoTime": 1,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 3,
+      "videoTime": 2,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 4,
+      "videoTime": 3,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 5,
+      "videoTime": 4,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 6,
+      "videoTime": 5,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 7,
+      "videoTime": 6,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 8,
+      "videoTime": 7,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 9,
+      "videoTime": 8,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 10,
+      "videoTime": 9,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 11,
+      "videoTime": 10,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 12,
+      "videoTime": 11,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": true,
+          "category": "weapon",
+          "confidence": 0.6608813720848867,
+          "detections": [
+            {
+              "class": "blunt_weapon",
+              "confidence": 0.8900167973099908,
+              "bbox": [
+                100,
+                200,
+                150,
+                180
+              ]
+            }
+          ]
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 13,
+      "videoTime": 12,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 14,
+      "videoTime": 13,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 15,
+      "videoTime": 14,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 16,
+      "videoTime": 15,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": true,
+          "category": "stance",
+          "confidence": 0.8633273201034627,
+          "type": "bladed_stance"
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 17,
+      "videoTime": 16,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 18,
+      "videoTime": 17,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 19,
+      "videoTime": 18,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 20,
+      "videoTime": 19,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 21,
+      "videoTime": 20,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 22,
+      "videoTime": 21,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 23,
+      "videoTime": 22,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 24,
+      "videoTime": 23,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 25,
+      "videoTime": 24,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 26,
+      "videoTime": 25,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 27,
+      "videoTime": 26,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 28,
+      "videoTime": 27,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 29,
+      "videoTime": 28,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 30,
+      "videoTime": 29,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 31,
+      "videoTime": 30,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 32,
+      "videoTime": 31,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 33,
+      "videoTime": 32,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 34,
+      "videoTime": 33,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 35,
+      "videoTime": 34,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 36,
+      "videoTime": 35,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 37,
+      "videoTime": 36,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 38,
+      "videoTime": 37,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 39,
+      "videoTime": 38,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 40,
+      "videoTime": 39,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 41,
+      "videoTime": 40,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 42,
+      "videoTime": 41,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 43,
+      "videoTime": 42,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 44,
+      "videoTime": 43,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 45,
+      "videoTime": 44,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": true,
+          "category": "hands",
+          "confidence": 0.8246185689470573,
+          "pattern": "waistband_reach"
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 46,
+      "videoTime": 45,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 47,
+      "videoTime": 46,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": false,
+          "category": "weapon",
+          "confidence": 0,
+          "detections": []
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    },
+    {
+      "frameNumber": 48,
+      "videoTime": 47,
+      "timestamp": "2026-01-14T19:13:57.123Z",
+      "detections": {
+        "weapon": {
+          "detected": true,
+          "category": "weapon",
+          "confidence": 0.8817251185701933,
+          "detections": [
+            {
+              "class": "handgun",
+              "confidence": 0.6929999786711685,
+              "bbox": [
+                100,
+                200,
+                150,
+                180
+              ]
+            }
+          ]
+        },
+        "stance": {
+          "detected": false,
+          "category": "stance",
+          "confidence": 0,
+          "type": null
+        },
+        "hands": {
+          "detected": false,
+          "category": "hands",
+          "confidence": 0,
+          "pattern": null
+        },
+        "audio": {
+          "detected": false,
+          "category": "audio",
+          "confidence": 0,
+          "pattern": null
+        }
+      }
+    }
+  ],
+  "detections": [
+    {
+      "frameNumber": 12,
+      "videoTime": 11,
+      "type": "weapon",
+      "detection": {
+        "detected": true,
+        "category": "weapon",
+        "confidence": 0.6608813720848867,
+        "detections": [
+          {
+            "class": "blunt_weapon",
+            "confidence": 0.8900167973099908,
+            "bbox": [
+              100,
+              200,
+              150,
+              180
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "frameNumber": 16,
+      "videoTime": 15,
+      "type": "stance",
+      "detection": {
+        "detected": true,
+        "category": "stance",
+        "confidence": 0.8633273201034627,
+        "type": "bladed_stance"
+      }
+    },
+    {
+      "frameNumber": 45,
+      "videoTime": 44,
+      "type": "hands",
+      "detection": {
+        "detected": true,
+        "category": "hands",
+        "confidence": 0.8246185689470573,
+        "pattern": "waistband_reach"
+      }
+    },
+    {
+      "frameNumber": 48,
+      "videoTime": 47,
+      "type": "weapon",
+      "detection": {
+        "detected": true,
+        "category": "weapon",
+        "confidence": 0.8817251185701933,
+        "detections": [
+          {
+            "class": "handgun",
+            "confidence": 0.6929999786711685,
+            "bbox": [
+              100,
+              200,
+              150,
+              180
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "totalFrames": 48,
+    "framesProcessed": 48,
+    "detectionsFound": 4,
+    "detectionTypes": {
+      "weapon": 2,
+      "stance": 1,
+      "hands": 1,
+      "audio": 0
+    },
+    "detectionRate": "8.3%"
+  }
+}
