@@ -424,167 +424,6 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Handle triage gate veto
-  const handleTriageVeto = async (officerName: string, reason: string) => {
-    if (!socket || !socket.connected) {
-      logger.error('Socket not connected');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${BRIDGE_SERVER_URL}/api/triage/veto`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          officerName,
-          supervisorId: supervisorId,
-          reason,
-        }),
-      });
-
-      if (response.ok) {
-        logger.info('Triage veto sent successfully', { officerName, reason });
-      } else {
-        logger.error('Triage veto failed', { officerName, reason });
-      }
-    } catch (error) {
-      logger.error('Triage veto error', error);
-    }
-  };
-
-
-  // Listen for Peripheral Threat (moved outside useEffect for proper scope)
-  useEffect(() => {
-    if (!socket) return;
-
-    socket.on('PERIPHERAL_THREAT', (data: { officerName: string; threats: any[]; timestamp: string }) => {
-    newSocket.on('PERIPHERAL_THREAT', (data: { officerName: string; threats: any[]; timestamp: string }) => {
-      logger.info('PERIPHERAL_THREAT received', { data });
-      setOfficers(prev => {
-        const updated = new Map(prev);
-        const officer = updated.get(data.officerName) || {
-          officerName: data.officerName,
-          sessionId: null,
-          lastContact: new Date(),
-          location: null,
-          signals: [],
-        };
-        officer.peripheralThreats = data.threats;
-        updated.set(data.officerName, officer);
-        return updated;
-      });
-    });
-
-    // Listen for Kinematic Prediction
-    newSocket.on('KINEMATIC_PREDICTION', (data: { officerName: string; prediction: any; timestamp: string }) => {
-      logger.info('KINEMATIC_PREDICTION received', { data });
-      setOfficers(prev => {
-        const updated = new Map(prev);
-        const officer = updated.get(data.officerName) || {
-          officerName: data.officerName,
-          sessionId: null,
-          lastContact: new Date(),
-          location: null,
-          signals: [],
-        };
-        officer.kinematicPrediction = data.prediction;
-        updated.set(data.officerName, officer);
-        return updated;
-      });
-    });
-
-    // Listen for De-escalation Status
-    newSocket.on('DE_ESCALATION_STATUS', (data: { officerName: string; stabilization: any; timestamp: string }) => {
-      logger.info('DE_ESCALATION_STATUS received', { data });
-      setOfficers(prev => {
-        const updated = new Map(prev);
-        const officer = updated.get(data.officerName) || {
-          officerName: data.officerName,
-          sessionId: null,
-          lastContact: new Date(),
-          location: null,
-          signals: [],
-        };
-        officer.deEscalationStatus = data.stabilization;
-        updated.set(data.officerName, officer);
-        return updated;
-      });
-    });
-
-    // Listen for Fact Anchored
-    newSocket.on('FACT_ANCHORED', (data: { officerName: string; fact: any; timestamp: string }) => {
-      logger.info('FACT_ANCHORED received', { data });
-      setOfficers(prev => {
-        const updated = new Map(prev);
-        const officer = updated.get(data.officerName) || {
-          officerName: data.officerName,
-          sessionId: null,
-          lastContact: new Date(),
-          location: null,
-          signals: [],
-        };
-        if (!officer.facts) officer.facts = [];
-        officer.facts.push(data.fact);
-        updated.set(data.officerName, officer);
-        return updated;
-      });
-    });
-
-    // Listen for Dictation Command Processed
-    newSocket.on('DICTATION_COMMAND_PROCESSED', (data: { officerName: string; command: any; timestamp: string }) => {
-      logger.info('DICTATION_COMMAND_PROCESSED received', { data });
-      setOfficers(prev => {
-        const updated = new Map(prev);
-        const officer = updated.get(data.officerName) || {
-          officerName: data.officerName,
-          sessionId: null,
-          lastContact: new Date(),
-          location: null,
-          signals: [],
-        };
-        if (!officer.dictationCommands) officer.dictationCommands = [];
-        officer.dictationCommands.push(data.command);
-        updated.set(data.officerName, officer);
-        return updated;
-      });
-    });
-
-    setSocket(newSocket);
-
-    return () => {
-      newSocket.close();
-      clearInterval(timeInterval);
-    };
-  }, []);
-
-  // Handle triage gate veto
-  const handleTriageVeto = async (officerName: string, reason: string) => {
-    if (!socket || !socket.connected) {
-      logger.error('Socket not connected');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${BRIDGE_SERVER_URL}/api/triage/veto`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          officerName,
-          supervisorId: 'SUPERVISOR_001', // Would come from auth
-          reason,
-        }),
-      });
-
-      if (response.ok) {
-        logger.info('Triage veto sent successfully', { officerName, reason });
-      } else {
-        logger.error('Triage veto failed', { officerName, reason });
-      }
-    } catch (error) {
-      logger.error('Triage veto error', error);
-    }
-  };
-
     // Legacy support for old alert system
     newSocket.on('DASHBOARD_ALERT', (data: any) => {
       logger.info('Legacy DASHBOARD_ALERT received', { data });
@@ -631,6 +470,34 @@ export default function Dashboard() {
       clearInterval(stateInterval);
     };
   }, []);
+
+  // Handle triage gate veto
+  const handleTriageVeto = async (officerName: string, reason: string) => {
+    if (!socket || !socket.connected) {
+      logger.error('Socket not connected');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${BRIDGE_SERVER_URL}/api/triage/veto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          officerName,
+          supervisorId: supervisorId,
+          reason,
+        }),
+      });
+
+      if (response.ok) {
+        logger.info('Triage veto sent successfully', { officerName, reason });
+      } else {
+        logger.error('Triage veto failed', { officerName, reason });
+      }
+    } catch (error) {
+      logger.error('Triage veto error', error);
+    }
+  };
 
   const fetchOfficerStates = async () => {
     try {
@@ -907,7 +774,7 @@ export default function Dashboard() {
               )}
 
             {/* Peripheral Threat Display */}
-            {selectedOfficerData.peripheralThreats && selectedOfficerData.peripheralThreats.length > 0 && (
+            {selectedOfficerData.peripheralThreats && selectedOfficerData.peripheralThreats.length > 0 && selectedOfficer && (
               <PeripheralThreatDisplay
                 threats={selectedOfficerData.peripheralThreats}
                 officerName={selectedOfficer}
@@ -915,7 +782,7 @@ export default function Dashboard() {
             )}
 
             {/* Kinematic Prediction Alert */}
-            {selectedOfficerData.kinematicPrediction && (
+            {selectedOfficerData.kinematicPrediction && selectedOfficer && (
               <KinematicPredictionAlert
                 prediction={selectedOfficerData.kinematicPrediction}
                 officerName={selectedOfficer}
@@ -923,7 +790,7 @@ export default function Dashboard() {
             )}
 
             {/* De-escalation Status Indicator */}
-            {selectedOfficerData.deEscalationStatus && (
+            {selectedOfficerData.deEscalationStatus && selectedOfficer && (
               <DeEscalationStatusIndicator
                 stabilization={selectedOfficerData.deEscalationStatus}
                 officerName={selectedOfficer}
@@ -931,7 +798,7 @@ export default function Dashboard() {
             )}
 
             {/* Fact Timeline View */}
-            {selectedOfficerData.facts && selectedOfficerData.facts.length > 0 && (
+            {selectedOfficerData.facts && selectedOfficerData.facts.length > 0 && selectedOfficer && (
               <FactTimelineView
                 facts={selectedOfficerData.facts}
                 officerName={selectedOfficer}
@@ -939,7 +806,7 @@ export default function Dashboard() {
             )}
 
             {/* Dictation Command Log */}
-            {selectedOfficerData.dictationCommands && selectedOfficerData.dictationCommands.length > 0 && (
+            {selectedOfficerData.dictationCommands && selectedOfficerData.dictationCommands.length > 0 && selectedOfficer && (
               <DictationCommandLog
                 commands={selectedOfficerData.dictationCommands}
                 officerName={selectedOfficer}
