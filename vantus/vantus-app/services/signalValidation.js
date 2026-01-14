@@ -7,6 +7,7 @@
 
 import logger from '../utils/logger';
 import baselineCalibration from './baselineCalibration';
+import knowledgeBase from './knowledgeBase';
 
 class SignalValidation {
   constructor() {
@@ -364,8 +365,9 @@ class SignalValidation {
    * Record false positive for learning
    * @param {Object} signal - Signal that was false positive
    * @param {string} reason - Reason it was false positive
+   * @param {Object} context - Operational context
    */
-  recordFalsePositive(signal, reason) {
+  async recordFalsePositive(signal, reason, context = {}) {
     const category = signal.signalCategory || signal.category || '';
     
     if (!this.falsePositivePatterns.has(category)) {
@@ -381,6 +383,11 @@ class SignalValidation {
     pattern.count++;
     if (reason && !pattern.reasons.includes(reason)) {
       pattern.reasons.push(reason);
+    }
+    
+    // Store in knowledge base if available
+    if (knowledgeBase.isAvailable()) {
+      await knowledgeBase.storeFalsePositivePattern(signal, reason, context);
     }
     
     logger.info('False positive recorded', { category, reason, count: pattern.count });

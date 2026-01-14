@@ -126,6 +126,14 @@ class ConfigService {
         apiUrl: CLIENT_CONFIG?.llm?.apiUrl || process.env.LLM_API_URL || null, // Custom API URL (required for self-hosted)
         enabled: !!(CLIENT_CONFIG?.llm?.apiUrl || process.env.LLM_API_URL || CLIENT_CONFIG?.llm?.apiKey || process.env.LLM_API_KEY),
       },
+      
+      // Knowledge Base configuration
+      knowledgeBase: {
+        provider: CLIENT_CONFIG?.knowledgeBase?.provider || process.env.KB_PROVIDER || null, // 'wikijs' | 'bookstack' | 'logseq' | 'joplin' | 'api'
+        apiUrl: CLIENT_CONFIG?.knowledgeBase?.apiUrl || process.env.KB_API_URL || null,
+        apiKey: CLIENT_CONFIG?.knowledgeBase?.apiKey || process.env.KB_API_KEY || null,
+        enabled: !!(CLIENT_CONFIG?.knowledgeBase?.apiUrl || process.env.KB_API_URL),
+      },
     };
   }
   
@@ -218,6 +226,13 @@ class ConfigService {
    */
   getLLMConfig() {
     return this.config.llm;
+  }
+  
+  /**
+   * Get Knowledge Base configuration
+   */
+  getKnowledgeBaseConfig() {
+    return this.config.knowledgeBase;
   }
   
   /**

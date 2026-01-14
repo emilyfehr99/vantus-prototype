@@ -24,6 +24,7 @@ import logger from './utils/logger';
 import llmService from './services/llmService';
 import signalFusion from './services/signalFusion';
 import signalValidation from './services/signalValidation';
+import knowledgeBase from './services/knowledgeBase';
 
 // Bridge server URL - now from config
 const BRIDGE_SERVER_URL = configService.getServerUrl('bridge') || 'http://localhost:3001';
@@ -96,7 +97,23 @@ export default function App() {
       }
     };
     
+    // Initialize Knowledge Base service
+    const initKnowledgeBase = () => {
+      const kbConfig = configService.getKnowledgeBaseConfig();
+      if (kbConfig.enabled && kbConfig.apiUrl) {
+        knowledgeBase.initialize(
+          kbConfig.provider || 'api',
+          kbConfig.apiUrl,
+          kbConfig.apiKey
+        );
+        logger.info('Knowledge Base service initialized');
+      } else {
+        logger.info('Knowledge Base service not configured - using local knowledge only');
+      }
+    };
+    
     initLLM();
+    initKnowledgeBase();
     
     // Only request camera permission after calibration
     if (calibrated) {

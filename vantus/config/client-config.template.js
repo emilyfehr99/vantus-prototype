@@ -250,6 +250,36 @@ export const CLIENT_CONFIG = {
     //   model: 'your-model-name',
     //   apiUrl: 'https://your-golem-instance.com/api/v1/chat/completions',
   },
+
+  // ============================================
+  // KNOWLEDGE BASE CONFIGURATION
+  // ============================================
+  knowledgeBase: {
+    // Provider: 'wikijs' | 'bookstack' | 'logseq' | 'joplin' | 'api'
+    provider: process.env.KB_PROVIDER || null,
+    
+    // API URL for knowledge base
+    apiUrl: process.env.KB_API_URL || null,
+    
+    // API key for knowledge base (if required)
+    apiKey: process.env.KB_API_KEY || null,
+    
+    // Example configurations:
+    // Wiki.js:
+    //   provider: 'wikijs',
+    //   apiUrl: 'https://your-wikijs-instance.com/api/v1',
+    //   apiKey: 'your-wikijs-api-key',
+    //
+    // BookStack:
+    //   provider: 'bookstack',
+    //   apiUrl: 'https://your-bookstack-instance.com/api',
+    //   apiKey: 'your-bookstack-api-token',
+    //
+    // Custom API:
+    //   provider: 'api',
+    //   apiUrl: 'https://your-kb-api.com',
+    //   apiKey: 'your-api-key',
+  },
 };
 
 // Helper function to get officer ID
