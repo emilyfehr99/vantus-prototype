@@ -158,7 +158,7 @@ export default function Dashboard() {
     newSocket.on('connect', () => {
       logger.info('Dashboard connected to bridge server');
       // Fetch initial officer states
-      fetchOfficerStates();
+      fetchOfficerStates().catch(err => logger.error('Failed to fetch initial officer states', err));
     });
 
     newSocket.on('disconnect', () => {
@@ -767,7 +767,7 @@ export default function Dashboard() {
               )}
 
             {/* Peripheral Threat Display */}
-            {selectedOfficerData.peripheralThreats && selectedOfficerData.peripheralThreats.length > 0 && selectedOfficer && (
+            {selectedOfficerData.peripheralThreats && selectedOfficerData.peripheralThreats.length > 0 && selectedOfficer !== null && (
               <PeripheralThreatDisplay
                 threats={selectedOfficerData.peripheralThreats}
                 officerName={selectedOfficer}
@@ -775,7 +775,7 @@ export default function Dashboard() {
             )}
 
             {/* Kinematic Prediction Alert */}
-            {selectedOfficerData.kinematicPrediction && selectedOfficer && (
+            {selectedOfficerData.kinematicPrediction && selectedOfficer !== null && (
               <KinematicPredictionAlert
                 prediction={selectedOfficerData.kinematicPrediction}
                 officerName={selectedOfficer}
@@ -783,7 +783,7 @@ export default function Dashboard() {
             )}
 
             {/* De-escalation Status Indicator */}
-            {selectedOfficerData.deEscalationStatus && selectedOfficer && (
+            {selectedOfficerData.deEscalationStatus && selectedOfficer !== null && (
               <DeEscalationStatusIndicator
                 stabilization={selectedOfficerData.deEscalationStatus}
                 officerName={selectedOfficer}
@@ -791,7 +791,7 @@ export default function Dashboard() {
             )}
 
             {/* Fact Timeline View */}
-            {selectedOfficerData.facts && selectedOfficerData.facts.length > 0 && selectedOfficer && (
+            {selectedOfficerData.facts && selectedOfficerData.facts.length > 0 && selectedOfficer !== null && (
               <FactTimelineView
                 facts={selectedOfficerData.facts}
                 officerName={selectedOfficer}
@@ -799,7 +799,7 @@ export default function Dashboard() {
             )}
 
             {/* Dictation Command Log */}
-            {selectedOfficerData.dictationCommands && selectedOfficerData.dictationCommands.length > 0 && selectedOfficer && (
+            {selectedOfficerData.dictationCommands && selectedOfficerData.dictationCommands.length > 0 && selectedOfficer !== null && (
               <DictationCommandLog
                 commands={selectedOfficerData.dictationCommands}
                 officerName={selectedOfficer}
