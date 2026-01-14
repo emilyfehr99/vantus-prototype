@@ -427,26 +427,13 @@ async function runComprehensiveTest() {
 
   await test('Signal Correlation', async () => {
     const signalCorrelation = require('../services/signalCorrelation');
-    // Signal correlation expects an array directly, not wrapped in options
     const signals = [
       { signalCategory: 'weapon', probability: 0.85, timestamp: new Date().toISOString() },
       { signalCategory: 'stance', probability: 0.80, timestamp: new Date().toISOString() },
     ];
-    try {
-      const result = signalCorrelation.correlateSignals(signals, {
-        officerName: 'OFFICER_TEST',
-        timestamp: new Date().toISOString(),
-      });
-      if (!result) throw new Error('Signal correlation failed');
-    } catch (error) {
-      // If correlation fails due to data format, that's okay for this test
-      // The service exists and is callable
-      if (error.message.includes('not iterable')) {
-        // Expected - signals format may need adjustment
-        return;
-      }
-      throw error;
-    }
+    // correlateSignals takes (officerName, currentSignals, options)
+    const result = signalCorrelation.correlateSignals('OFFICER_TEST', signals, {});
+    if (!result) throw new Error('Signal correlation failed');
   });
 
   // ============================================
