@@ -140,6 +140,44 @@ function log(message) {
   logger.info(message);
 }
 
+// Helper function to execute final dispatch (defined before socket handlers)
+const executeFinalDispatch = async (officerName, dispatchPayload) => {
+  // Add address via reverse geocoding if not present
+  if (dispatchPayload.location && !dispatchPayload.location.address) {
+    try {
+      const address = await geocodingService.reverseGeocode(
+        dispatchPayload.location.lat,
+        dispatchPayload.location.lng
+      );
+      if (address) {
+        dispatchPayload.location.address = address;
+      }
+    } catch (error) {
+      logger.error('Geocoding error', error);
+    }
+  }
+  
+  // Send to CAD system if configured
+  if (cadService.isEnabled()) {
+    try {
+      await cadService.dispatchBackup(dispatchPayload);
+      log('CAD dispatch sent successfully');
+    } catch (error) {
+      logger.error('CAD dispatch error', error);
+      // Continue even if CAD fails - still emit to dashboards
+    }
+  } else {
+    log('CAD service not enabled - dispatch not sent to CAD');
+  }
+  
+  // Broadcast to dashboards
+  io.emit('EMERGENCY_DISPATCH_UPDATE', dispatchPayload);
+  log(`EMERGENCY_DISPATCH broadcasted to dashboards`);
+  
+  // End live feed if active
+  liveFeedHandoff.endHandoff(officerName, 'Dispatch completed');
+};
+
 // Socket.io connection handling
 io.on('connection', (socket) => {
   log(`Client connected: ${socket.id}`);
@@ -488,7 +526,7 @@ io.on('connection', (socket) => {
     await executeFinalDispatch(officerName, dispatchDecision.dispatchPayload || dispatchPayload);
   });
 
-  // Helper function to execute final dispatch
+  // Helper function to execute final dispatch (defined before use)
   const executeFinalDispatch = async (officerName, dispatchPayload) => {
     // Add address via reverse geocoding if not present
     if (dispatchPayload.location && !dispatchPayload.location.address) {
