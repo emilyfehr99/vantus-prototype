@@ -26,6 +26,7 @@ import signalFusion from './services/signalFusion';
 import signalValidation from './services/signalValidation';
 import knowledgeBase from './services/knowledgeBase';
 import ragService from './services/ragService';
+import realtimeVideoProcessor from './services/realtimeVideoProcessor';
 
 // Bridge server URL - now from config
 const BRIDGE_SERVER_URL = configService.getServerUrl('bridge') || 'http://localhost:3001';
@@ -279,6 +280,40 @@ export default function App() {
       // 2. Video buffer
       videoBuffer.setCameraRef(cameraRef.current);
       await videoBuffer.startBuffer();
+      
+      // 3. Real-time video processing
+      if (cameraRef.current) {
+        realtimeVideoProcessor.setCameraRef(cameraRef.current);
+        realtimeVideoProcessor.startProcessing({
+          frameInterval: 2000, // Process frame every 2 seconds
+          officerName: officerName,
+          context: null, // Will be set from telemetry state
+          calibrationData: calibrationData,
+          onDetection: (detectionResults) => {
+            // Handle detections from real-time processing
+            logger.info('Real-time detection', { detections: detectionResults.detections });
+            
+            // Process voice advisories
+            if (detectionResults && detectionResults.detections) {
+              Object.values(detectionResults.detections).forEach(detection => {
+                if (detection.detected) {
+                  voiceAdvisory.processDetection(detection);
+                  
+                  // Trigger video clip save on weapon detection
+                  if (detection.category === 'weapon' && detection.confidence >= 0.70) {
+                    videoBuffer.triggerClipSave({
+                      type: 'WEAPON_DETECTED',
+                      timestamp: new Date().toISOString(),
+                      confidence: detection.confidence,
+                    });
+                  }
+                }
+              });
+            }
+          },
+        });
+        logger.info('Real-time video processing started');
+      }
       
       // 3. Start periodic welfare checks (after 10 minutes)
       setTimeout(() => {
@@ -571,15 +606,13 @@ export default function App() {
           autoDispatch.addMovementReading(latestMovement);
         }
         
-        // Run all detections
-        const detectionResults = await multiModelDetection.runAllDetections(
-          null, // imageUri - would be from camera frame
-          null, // audioData - would be from audio capture
-          currentHeartRate, // heartRate - from wearable
-          officerName,
-          null, // context
-          calData // calibrationData for biometric baseline
-        );
+        // Note: Real-time video processing handles frame capture and detection
+        // This analysis loop focuses on signals and telemetry
+        // Video frames are processed by realtimeVideoProcessor service
+        
+        // Run detections if we have a frame (otherwise real-time processor handles it)
+        // For now, real-time processor handles all video processing
+        const detectionResults = null; // Real-time processor handles video detection
         
         // Process voice advisories based on detections
         if (detectionResults && detectionResults.detections) {
@@ -651,13 +684,16 @@ export default function App() {
     }, 2000);
   };
 
-  // Stop detection loop
+    // Stop detection loop
   const stopDetection = () => {
     if (detectionIntervalRef.current) {
       clearInterval(detectionIntervalRef.current);
       detectionIntervalRef.current = null;
     }
     setDetectionActive(false);
+    
+    // Stop real-time video processing
+    realtimeVideoProcessor.stopProcessing();
   };
 
   // Add manual marker event
@@ -802,8 +838,17 @@ export default function App() {
         facing="back"
         onCameraReady={() => {
           logger.info('Camera ready');
-          // Optionally start detection automatically
-          // startDetection();
+          
+          // Set camera reference for real-time processing
+          if (cameraRef.current) {
+            realtimeVideoProcessor.setCameraRef(cameraRef.current);
+          }
+          
+          // Optionally start detection automatically when session is active
+          if (sessionActive) {
+            // Real-time processing will start when session starts
+            logger.info('Camera ready - real-time processing available');
+          }
         }}
       />
 
@@ -892,6 +937,20 @@ export default function App() {
               {detectionActive ? 'STOP DETECTION' : 'START DETECTION'}
             </Text>
           </TouchableOpacity>
+          {sessionActive && (
+            <View style={styles.statsContainer}>
+              <Text style={styles.statsText}>
+                Real-time Processing: {realtimeVideoProcessor.isProcessing ? 'ACTIVE' : 'INACTIVE'}
+              </Text>
+              {realtimeVideoProcessor.isProcessing && (
+                <Text style={styles.statsSubtext}>
+                  Frames: {realtimeVideoProcessor.frameCount} | 
+                  Processed: {realtimeVideoProcessor.processedFrames} | 
+                  Detections: {realtimeVideoProcessor.detectionHistory.length}
+                </Text>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Emergency Dispatch Button */}
