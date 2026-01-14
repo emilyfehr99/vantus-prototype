@@ -20,6 +20,19 @@ interface OfficerState {
   } | null;
   signals: ContextualSignal[];
   sessionStartTime?: string;
+  triageCountdown?: {
+    id: string;
+    remaining: number;
+    dispatchPayload: any;
+    canVeto: boolean;
+  };
+  liveStream?: {
+    streamId: string;
+    streamUrl: string;
+    tacticalIntent: any;
+    active: boolean;
+    endedReason?: string;
+  };
 }
 
 interface ContextualSignal {
@@ -685,6 +698,37 @@ export default function Dashboard() {
                 <h2>SIGNALS: {selectedOfficerData.officerName}</h2>
               </div>
               
+              {/* Triage Gate Countdown */}
+              {selectedOfficerData.triageCountdown && (
+                <TriageGateCountdown
+                  officerName={selectedOfficer}
+                  countdownId={selectedOfficerData.triageCountdown.id}
+                  remaining={selectedOfficerData.triageCountdown.remaining}
+                  dispatchPayload={selectedOfficerData.triageCountdown.dispatchPayload}
+                  onVeto={handleTriageVeto}
+                  supervisorId={supervisorId}
+                />
+              )}
+
+              {/* Live Feed Viewer */}
+              {selectedOfficerData.liveStream && selectedOfficerData.liveStream.active && (
+                <LiveFeedViewer
+                  officerName={selectedOfficer}
+                  streamUrl={selectedOfficerData.liveStream.streamUrl}
+                  tacticalIntent={selectedOfficerData.liveStream.tacticalIntent}
+                  onClose={() => {
+                    setOfficers(prev => {
+                      const updated = new Map(prev);
+                      const officer = updated.get(selectedOfficer);
+                      if (officer && officer.liveStream) {
+                        officer.liveStream.active = false;
+                      }
+                      return updated;
+                    });
+                  }}
+                />
+              )}
+
               {/* Pattern Timeline */}
               {selectedOfficerData.signals.length > 0 && (
                 <div style={{ marginBottom: '20px' }}>

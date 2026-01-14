@@ -489,7 +489,7 @@ io.on('connection', (socket) => {
   });
 
   // Helper function to execute final dispatch
-  async function executeFinalDispatch(officerName, dispatchPayload) {
+  const executeFinalDispatch = async (officerName, dispatchPayload) => {
     // Add address via reverse geocoding if not present
     if (dispatchPayload.location && !dispatchPayload.location.address) {
       try {
