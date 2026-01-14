@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import styles from '../styles/Dashboard.module.css';
 import logger from '../utils/logger';
+import PatternTimeline from '../components/PatternTimeline';
 
 // Bridge server URL - update this to match your server
 // Bridge server URL - from environment or default
@@ -99,6 +100,134 @@ export default function Dashboard() {
     newSocket.on('MARKER_EVENT_UPDATE', (data: { officerName: string; marker: MarkerEvent }) => {
       logger.info('MARKER_EVENT_UPDATE received', { data });
       // Could add marker events to officer state if needed
+    });
+
+    // Listen for enhanced audio signals
+    newSocket.on('ENHANCED_AUDIO_SIGNAL', (data: { officerName: string; signalType: string; signal: any; timestamp: string }) => {
+      logger.info('ENHANCED_AUDIO_SIGNAL received', { data });
+      
+      setOfficers(prev => {
+        const updated = new Map(prev);
+        const officer = updated.get(data.officerName) || {
+          officerName: data.officerName,
+          sessionId: null,
+          lastContact: new Date(),
+          location: null,
+          signals: [],
+        };
+        
+        officer.signals.push({
+          signalType: data.signalType,
+          signalCategory: data.signal.category,
+          probability: data.signal.confidence,
+          timestamp: data.timestamp,
+          explanation: {
+            description: data.signal.description,
+            originData: data.signal,
+            traceability: { source: 'enhanced_audio' },
+          },
+        });
+        officer.lastContact = new Date();
+        
+        updated.set(data.officerName, officer);
+        return updated;
+      });
+    });
+
+    // Listen for coordination signals
+    newSocket.on('COORDINATION_SIGNAL', (data: { officerName: string; signalType: string; signal: any; timestamp: string }) => {
+      logger.info('COORDINATION_SIGNAL received', { data });
+      
+      setOfficers(prev => {
+        const updated = new Map(prev);
+        const officer = updated.get(data.officerName) || {
+          officerName: data.officerName,
+          sessionId: null,
+          lastContact: new Date(),
+          location: null,
+          signals: [],
+        };
+        
+        officer.signals.push({
+          signalType: data.signalType,
+          signalCategory: data.signal.category,
+          probability: data.signal.confidence,
+          timestamp: data.timestamp,
+          explanation: {
+            description: data.signal.description,
+            originData: data.signal,
+            traceability: { source: 'coordination' },
+          },
+        });
+        officer.lastContact = new Date();
+        
+        updated.set(data.officerName, officer);
+        return updated;
+      });
+    });
+
+    // Listen for location signals
+    newSocket.on('LOCATION_SIGNAL', (data: { officerName: string; signalType: string; signal: any; timestamp: string }) => {
+      logger.info('LOCATION_SIGNAL received', { data });
+      
+      setOfficers(prev => {
+        const updated = new Map(prev);
+        const officer = updated.get(data.officerName) || {
+          officerName: data.officerName,
+          sessionId: null,
+          lastContact: new Date(),
+          location: null,
+          signals: [],
+        };
+        
+        officer.signals.push({
+          signalType: data.signalType,
+          signalCategory: data.signal.category,
+          probability: data.signal.confidence,
+          timestamp: data.timestamp,
+          explanation: {
+            description: data.signal.description,
+            originData: data.signal,
+            traceability: { source: 'location' },
+          },
+        });
+        officer.lastContact = new Date();
+        
+        updated.set(data.officerName, officer);
+        return updated;
+      });
+    });
+
+    // Listen for signal correlations
+    newSocket.on('SIGNAL_CORRELATION', (data: { officerName: string; signal: any; timestamp: string }) => {
+      logger.info('SIGNAL_CORRELATION received', { data });
+      
+      setOfficers(prev => {
+        const updated = new Map(prev);
+        const officer = updated.get(data.officerName) || {
+          officerName: data.officerName,
+          sessionId: null,
+          lastContact: new Date(),
+          location: null,
+          signals: [],
+        };
+        
+        officer.signals.push({
+          signalType: 'signal_correlation',
+          signalCategory: data.signal.category,
+          probability: data.signal.confidence,
+          timestamp: data.timestamp,
+          explanation: {
+            description: data.signal.description,
+            originData: data.signal,
+            traceability: { source: 'correlation' },
+          },
+        });
+        officer.lastContact = new Date();
+        
+        updated.set(data.officerName, officer);
+        return updated;
+      });
     });
 
     // Listen for session started
@@ -423,6 +552,19 @@ export default function Dashboard() {
             <>
               <div className={styles.signalsHeader}>
                 <h2>SIGNALS: {selectedOfficerData.officerName}</h2>
+              </div>
+              
+              {/* Pattern Timeline */}
+              {selectedOfficerData.signals.length > 0 && (
+                <div style={{ marginBottom: '20px' }}>
+                  <PatternTimeline 
+                    signals={selectedOfficerData.signals} 
+                    officerName={selectedOfficerData.officerName}
+                  />
+                </div>
+              )}
+              
+              <div className={styles.signalsHeader}>
                 <button 
                   className={styles.summaryButton}
                   onClick={() => {
