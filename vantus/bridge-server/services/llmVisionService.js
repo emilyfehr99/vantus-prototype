@@ -66,7 +66,7 @@ class LLMVisionService {
       together: 'https://api.together.xyz/v1/chat/completions',
       deepseek: 'https://api.deepseek.com/v1/chat/completions',
       localai: process.env.LOCALAI_API_URL || 'http://localhost:8080/v1/chat/completions',
-      ollama: process.env.OLLAMA_API_URL || 'http://localhost:11434/v1/chat/completions',
+      ollama: process.env.OLLAMA_API_URL || 'http://localhost:11434/api/chat', // Ollama uses /api/chat, not /v1/chat/completions
       anythingllm: process.env.ANYTHINGLLM_API_URL || 'http://localhost:3001/api/v1/chat/completions',
     };
     return urls[provider] || urls.openrouter;
@@ -155,6 +155,44 @@ Important:
     // Remove data URL prefix if present
     const imageData = base64Image.replace(/^data:image\/\w+;base64,/, '');
 
+    // Ollama uses a different API format
+    if (this.provider === 'ollama') {
+      // Ollama format: /api/chat with images array
+      const body = {
+        model: this.model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a pattern detection assistant for police bodycam footage. Return only valid JSON, no explanations.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+            images: [imageData], // Ollama uses images array with base64 (no data URL prefix)
+          },
+        ],
+        stream: false,
+      };
+
+      const response = await fetch(this.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(120000), // 120 second timeout for Ollama (vision models are slower)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`LLM Vision API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data.message?.content || '';
+    }
+
+    // OpenAI-compatible format for other providers
     // Build messages array - format depends on provider
     let userContent;
     
@@ -213,7 +251,7 @@ Important:
       method: 'POST',
       headers,
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30000), // 30 second timeout
+      signal: AbortSignal.timeout(this.provider === 'ollama' ? 120000 : 30000), // Longer timeout for Ollama
     });
 
     if (!response.ok) {
