@@ -1,0 +1,74 @@
+.container {
+  background: #1a1a1a;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  color: #fff;
+}
+
+.container.critical {
+  border: 2px solid #ef4444;
+}
+
+.container.warning {
+  border: 2px solid #f59e0b;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.icon {
+  font-size: 1.5rem;
+}
+
+.header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.container.critical .header h3 {
+  color: #ef4444;
+}
+
+.container.warning .header h3 {
+  color: #f59e0b;
+}
+
+.content {
+  background: #2a2a2a;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+.intentType {
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+}
+
+.container.critical .intentType {
+  color: #ef4444;
+}
+
+.container.warning .intentType {
+  color: #f59e0b;
+}
+
+.confidence {
+  color: #60a5fa;
+  margin-bottom: 10px;
+}
+
+.description {
+  color: #aaa;
+  margin-bottom: 10px;
+}
+
+.timeWindow {
+  color: #888;
+  font-size: 0.9rem;
+}

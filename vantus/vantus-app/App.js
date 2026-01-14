@@ -311,6 +311,17 @@ export default function App() {
               });
             }
           },
+          onPeripheralScan: async (frameBase64, officerName, context) => {
+            // PERIPHERAL OVERWATCH: Request peripheral scan from bridge server
+            if (socket && socket.connected) {
+              socket.emit('PERIPHERAL_SCAN_REQUEST', {
+                officerName,
+                frameBase64,
+                context: context || {},
+                timestamp: new Date().toISOString(),
+              });
+            }
+          },
         });
         logger.info('Real-time video processing started');
       }
@@ -682,6 +693,127 @@ export default function App() {
     
     // Update telemetry state display
     setTelemetryState(state);
+
+    // 2. KINEMATIC INTENT PREDICTION: Send movement data
+    if (movementData && movementData.movementHistory && movementData.movementHistory.length > 0) {
+      if (socket && socket.connected) {
+        socket.emit('KINEMATIC_PREDICTION_REQUEST', {
+          officerName: getOfficerId(badgeNumber),
+          movementData: {
+            movementHistory: movementData.movementHistory.slice(-20), // Last 20 movements
+            positionHistory: movementData.positionHistory?.slice(-20) || [],
+            currentSpeed: movementData.currentSpeed || 0,
+            currentHeading: movementData.currentHeading || null,
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+
+    // 3. DE-ESCALATION REFEREE: Monitor situation stabilization
+    if (socket && socket.connected) {
+      const detectionResults = null; // Would come from real-time processor
+      socket.emit('DE_ESCALATION_CHECK_REQUEST', {
+        officerName: getOfficerId(badgeNumber),
+        detectionResults: detectionResults || {},
+        telemetryState: state,
+        audioTranscripts: audioTranscripts.slice(-10), // Last 10 transcripts
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // 4. FACT ANCHORING: Log significant events
+    if (finalSignals.length > 0 && socket && socket.connected) {
+      finalSignals.forEach(signal => {
+        // Only log high-confidence signals as facts
+        if (signal.probability >= 0.80) {
+          socket.emit('FACT_ANCHOR', {
+            officerName: getOfficerId(badgeNumber),
+            fact: {
+              type: 'detection',
+              category: signal.signalCategory || signal.category,
+              description: signal.explanation?.description || 'Signal detected',
+              confidence: signal.probability,
+              timestamp: signal.timestamp || new Date().toISOString(),
+            },
+            metadata: {
+              signalId: signal.signalId || null,
+              context: state.operationalContext || null,
+            },
+          });
+        }
+      });
+    }
+
+    // 5. ENHANCED SERVICES: Send data for enhanced analysis
+    // Enhanced Audio Analysis
+    if (audioTranscripts.length > 0 && socket && socket.connected) {
+      const recentTranscripts = audioTranscripts.slice(-5); // Last 5 transcripts
+      recentTranscripts.forEach(transcript => {
+        const transcriptText = transcript.text || transcript.transcript || '';
+        
+        // 5. DICTATION OVERLAY: Check if transcript contains voice command
+        // Look for wake word "Vantus" at start of transcript
+        if (transcriptText.toLowerCase().trim().startsWith('vantus')) {
+          socket.emit('DICTATION_COMMAND', {
+            officerName: getOfficerId(badgeNumber),
+            transcript: transcriptText,
+            context: {
+              timestamp: transcript.timestamp || new Date().toISOString(),
+              location: state.lastLocation,
+              operationalContext: state.operationalContext,
+            },
+          });
+        }
+
+        // Send to Enhanced Audio Analysis
+        socket.emit('ENHANCED_AUDIO_ANALYSIS', {
+          officerName: getOfficerId(badgeNumber),
+          transcript: transcriptText,
+          options: {
+            detectMultiSpeaker: true,
+            analyzeCommunicationPatterns: true,
+            analyzeBackgroundNoise: true,
+          },
+        });
+      });
+    }
+
+    // Location Intelligence
+    if (state.lastLocation && socket && socket.connected) {
+      socket.emit('LOCATION_CLASSIFY', {
+        officerName: getOfficerId(badgeNumber),
+        location: state.lastLocation,
+        context: state.operationalContext || null,
+      });
+    }
+
+    // Coordination Analysis (if multiple officers)
+    if (socket && socket.connected) {
+      socket.emit('COORDINATION_ANALYSIS', {
+        officerName: getOfficerId(badgeNumber),
+        location: state.lastLocation,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Temporal Analysis
+    if (socket && socket.connected) {
+      socket.emit('TEMPORAL_ANALYSIS', {
+        officerName: getOfficerId(badgeNumber),
+        signals: finalSignals,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Signal Correlation
+    if (finalSignals.length > 0 && socket && socket.connected) {
+      socket.emit('SIGNAL_CORRELATION', {
+        officerName: getOfficerId(badgeNumber),
+        signals: finalSignals,
+        timestamp: new Date().toISOString(),
+      });
+    }
   };
 
   // Start continuous detection loop

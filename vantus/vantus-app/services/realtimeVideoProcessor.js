@@ -18,6 +18,7 @@ class RealtimeVideoProcessor {
     this.processedFrames = 0;
     this.detectionHistory = [];
     this.onDetectionCallback = null; // Callback for when detections occur
+    this.onPeripheralScan = null; // Callback for peripheral scan requests
   }
 
   /**
@@ -129,6 +130,24 @@ class RealtimeVideoProcessor {
       );
 
       this.processedFrames++;
+
+      // 1. PERIPHERAL OVERWATCH: Scan entire frame for peripheral threats
+      // Convert photo to base64 for server processing
+      try {
+        const FileSystem = require('expo-file-system');
+        const base64 = await FileSystem.readAsStringAsync(photo.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const frameBase64 = `data:image/jpeg;base64,${base64}`;
+
+        // Request peripheral scan from bridge server
+        // Emit peripheral scan request (will be handled in App.js)
+        if (typeof this.onPeripheralScan === 'function') {
+          this.onPeripheralScan(frameBase64, officerName, context);
+        }
+      } catch (error) {
+        logger.error('Peripheral overwatch frame conversion error', error);
+      }
 
       // Check if any detections occurred
       const hasDetections = this.checkForDetections(detectionResults);

@@ -1,0 +1,82 @@
+.container {
+  background: #1a1a1a;
+  border: 2px solid #60a5fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  color: #fff;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.header {
+  margin: 0 0 20px 0;
+  color: #60a5fa;
+  font-size: 1.2rem;
+}
+
+.empty {
+  text-align: center;
+  color: #888;
+  padding: 40px;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 30px;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #3a3a3a;
+}
+
+.timelineItem {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.timelineMarker {
+  position: absolute;
+  left: -22px;
+  top: 5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #60a5fa;
+  border: 2px solid #1a1a1a;
+}
+
+.timelineContent {
+  background: #2a2a2a;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+.timelineTime {
+  color: #60a5fa;
+  font-weight: bold;
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+}
+
+.timelineType {
+  color: #f59e0b;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.timelineDescription {
+  color: #aaa;
+  margin-bottom: 5px;
+}
+
+.timelineConfidence {
+  color: #888;
+  font-size: 0.85rem;
+}

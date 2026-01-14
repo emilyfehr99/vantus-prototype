@@ -254,6 +254,122 @@ io.on('connection', (socket) => {
     io.emit('MARKER_EVENT_UPDATE', data);
   });
 
+  // PERIPHERAL SCAN REQUEST (Mobile → Server)
+  socket.on('PERIPHERAL_SCAN_REQUEST', async (data) => {
+    try {
+      const { officerName, frameBase64, context = {} } = data;
+      
+      log(`PERIPHERAL_SCAN_REQUEST received from ${socket.id} for ${officerName}`);
+      
+      const result = await peripheralOverwatch.scanPeriphery(frameBase64, {
+        officerName,
+        ...context,
+      });
+
+      // Emit peripheral threats to dashboard
+      if (result.threats && result.threats.length > 0) {
+        io.emit('PERIPHERAL_THREAT', {
+          officerName,
+          threats: result.threats,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      logger.error('Peripheral scan request error', error);
+    }
+  });
+
+  // KINEMATIC PREDICTION REQUEST (Mobile → Server)
+  socket.on('KINEMATIC_PREDICTION_REQUEST', async (data) => {
+    try {
+      const { officerName, movementData, timestamp } = data;
+      
+      log(`KINEMATIC_PREDICTION_REQUEST received from ${socket.id} for ${officerName}`);
+      
+      const prediction = await kinematicIntentPrediction.predictIntent(
+        officerName,
+        movementData,
+        {}
+      );
+
+      // Emit kinematic prediction to dashboard
+      if (prediction.predictedIntent) {
+        io.emit('KINEMATIC_PREDICTION', {
+          officerName,
+          prediction,
+          timestamp: timestamp || new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      logger.error('Kinematic prediction request error', error);
+    }
+  });
+
+  // DE-ESCALATION CHECK REQUEST (Mobile → Server)
+  socket.on('DE_ESCALATION_CHECK_REQUEST', async (data) => {
+    try {
+      const { officerName, detectionResults, telemetryState, audioTranscripts = [] } = data;
+      
+      log(`DE_ESCALATION_CHECK_REQUEST received from ${socket.id} for ${officerName}`);
+      
+      const stabilization = await deEscalationReferee.checkStabilization(
+        officerName,
+        detectionResults,
+        telemetryState,
+        audioTranscripts
+      );
+
+      // Emit de-escalation status to dashboard
+      io.emit('DE_ESCALATION_STATUS', {
+        officerName,
+        stabilization,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error('De-escalation check request error', error);
+    }
+  });
+
+  // FACT ANCHOR (Mobile → Server)
+  socket.on('FACT_ANCHOR', async (data) => {
+    try {
+      const { officerName, fact, metadata = {} } = data;
+      
+      log(`FACT_ANCHOR received from ${socket.id} for ${officerName}`);
+      
+      const anchoredFact = await factAnchoring.anchorFact(officerName, fact, metadata);
+
+      // Emit fact anchored to dashboard
+      io.emit('FACT_ANCHORED', {
+        officerName,
+        fact: anchoredFact,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error('Fact anchor error', error);
+    }
+  });
+
+  // DICTATION COMMAND (Mobile → Server)
+  socket.on('DICTATION_COMMAND', async (data) => {
+    try {
+      const { officerName, transcript, context = {} } = data;
+      
+      log(`DICTATION_COMMAND received from ${socket.id} for ${officerName}`);
+      
+      const result = await dictationOverlay.processCommand(officerName, transcript, context);
+
+      // Emit dictation command processed to dashboard
+      io.emit('DICTATION_COMMAND_PROCESSED', {
+        officerName,
+        command: result,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error('Dictation command error', error);
+    }
+  });
+
   // Enhanced Audio Analysis
   socket.on('ENHANCED_AUDIO_ANALYSIS', async (data) => {
     try {
@@ -295,8 +411,98 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Location Intelligence - Classify Location
+  socket.on('LOCATION_CLASSIFY', async (data) => {
+    try {
+      const { officerName, location, context } = data;
+      
+      const locationIntelligence = require('./services/locationIntelligence');
+      const classification = await locationIntelligence.classifyLocation(location, context);
+      
+      // Emit location signal to dashboard
+      io.emit('LOCATION_SIGNAL', {
+        officerName,
+        signalType: 'location_classification',
+        signal: classification,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error('Location classify error', error);
+    }
+  });
+
   // Coordination Analysis
-  socket.on('COORDINATION_ANALYSIS', (data) => {
+  socket.on('COORDINATION_ANALYSIS', async (data) => {
+    try {
+      const { officerName, location, timestamp } = data;
+      
+      const coordinationAnalysis = require('./services/coordinationAnalysis');
+      const analysis = await coordinationAnalysis.analyzeProximity(officerName, location);
+      
+      // Emit coordination signal to dashboard
+      if (analysis.signals && analysis.signals.length > 0) {
+        analysis.signals.forEach(signal => {
+          io.emit('COORDINATION_SIGNAL', {
+            officerName,
+            signalType: signal.type,
+            signal: signal,
+            timestamp: timestamp || new Date().toISOString(),
+          });
+        });
+      }
+    } catch (error) {
+      logger.error('Coordination analysis error', error);
+    }
+  });
+
+  // Temporal Analysis
+  socket.on('TEMPORAL_ANALYSIS', async (data) => {
+    try {
+      const { officerName, signals, timestamp } = data;
+      
+      const temporalAnalysis = require('./services/temporalAnalysis');
+      const analysis = await temporalAnalysis.analyzeTimeCorrelation(signals, timestamp);
+      
+      // Emit temporal signal to dashboard
+      if (analysis.correlated) {
+        io.emit('TEMPORAL_SIGNAL', {
+          officerName,
+          signalType: 'temporal_correlation',
+          signal: analysis,
+          timestamp: timestamp || new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      logger.error('Temporal analysis error', error);
+    }
+  });
+
+  // Signal Correlation
+  socket.on('SIGNAL_CORRELATION', async (data) => {
+    try {
+      const { officerName, signals, timestamp } = data;
+      
+      const signalCorrelation = require('./services/signalCorrelation');
+      const correlation = await signalCorrelation.correlateSignals(signals, {
+        officerName,
+        timestamp,
+      });
+      
+      // Emit correlation signal to dashboard
+      if (correlation.correlated) {
+        io.emit('SIGNAL_CORRELATION', {
+          officerName,
+          signal: correlation,
+          timestamp: timestamp || new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      logger.error('Signal correlation error', error);
+    }
+  });
+
+  // Legacy Coordination Analysis (keep for backward compatibility)
+  socket.on('COORDINATION_ANALYSIS_LEGACY', async (data) => {
     try {
       const { officerName, lat, lng, otherOfficers = [], options = {} } = data;
       

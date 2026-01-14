@@ -5,6 +5,11 @@ import logger from '../utils/logger';
 import PatternTimeline from '../components/PatternTimeline';
 import TriageGateCountdown from '../components/TriageGateCountdown';
 import LiveFeedViewer from '../components/LiveFeedViewer';
+import PeripheralThreatDisplay from '../components/PeripheralThreatDisplay';
+import KinematicPredictionAlert from '../components/KinematicPredictionAlert';
+import DeEscalationStatusIndicator from '../components/DeEscalationStatusIndicator';
+import FactTimelineView from '../components/FactTimelineView';
+import DictationCommandLog from '../components/DictationCommandLog';
 
 // Bridge server URL - update this to match your server
 // Bridge server URL - from environment or default
@@ -33,6 +38,11 @@ interface OfficerState {
     active: boolean;
     endedReason?: string;
   };
+  peripheralThreats?: any[];
+  kinematicPrediction?: any;
+  deEscalationStatus?: any;
+  facts?: any[];
+  dictationCommands?: any[];
 }
 
 interface ContextualSignal {
@@ -370,6 +380,98 @@ export default function Dashboard() {
     newSocket.on('DISPATCH_PREVENTED', (data: { officerName: string; reason: string; thresholds: any; deEscalation: any }) => {
       logger.info('DISPATCH_PREVENTED received', { data });
       // Log that dispatch was prevented
+    });
+
+    // Listen for Peripheral Threat
+    newSocket.on('PERIPHERAL_THREAT', (data: { officerName: string; threats: any[]; timestamp: string }) => {
+      logger.info('PERIPHERAL_THREAT received', { data });
+      setOfficers(prev => {
+        const updated = new Map(prev);
+        const officer = updated.get(data.officerName) || {
+          officerName: data.officerName,
+          sessionId: null,
+          lastContact: new Date(),
+          location: null,
+          signals: [],
+        };
+        officer.peripheralThreats = data.threats;
+        updated.set(data.officerName, officer);
+        return updated;
+      });
+    });
+
+    // Listen for Kinematic Prediction
+    newSocket.on('KINEMATIC_PREDICTION', (data: { officerName: string; prediction: any; timestamp: string }) => {
+      logger.info('KINEMATIC_PREDICTION received', { data });
+      setOfficers(prev => {
+        const updated = new Map(prev);
+        const officer = updated.get(data.officerName) || {
+          officerName: data.officerName,
+          sessionId: null,
+          lastContact: new Date(),
+          location: null,
+          signals: [],
+        };
+        officer.kinematicPrediction = data.prediction;
+        updated.set(data.officerName, officer);
+        return updated;
+      });
+    });
+
+    // Listen for De-escalation Status
+    newSocket.on('DE_ESCALATION_STATUS', (data: { officerName: string; stabilization: any; timestamp: string }) => {
+      logger.info('DE_ESCALATION_STATUS received', { data });
+      setOfficers(prev => {
+        const updated = new Map(prev);
+        const officer = updated.get(data.officerName) || {
+          officerName: data.officerName,
+          sessionId: null,
+          lastContact: new Date(),
+          location: null,
+          signals: [],
+        };
+        officer.deEscalationStatus = data.stabilization;
+        updated.set(data.officerName, officer);
+        return updated;
+      });
+    });
+
+    // Listen for Fact Anchored
+    newSocket.on('FACT_ANCHORED', (data: { officerName: string; fact: any; timestamp: string }) => {
+      logger.info('FACT_ANCHORED received', { data });
+      setOfficers(prev => {
+        const updated = new Map(prev);
+        const officer = updated.get(data.officerName) || {
+          officerName: data.officerName,
+          sessionId: null,
+          lastContact: new Date(),
+          location: null,
+          signals: [],
+        };
+        if (!officer.facts) officer.facts = [];
+        officer.facts.push(data.fact);
+        updated.set(data.officerName, officer);
+        return updated;
+      });
+    });
+
+    // Listen for Dictation Command Processed
+    newSocket.on('DICTATION_COMMAND_PROCESSED', (data: { officerName: string; command: any; timestamp: string }) => {
+      logger.info('DICTATION_COMMAND_PROCESSED received', { data });
+      setOfficers(prev => {
+        const updated = new Map(prev);
+        const officer = updated.get(data.officerName) || {
+          officerName: data.officerName,
+          sessionId: null,
+          lastContact: new Date(),
+          location: null,
+          signals: [],
+        };
+        if (!officer.dictationCommands) officer.dictationCommands = [];
+        officer.dictationCommands.push(data.command);
+        updated.set(data.officerName, officer);
+        return updated;
+      });
     });
 
     setSocket(newSocket);
@@ -729,15 +831,55 @@ export default function Dashboard() {
                 />
               )}
 
-              {/* Pattern Timeline */}
-              {selectedOfficerData.signals.length > 0 && (
-                <div style={{ marginBottom: '20px' }}>
-                  <PatternTimeline 
-                    signals={selectedOfficerData.signals} 
-                    officerName={selectedOfficerData.officerName}
-                  />
-                </div>
-              )}
+            {/* Peripheral Threat Display */}
+            {selectedOfficerData.peripheralThreats && selectedOfficerData.peripheralThreats.length > 0 && (
+              <PeripheralThreatDisplay
+                threats={selectedOfficerData.peripheralThreats}
+                officerName={selectedOfficer}
+              />
+            )}
+
+            {/* Kinematic Prediction Alert */}
+            {selectedOfficerData.kinematicPrediction && (
+              <KinematicPredictionAlert
+                prediction={selectedOfficerData.kinematicPrediction}
+                officerName={selectedOfficer}
+              />
+            )}
+
+            {/* De-escalation Status Indicator */}
+            {selectedOfficerData.deEscalationStatus && (
+              <DeEscalationStatusIndicator
+                stabilization={selectedOfficerData.deEscalationStatus}
+                officerName={selectedOfficer}
+              />
+            )}
+
+            {/* Fact Timeline View */}
+            {selectedOfficerData.facts && selectedOfficerData.facts.length > 0 && (
+              <FactTimelineView
+                facts={selectedOfficerData.facts}
+                officerName={selectedOfficer}
+              />
+            )}
+
+            {/* Dictation Command Log */}
+            {selectedOfficerData.dictationCommands && selectedOfficerData.dictationCommands.length > 0 && (
+              <DictationCommandLog
+                commands={selectedOfficerData.dictationCommands}
+                officerName={selectedOfficer}
+              />
+            )}
+
+            {/* Pattern Timeline */}
+            {selectedOfficerData.signals.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <PatternTimeline 
+                  signals={selectedOfficerData.signals} 
+                  officerName={selectedOfficerData.officerName}
+                />
+              </div>
+            )}
               
               <div className={styles.signalsHeader}>
                 <button 
