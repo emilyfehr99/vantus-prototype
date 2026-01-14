@@ -9,6 +9,7 @@ const auditLogger = require('./services/auditLogger');
 const cadService = require('./services/cadService');
 const geocodingService = require('./services/geocodingService');
 const videoProcessingService = require('./services/videoProcessingService');
+const llmVisionService = require('./services/llmVisionService');
 const logger = require('./utils/logger');
 
 const app = express();
@@ -71,6 +72,19 @@ if (process.env.GEOCODING_API_URL) {
   logger.info('Geocoding Service initialized');
 } else {
   logger.info('Geocoding Service not configured (missing GEOCODING_API_URL)');
+}
+
+// LLM Vision Service (for image detection)
+if (process.env.LLM_VISION_PROVIDER && process.env.LLM_VISION_API_KEY) {
+  llmVisionService.initialize(
+    process.env.LLM_VISION_PROVIDER,
+    process.env.LLM_VISION_API_KEY,
+    process.env.LLM_VISION_MODEL || null,
+    process.env.LLM_VISION_API_URL || null
+  );
+  logger.info('LLM Vision Service initialized');
+} else {
+  logger.info('LLM Vision Service not configured (set LLM_VISION_PROVIDER and LLM_VISION_API_KEY)');
 }
 
 // Geocoding Service

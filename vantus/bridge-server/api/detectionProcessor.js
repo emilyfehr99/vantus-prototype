@@ -5,6 +5,7 @@
  */
 
 const logger = require('../utils/logger');
+const llmVisionService = require('../services/llmVisionService');
 
 class DetectionProcessor {
   constructor() {
@@ -97,57 +98,123 @@ class DetectionProcessor {
   }
 
   /**
-   * Detect weapons in frame
-   * In production: Would use YOLOv8-nano model
+   * Detect weapons in frame using LLM vision
    */
   async detectWeapons(frame) {
-    // TODO: Integrate actual YOLOv8-nano model
-    // For now, return structure ready for integration
-    
-    return {
-      detected: false,
-      category: 'weapon',
-      confidence: 0,
-      detections: [],
-      model: 'yolov8-nano',
-      ready: false, // Model not loaded on server yet
-    };
+    if (!frame.base64) {
+      return {
+        detected: false,
+        category: 'weapon',
+        confidence: 0,
+        detections: [],
+        model: 'llm-vision',
+        error: 'No image data',
+      };
+    }
+
+    try {
+      const analysis = await llmVisionService.analyzeImage(frame.base64, {
+        frameTime: frame.videoTime,
+      });
+
+      return analysis.weapon || {
+        detected: false,
+        category: 'weapon',
+        confidence: 0,
+        detections: [],
+        model: 'llm-vision',
+      };
+    } catch (error) {
+      logger.error('Weapon detection error', error);
+      return {
+        detected: false,
+        category: 'weapon',
+        confidence: 0,
+        detections: [],
+        model: 'llm-vision',
+        error: error.message,
+      };
+    }
   }
 
   /**
-   * Detect stance patterns
-   * In production: Would use MoveNet + custom logic
+   * Detect stance patterns using LLM vision
    */
   async detectStance(frame) {
-    // TODO: Integrate MoveNet model
-    // For now, return structure ready for integration
-    
-    return {
-      detected: false,
-      category: 'stance',
-      confidence: 0,
-      type: null,
-      model: 'movenet',
-      ready: false, // Model not loaded on server yet
-    };
+    if (!frame.base64) {
+      return {
+        detected: false,
+        category: 'stance',
+        confidence: 0,
+        type: null,
+        model: 'llm-vision',
+        error: 'No image data',
+      };
+    }
+
+    try {
+      const analysis = await llmVisionService.analyzeImage(frame.base64, {
+        frameTime: frame.videoTime,
+      });
+
+      return analysis.stance || {
+        detected: false,
+        category: 'stance',
+        confidence: 0,
+        type: null,
+        model: 'llm-vision',
+      };
+    } catch (error) {
+      logger.error('Stance detection error', error);
+      return {
+        detected: false,
+        category: 'stance',
+        confidence: 0,
+        type: null,
+        model: 'llm-vision',
+        error: error.message,
+      };
+    }
   }
 
   /**
-   * Detect hand patterns
-   * In production: Would use custom classifier
+   * Detect hand patterns using LLM vision
    */
   async detectHands(frame) {
-    // TODO: Integrate hand detection model
-    // For now, return structure ready for integration
-    
-    return {
-      detected: false,
-      category: 'hands',
-      confidence: 0,
-      pattern: null,
-      model: 'custom-classifier',
-      ready: false, // Model not loaded on server yet
-    };
+    if (!frame.base64) {
+      return {
+        detected: false,
+        category: 'hands',
+        confidence: 0,
+        pattern: null,
+        model: 'llm-vision',
+        error: 'No image data',
+      };
+    }
+
+    try {
+      const analysis = await llmVisionService.analyzeImage(frame.base64, {
+        frameTime: frame.videoTime,
+      });
+
+      return analysis.hands || {
+        detected: false,
+        category: 'hands',
+        confidence: 0,
+        pattern: null,
+        model: 'llm-vision',
+      };
+    } catch (error) {
+      logger.error('Hand detection error', error);
+      return {
+        detected: false,
+        category: 'hands',
+        confidence: 0,
+        pattern: null,
+        model: 'llm-vision',
+        error: error.message,
+      };
+    }
   }
 
   /**
