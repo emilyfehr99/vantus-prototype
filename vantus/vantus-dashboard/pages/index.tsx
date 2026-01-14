@@ -3,6 +3,8 @@ import { io, Socket } from 'socket.io-client';
 import styles from '../styles/Dashboard.module.css';
 import logger from '../utils/logger';
 import PatternTimeline from '../components/PatternTimeline';
+import TriageGateCountdown from '../components/TriageGateCountdown';
+import LiveFeedViewer from '../components/LiveFeedViewer';
 
 // Bridge server URL - update this to match your server
 // Bridge server URL - from environment or default
@@ -46,6 +48,7 @@ export default function Dashboard() {
   const [flaggedSignals, setFlaggedSignals] = useState<Set<string>>(new Set());
   const [currentTime, setCurrentTime] = useState<string>('');
   const [mounted, setMounted] = useState(false);
+  const [supervisorId] = useState<string>('SUPERVISOR_001'); // Would come from auth
   const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -263,6 +266,134 @@ export default function Dashboard() {
         return updated;
       });
     });
+
+    // Listen for Triage Gate Countdown
+    newSocket.on('TRIAGE_GATE_COUNTDOWN', (data: { officerName: string; countdownId: string; countdown: any; dispatchPayload: any; remaining: number }) => {
+      logger.info('TRIAGE_GATE_COUNTDOWN received', { data });
+      // Store countdown state for UI display
+      setOfficers(prev => {
+        const updated = new Map(prev);
+        const officer = updated.get(data.officerName) || {
+          officerName: data.officerName,
+          sessionId: null,
+          lastContact: new Date(),
+          location: null,
+          signals: [],
+        };
+        officer.triageCountdown = {
+          id: data.countdownId,
+          remaining: data.remaining,
+          dispatchPayload: data.dispatchPayload,
+          canVeto: true,
+        };
+        updated.set(data.officerName, officer);
+        return updated;
+      });
+    });
+
+    // Listen for Triage Gate Updates
+    newSocket.on('TRIAGE_GATE_UPDATE', (data: { officerName: string; remaining: number; countdown: any }) => {
+      setOfficers(prev => {
+        const updated = new Map(prev);
+        const officer = updated.get(data.officerName);
+        if (officer && officer.triageCountdown) {
+          officer.triageCountdown.remaining = data.remaining;
+        }
+        return updated;
+      });
+    });
+
+    // Listen for Triage Gate Vetoed
+    newSocket.on('TRIAGE_GATE_VETOED', (data: { officerName: string; supervisorId?: string; reason: string; autoVetoed?: boolean }) => {
+      logger.info('TRIAGE_GATE_VETOED received', { data });
+      setOfficers(prev => {
+        const updated = new Map(prev);
+        const officer = updated.get(data.officerName);
+        if (officer && officer.triageCountdown) {
+          officer.triageCountdown = undefined; // Clear countdown
+        }
+        return updated;
+      });
+    });
+
+    // Listen for Live Feed Hand-off
+    newSocket.on('LIVE_FEED_HANDOFF', (data: { officerName: string; streamId: string; stream: any; tacticalIntent: any }) => {
+      logger.info('LIVE_FEED_HANDOFF received', { data });
+      setOfficers(prev => {
+        const updated = new Map(prev);
+        const officer = updated.get(data.officerName) || {
+          officerName: data.officerName,
+          sessionId: null,
+          lastContact: new Date(),
+          location: null,
+          signals: [],
+        };
+        officer.liveStream = {
+          streamId: data.streamId,
+          streamUrl: data.stream.streamUrl,
+          tacticalIntent: data.tacticalIntent,
+          active: true,
+        };
+        updated.set(data.officerName, officer);
+        return updated;
+      });
+    });
+
+    // Listen for Live Feed Ended
+    newSocket.on('LIVE_FEED_ENDED', (data: { officerName: string; reason: string }) => {
+      logger.info('LIVE_FEED_ENDED received', { data });
+      setOfficers(prev => {
+        const updated = new Map(prev);
+        const officer = updated.get(data.officerName);
+        if (officer && officer.liveStream) {
+          officer.liveStream.active = false;
+          officer.liveStream.endedReason = data.reason;
+        }
+        return updated;
+      });
+    });
+
+    // Listen for Dispatch Prevented
+    newSocket.on('DISPATCH_PREVENTED', (data: { officerName: string; reason: string; thresholds: any; deEscalation: any }) => {
+      logger.info('DISPATCH_PREVENTED received', { data });
+      // Log that dispatch was prevented
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.close();
+      clearInterval(timeInterval);
+    };
+  }, []);
+
+  // Handle triage gate veto
+  const handleTriageVeto = async (officerName: string, reason: string) => {
+    if (!socket || !socket.connected) {
+      logger.error('Socket not connected');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${BRIDGE_SERVER_URL}/api/triage/veto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          officerName,
+          supervisorId: 'SUPERVISOR_001', // Would come from auth
+          reason,
+        }),
+      });
+
+      if (response.ok) {
+        logger.info('Triage veto sent successfully', { officerName, reason });
+      } else {
+        logger.error('Triage veto failed', { officerName, reason });
+      }
+    } catch (error) {
+      logger.error('Triage veto error', error);
+    }
+  };
 
     // Legacy support for old alert system
     newSocket.on('DASHBOARD_ALERT', (data: any) => {

@@ -262,13 +262,18 @@ class AutoDispatch {
 
   /**
    * Dispatch backup (auto-dispatch)
+   * Now uses Silent Dispatch Override: Only dispatches when thresholds crossed AND not de-escalated
    * @param {Object} condition - Condition that triggered dispatch
    * @param {Object} detectionResults - Detection results from AI models
    * @param {Object} telemetryState - Current telemetry state
    * @param {Object} officerInfo - Officer information
-   * @returns {Promise<Object>} Dispatch payload
+   * @returns {Promise<Object>} Dispatch payload or null if vetoed/de-escalated
    */
   async dispatchBackup(condition, detectionResults, telemetryState, officerInfo) {
+    // Use Silent Dispatch Override: Check thresholds AND de-escalation
+    // This will be handled by bridge server's silentDispatchOverride service
+    // For now, create payload and send to bridge server for processing
+    
     const dispatchPayload = this.createDispatchPayload(
       condition,
       detectionResults,
@@ -276,17 +281,18 @@ class AutoDispatch {
       officerInfo
     );
 
-    // Log dispatch
+    // Log dispatch attempt
     this.dispatchHistory.push({
       ...dispatchPayload,
       dispatchedAt: new Date().toISOString(),
+      condition: condition.type,
     });
 
-    // Send to bridge server
-    // In production, this would also send to CAD system
-    logger.info('AUTO-DISPATCH TRIGGERED', { dispatchPayload });
+    // Send to bridge server for Silent Dispatch Override processing
+    // Bridge server will check thresholds and de-escalation before dispatching
+    logger.info('AUTO-DISPATCH TRIGGERED (pending Silent Dispatch Override check)', { dispatchPayload });
 
-    // Return payload for sending
+    // Return payload for sending to bridge server
     return dispatchPayload;
   }
 

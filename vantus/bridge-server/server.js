@@ -25,6 +25,9 @@ const kinematicIntentPrediction = require('./services/kinematicIntentPrediction'
 const deEscalationReferee = require('./services/deEscalationReferee');
 const factAnchoring = require('./services/factAnchoring');
 const dictationOverlay = require('./services/dictationOverlay');
+const intelligentTriageGate = require('./services/intelligentTriageGate');
+const silentDispatchOverride = require('./services/silentDispatchOverride');
+const liveFeedHandoff = require('./services/liveFeedHandoff');
 const logger = require('./utils/logger');
 
 const app = express();
@@ -368,12 +371,125 @@ io.on('connection', (socket) => {
     log(`EMERGENCY_DISPATCH received from ${socket.id}`);
     log(`Dispatch payload: ${JSON.stringify(dispatchPayload)}`);
     
+    const officerName = dispatchPayload.officer?.id || dispatchPayload.officerName;
+    
     auditLogger.log({
       eventType: 'EMERGENCY_DISPATCH',
-      officerName: dispatchPayload.officer?.id,
+      officerName,
       dispatchPayload: dispatchPayload,
     });
     
+    // Use Silent Dispatch Override: Check thresholds AND de-escalation
+    // Get current detection results and telemetry state (would come from mobile app)
+    // For now, use dispatchPayload data
+    const detectionResults = dispatchPayload.detectionResults || {};
+    const telemetryState = dispatchPayload.telemetryState || {};
+    const audioTranscripts = dispatchPayload.audioTranscripts || [];
+    
+    // Check if should dispatch (thresholds crossed AND not de-escalated)
+    const dispatchDecision = await silentDispatchOverride.shouldDispatch(
+      officerName,
+      dispatchPayload,
+      detectionResults,
+      telemetryState,
+      audioTranscripts
+    );
+
+    // If triage gate initiated, emit to dashboard for supervisor review
+    if (dispatchDecision.triageGate && dispatchDecision.triageGate.initiated) {
+      const countdown = dispatchDecision.triageGate.countdown;
+      
+      // Emit triage gate countdown to dashboards
+      io.emit('TRIAGE_GATE_COUNTDOWN', {
+        officerName,
+        countdownId: countdown.id,
+        countdown,
+        dispatchPayload: dispatchDecision.dispatchPayload,
+        remaining: countdown.remaining,
+        message: '10-second countdown - supervisor can veto',
+      });
+      
+      log(`TRIAGE_GATE_COUNTDOWN emitted to dashboards for ${officerName}`);
+      
+      // Initiate live feed hand-off
+      const tacticalIntent = dispatchDecision.dispatchPayload?.tacticalIntent || {};
+      const handoff = liveFeedHandoff.initiateHandoff(
+        officerName,
+        dispatchPayload,
+        tacticalIntent,
+        null // Stream URL would come from mobile app
+      );
+      
+      if (handoff.initiated) {
+        io.emit('LIVE_FEED_HANDOFF', {
+          officerName,
+          streamId: handoff.streamId,
+          stream: handoff.stream,
+          tacticalIntent,
+        });
+        log(`LIVE_FEED_HANDOFF emitted to dashboards for ${officerName}`);
+      }
+      
+      // Start countdown monitoring
+      const countdownInterval = setInterval(async () => {
+        const status = await intelligentTriageGate.checkCountdownStatus(
+          officerName,
+          detectionResults,
+          telemetryState,
+          audioTranscripts
+        );
+        
+        if (!status.active) {
+          clearInterval(countdownInterval);
+          
+          if (status.shouldDispatch && !status.autoVetoed) {
+            // Countdown expired - proceed with dispatch
+            await executeFinalDispatch(officerName, dispatchDecision.dispatchPayload);
+          } else if (status.autoVetoed) {
+            // Auto-vetoed due to de-escalation
+            io.emit('TRIAGE_GATE_VETOED', {
+              officerName,
+              reason: status.reason,
+              autoVetoed: true,
+            });
+            liveFeedHandoff.endHandoff(officerName, 'Situation stabilized');
+          }
+        } else {
+          // Update countdown
+          io.emit('TRIAGE_GATE_UPDATE', {
+            officerName,
+            remaining: status.remaining,
+            countdown: status.countdown,
+          });
+        }
+      }, 1000); // Check every second
+      
+      return; // Don't dispatch immediately - wait for countdown
+    }
+    
+    // If should not dispatch (de-escalated or thresholds not crossed)
+    if (!dispatchDecision.shouldDispatch) {
+      log(`Dispatch prevented: ${dispatchDecision.reason}`, {
+        officerName,
+        reason: dispatchDecision.reason,
+      });
+      
+      io.emit('DISPATCH_PREVENTED', {
+        officerName,
+        reason: dispatchDecision.reason,
+        thresholds: dispatchDecision.thresholds,
+        deEscalation: dispatchDecision.deEscalation,
+      });
+      
+      return;
+    }
+    
+    // Fallback: Direct dispatch (if triage gate not used)
+    await executeFinalDispatch(officerName, dispatchDecision.dispatchPayload || dispatchPayload);
+  });
+
+  // Helper function to execute final dispatch
+  async function executeFinalDispatch(officerName, dispatchPayload) {
     // Add address via reverse geocoding if not present
     if (dispatchPayload.location && !dispatchPayload.location.address) {
       try {
@@ -405,7 +521,7 @@ io.on('connection', (socket) => {
     // Broadcast to dashboards
     io.emit('EMERGENCY_DISPATCH_UPDATE', dispatchPayload);
     log(`EMERGENCY_DISPATCH broadcasted to dashboards`);
-  });
+  }
 
   // Handle disconnection
   socket.on('disconnect', () => {
@@ -997,6 +1113,161 @@ app.post('/api/dictation/command', async (req, res) => {
     res.json({ success: true, result });
   } catch (error) {
     logger.error('Dictation command error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Intelligent Triage Gate
+app.post('/api/triage/veto', (req, res) => {
+  try {
+    const { officerName, supervisorId, reason } = req.body;
+    
+    if (!officerName || !supervisorId) {
+      return res.status(400).json({ error: 'Officer name and supervisor ID required' });
+    }
+
+    const result = intelligentTriageGate.vetoDispatch(officerName, supervisorId, reason);
+    
+    // Emit veto to dashboards
+    io.emit('TRIAGE_GATE_VETOED', {
+      officerName,
+      supervisorId,
+      reason,
+      timestamp: new Date().toISOString(),
+    });
+    
+    // End live feed if active
+    liveFeedHandoff.endHandoff(officerName, `Vetoed by supervisor: ${reason || 'No reason provided'}`);
+    
+    res.json({ success: true, result });
+  } catch (error) {
+    logger.error('Triage veto error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/triage/countdowns', (req, res) => {
+  try {
+    const countdowns = intelligentTriageGate.getActiveCountdowns();
+    res.json({ success: true, countdowns });
+  } catch (error) {
+    logger.error('Triage countdowns error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/triage/countdown/:officerName', (req, res) => {
+  try {
+    const { officerName } = req.params;
+    const countdown = intelligentTriageGate.getCountdown(officerName);
+    
+    if (!countdown) {
+      return res.status(404).json({ error: 'No active countdown found' });
+    }
+    
+    res.json({ success: true, countdown });
+  } catch (error) {
+    logger.error('Triage countdown error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Silent Dispatch Override
+app.post('/api/dispatch/check', async (req, res) => {
+  try {
+    const { officerName, threatData, detectionResults, telemetryState, audioTranscripts } = req.body;
+    
+    if (!officerName || !threatData) {
+      return res.status(400).json({ error: 'Officer name and threat data required' });
+    }
+
+    const decision = await silentDispatchOverride.shouldDispatch(
+      officerName,
+      threatData,
+      detectionResults || {},
+      telemetryState || {},
+      audioTranscripts || []
+    );
+
+    res.json({ success: true, decision });
+  } catch (error) {
+    logger.error('Silent dispatch check error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Live Feed Hand-off
+app.post('/api/live-feed/initiate', (req, res) => {
+  try {
+    const { officerName, crisisData, tacticalIntent, streamUrl } = req.body;
+    
+    if (!officerName || !crisisData) {
+      return res.status(400).json({ error: 'Officer name and crisis data required' });
+    }
+
+    const result = liveFeedHandoff.initiateHandoff(officerName, crisisData, tacticalIntent || {}, streamUrl);
+    
+    // Emit to dashboards
+    io.emit('LIVE_FEED_HANDOFF', {
+      officerName,
+      streamId: result.streamId,
+      stream: result.stream,
+      tacticalIntent: tacticalIntent || {},
+    });
+    
+    res.json({ success: true, result });
+  } catch (error) {
+    logger.error('Live feed hand-off error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/live-feed/end', (req, res) => {
+  try {
+    const { officerName, reason } = req.body;
+    
+    if (!officerName) {
+      return res.status(400).json({ error: 'Officer name required' });
+    }
+
+    const result = liveFeedHandoff.endHandoff(officerName, reason || 'Crisis resolved');
+    
+    // Emit to dashboards
+    io.emit('LIVE_FEED_ENDED', {
+      officerName,
+      reason: reason || 'Crisis resolved',
+      timestamp: new Date().toISOString(),
+    });
+    
+    res.json({ success: true, result });
+  } catch (error) {
+    logger.error('Live feed end error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/live-feed/streams', (req, res) => {
+  try {
+    const streams = liveFeedHandoff.getActiveStreams();
+    res.json({ success: true, streams });
+  } catch (error) {
+    logger.error('Live feed streams error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/live-feed/stream/:officerName', (req, res) => {
+  try {
+    const { officerName } = req.params;
+    const stream = liveFeedHandoff.getStream(officerName);
+    
+    if (!stream) {
+      return res.status(404).json({ error: 'No active stream found' });
+    }
+    
+    res.json({ success: true, stream });
+  } catch (error) {
+    logger.error('Live feed stream error', error);
     res.status(500).json({ error: error.message });
   }
 });
