@@ -22,6 +22,8 @@ import configService from './utils/config';
 import { getOfficerId, getServerUrl } from './utils/constants';
 import logger from './utils/logger';
 import llmService from './services/llmService';
+import signalFusion from './services/signalFusion';
+import signalValidation from './services/signalValidation';
 
 // Bridge server URL - now from config
 const BRIDGE_SERVER_URL = configService.getServerUrl('bridge') || 'http://localhost:3001';
@@ -478,13 +480,47 @@ export default function App() {
     // Generate baseline-relative signals
     // This uses per-officer baselines, not global thresholds
     const officerName = getOfficerId(badgeNumber);
-    const signals = baselineRelativeSignals.generateAllSignals(
+    const rawSignals = baselineRelativeSignals.generateAllSignals(
       state,
       movementData,
       audioTranscripts,
       markerEvents,
       officerName
     );
+    
+    // Validate signals to reduce false positives
+    const validatedSignals = rawSignals.map(signal => {
+      const validation = signalValidation.validateSignal(
+        signal,
+        rawSignals.filter(s => s !== signal), // Other signals for context
+        state,
+        { operationalContext: state.operationalContext }
+      );
+      
+      // Use adjusted confidence if validation changed it
+      if (validation.adjustedConfidence !== validation.confidence) {
+        return {
+          ...signal,
+          probability: validation.adjustedConfidence,
+          validation: {
+            originalConfidence: validation.confidence,
+            adjustedConfidence: validation.adjustedConfidence,
+            warnings: validation.warnings,
+          },
+        };
+      }
+      
+      return signal;
+    });
+    
+    // Fuse related signals for better accuracy
+    const fusedSignals = signalFusion.fuseSignals(validatedSignals, {
+      operationalContext: state.operationalContext,
+      sessionDuration: state.sessionDuration,
+    });
+    
+    // Use fused signals (they include validated signals that weren't fused)
+    const signals = fusedSignals.length > 0 ? fusedSignals : validatedSignals;
     
     // Run multi-model detections (weapon, stance, hands, biometric, audio)
     // Note: Models may not be loaded yet, but system is ready
