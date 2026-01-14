@@ -1,7 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import styles from '../styles/Dashboard.module.css';
+// import styles from '../styles/Dashboard.module.css'; // Commented out if file doesn't exist
 import logger from '../utils/logger';
+
+// Temporary styles object if CSS module doesn't exist
+const styles: any = {};
 import PatternTimeline from '../components/PatternTimeline';
 import TriageGateCountdown from '../components/TriageGateCountdown';
 import LiveFeedViewer from '../components/LiveFeedViewer';
@@ -89,6 +92,37 @@ export default function Dashboard() {
       transports: ['websocket'],
       reconnection: true,
     });
+
+    const fetchOfficerStates = async () => {
+      try {
+        const response = await fetch(`${BRIDGE_SERVER_URL}/api/officers`);
+        const data = await response.json();
+        
+        setOfficers((prev: Map<string, OfficerState>) => {
+          const updated = new Map(prev);
+          data.officers.forEach((officer: any) => {
+            const existing = updated.get(officer.officerName) || {
+              officerName: officer.officerName,
+              sessionId: null,
+              lastContact: new Date(),
+              location: null,
+              signals: [],
+            };
+            
+            existing.sessionId = officer.sessionId;
+            existing.lastContact = new Date(officer.lastContact);
+            if (officer.location) {
+              existing.location = officer.location;
+            }
+            
+            updated.set(officer.officerName, existing);
+          });
+          return updated;
+        });
+      } catch (error) {
+        logger.error('Failed to fetch officer states', error);
+      }
+    };
 
     newSocket.on('connect', () => {
       logger.info('Dashboard connected to bridge server');
@@ -382,7 +416,48 @@ export default function Dashboard() {
       // Log that dispatch was prevented
     });
 
-    // Listen for Peripheral Threat
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.close();
+      clearInterval(timeInterval);
+    };
+  }, []);
+
+  // Handle triage gate veto
+  const handleTriageVeto = async (officerName: string, reason: string) => {
+    if (!socket || !socket.connected) {
+      logger.error('Socket not connected');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${BRIDGE_SERVER_URL}/api/triage/veto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          officerName,
+          supervisorId: supervisorId,
+          reason,
+        }),
+      });
+
+      if (response.ok) {
+        logger.info('Triage veto sent successfully', { officerName, reason });
+      } else {
+        logger.error('Triage veto failed', { officerName, reason });
+      }
+    } catch (error) {
+      logger.error('Triage veto error', error);
+    }
+  };
+
+
+  // Listen for Peripheral Threat (moved outside useEffect for proper scope)
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('PERIPHERAL_THREAT', (data: { officerName: string; threats: any[]; timestamp: string }) => {
     newSocket.on('PERIPHERAL_THREAT', (data: { officerName: string; threats: any[]; timestamp: string }) => {
       logger.info('PERIPHERAL_THREAT received', { data });
       setOfficers(prev => {
