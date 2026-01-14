@@ -2,14 +2,39 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs-extra');
 const auditLogger = require('./services/auditLogger');
 const cadService = require('./services/cadService');
 const geocodingService = require('./services/geocodingService');
+const videoProcessingService = require('./services/videoProcessingService');
 const logger = require('./utils/logger');
 
 const app = express();
 app.use(cors());
 app.use(express.json()); // For JSON body parsing
+
+// Configure multer for file uploads
+const upload = multer({
+  dest: path.join(__dirname, '../temp/uploads'),
+  limits: {
+    fileSize: 500 * 1024 * 1024, // 500MB max file size
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept video files
+    const allowedMimes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only video files are allowed.'), false);
+    }
+  },
+});
+
+// Ensure upload directory exists
+const uploadDir = path.join(__dirname, '../temp/uploads');
+fs.ensureDirSync(uploadDir);
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -271,6 +296,118 @@ app.get('/api/audit/summary', (req, res) => {
   
   const summary = auditLogger.getAuditSummary(startDate, endDate);
   res.json(summary);
+});
+
+// Video processing endpoint
+app.post('/api/video/process', upload.single('video'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No video file provided' });
+    }
+
+    const videoPath = req.file.path;
+    const { interval = 1, officerName = null, context = null } = req.body;
+
+    logger.info('Video processing request', {
+      filename: req.file.originalname,
+      size: req.file.size,
+      interval,
+      officerName,
+    });
+
+    // Get video metadata
+    const metadata = await videoProcessingService.getVideoMetadata(videoPath);
+    logger.info('Video metadata', metadata);
+
+    // Extract frames
+    const frames = await videoProcessingService.extractFrames(videoPath, {
+      interval: parseFloat(interval),
+    });
+
+    logger.info(`Extracted ${frames.length} frames`);
+
+    // Convert frames to base64 for transmission
+    const framesWithData = await Promise.all(
+      frames.map(async (frame) => {
+        const base64 = await videoProcessingService.frameToBase64(frame.path);
+        return {
+          ...frame,
+          base64: `data:image/jpeg;base64,${base64}`,
+        };
+      })
+    );
+
+    // Clean up uploaded video file
+    await fs.remove(videoPath);
+
+    // Clean up frame files (after a delay to allow client to process)
+    setTimeout(async () => {
+      await videoProcessingService.cleanupFrames(frames.map(f => f.path));
+    }, 60000); // Clean up after 1 minute
+
+    res.json({
+      success: true,
+      metadata,
+      frames: framesWithData,
+      summary: {
+        totalFrames: frames.length,
+        duration: metadata.duration,
+        interval: parseFloat(interval),
+      },
+    });
+  } catch (error) {
+    logger.error('Video processing error', error);
+    
+    // Clean up on error
+    if (req.file && req.file.path) {
+      try {
+        await fs.remove(req.file.path);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+
+    res.status(500).json({
+      error: 'Video processing failed',
+      message: error.message,
+    });
+  }
+});
+
+// Video metadata endpoint (without processing)
+app.post('/api/video/metadata', upload.single('video'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No video file provided' });
+    }
+
+    const videoPath = req.file.path;
+    const metadata = await videoProcessingService.getVideoMetadata(videoPath);
+
+    // Clean up uploaded file
+    await fs.remove(videoPath);
+
+    res.json({
+      success: true,
+      metadata,
+    });
+  } catch (error) {
+    logger.error('Video metadata error', error);
+    
+    // Clean up on error
+    if (req.file && req.file.path) {
+      try {
+        await fs.remove(req.file.path);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+
+    res.status(500).json({
+      error: 'Failed to get video metadata',
+      message: error.message,
+    });
+  }
 });
 
 // Start server
