@@ -195,20 +195,22 @@ export const CLIENT_CONFIG = {
   // LLM CONFIGURATION (For Audio Analysis)
   // ============================================
   llm: {
-    // Provider: 'openrouter' | 'together' | 'deepseek' | 'golem'
+    // Provider: 'openrouter' | 'together' | 'deepseek' | 'golem' | 'localai' | 'anythingllm' | 'ollama'
     provider: process.env.LLM_PROVIDER || null,
     
-    // API key for LLM provider
+    // API key for LLM provider (not required for self-hosted: localai, ollama)
     apiKey: process.env.LLM_API_KEY || null,
     
     // Model name (optional - will use default for provider if not specified)
     model: process.env.LLM_MODEL || null,
     
-    // Custom API URL (required for Golem, optional for others)
+    // Custom API URL (required for self-hosted: localai, anythingllm, ollama, golem)
     apiUrl: process.env.LLM_API_URL || null,
     
     // Example configurations:
-    // OpenRouter (free tier):
+    // 
+    // Cloud Providers (Free Tier):
+    // OpenRouter:
     //   provider: 'openrouter',
     //   apiKey: 'your-openrouter-api-key',
     //   model: 'meta-llama/llama-3.2-3b-instruct:free',
@@ -223,7 +225,26 @@ export const CLIENT_CONFIG = {
     //   apiKey: 'your-deepseek-api-key',
     //   model: 'deepseek-chat',
     //
-    // Golem (requires custom API URL):
+    // Self-Hosted (Recommended for Privacy):
+    // LocalAI:
+    //   provider: 'localai',
+    //   apiKey: null, // Not required
+    //   model: 'llama3',
+    //   apiUrl: 'http://localhost:8080/v1/chat/completions',
+    //
+    // Ollama:
+    //   provider: 'ollama',
+    //   apiKey: null, // Not required
+    //   model: 'llama3',
+    //   apiUrl: 'http://localhost:11434/v1/chat/completions',
+    //
+    // AnythingLLM:
+    //   provider: 'anythingllm',
+    //   apiKey: 'your-key-if-needed',
+    //   model: 'llama3',
+    //   apiUrl: 'http://your-instance:3001/api/v1/chat/completions',
+    //
+    // Golem (custom/self-hosted):
     //   provider: 'golem',
     //   apiKey: 'your-golem-api-key',
     //   model: 'your-model-name',

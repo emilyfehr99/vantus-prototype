@@ -324,15 +324,35 @@ class MultiModelDetection {
   /**
    * Detect aggressive audio patterns
    * Uses LLM service for transcript analysis if available, otherwise fallback
+   * Includes officer context for baseline-aware analysis
    */
   async detectAggressiveAudio(audioTranscript, audioFeatures, officerName) {
     try {
       // Get threshold from model registry (or use default)
       const threshold = modelRegistry.getConfidenceThreshold('audio') || 0.70;
       
-      // Use LLM service for analysis (works even without model loaded)
-      // LLM service will use fallback if not configured
-      const audioPattern = await this.runAudioDetection(null, audioTranscript, audioFeatures, threshold);
+      // Get officer baseline for context-aware analysis
+      const officerBaseline = await baselineCalibration.getBaseline(
+        officerName,
+        'on_foot', // Default context - could be enhanced
+        'day', // Default time - could be enhanced
+        'routine' // Default operational context
+      );
+      
+      // Get current operational context (if available)
+      const operationalContext = this.getCurrentOperationalContext();
+      
+      // Use LLM service for analysis with officer context
+      const audioPattern = await this.runAudioDetection(
+        null, 
+        audioTranscript, 
+        audioFeatures, 
+        threshold,
+        {
+          baseline: officerBaseline,
+          operationalContext: operationalContext,
+        }
+      );
       
       return {
         detected: audioPattern !== null,
@@ -342,6 +362,7 @@ class MultiModelDetection {
         threshold: threshold,
         model: audioPattern?.source === 'llm' ? 'llm' : 'fallback',
         transcript: audioTranscript, // Include transcript for reference
+        patternStrength: audioPattern?.patternStrength || 'none',
       };
     } catch (error) {
       logger.error('Audio detection error', error);
@@ -352,20 +373,40 @@ class MultiModelDetection {
       };
     }
   }
+  
+  /**
+   * Get current operational context (if available)
+   * @returns {string|null} Current operational context
+   */
+  getCurrentOperationalContext() {
+    // This could be enhanced to track current operational context
+    // For now, return null (will be enhanced when marker events are tracked)
+    return null;
+  }
 
   /**
    * Custom audio classifier for aggressive patterns
    * Uses LLM service for transcript analysis if available, otherwise fallback
+   * @param {Object} modelInstance - Model instance (not used for LLM)
+   * @param {string} transcript - Audio transcript
+   * @param {Object} features - Audio features (not used for LLM)
+   * @param {number} threshold - Confidence threshold
+   * @param {Object} officerContext - Officer context (baseline, operational context)
+   * @returns {Promise<Object|null>} Detection result or null
    */
-  async runAudioDetection(modelInstance, transcript, features, threshold) {
+  async runAudioDetection(modelInstance, transcript, features, threshold, officerContext = {}) {
     // Try LLM-based analysis first (if available)
     if (llmService.isAvailable() && transcript) {
       try {
         // Get recent transcripts for context (if available)
         const recentTranscripts = this.getRecentTranscripts();
         
-        // Analyze transcript using LLM
-        const analysis = await llmService.analyzeAudioTranscript(transcript, recentTranscripts);
+        // Analyze transcript using LLM with officer context
+        const analysis = await llmService.analyzeAudioTranscript(
+          transcript, 
+          recentTranscripts,
+          officerContext
+        );
         
         // Check if pattern matches threshold
         if (analysis.confidence >= threshold && analysis.pattern !== 'normal') {
@@ -374,6 +415,7 @@ class MultiModelDetection {
             confidence: analysis.confidence,
             indicators: analysis.indicators,
             speechRate: analysis.speechRate,
+            patternStrength: analysis.patternStrength,
             source: analysis.source, // 'llm' | 'fallback'
           };
         }

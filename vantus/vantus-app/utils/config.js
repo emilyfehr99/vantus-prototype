@@ -120,11 +120,11 @@ class ConfigService {
       
       // LLM configuration for audio analysis
       llm: {
-        provider: CLIENT_CONFIG?.llm?.provider || process.env.LLM_PROVIDER || null, // 'openrouter' | 'together' | 'deepseek' | 'golem'
+        provider: CLIENT_CONFIG?.llm?.provider || process.env.LLM_PROVIDER || null, // 'openrouter' | 'together' | 'deepseek' | 'golem' | 'localai' | 'anythingllm' | 'ollama'
         apiKey: CLIENT_CONFIG?.llm?.apiKey || process.env.LLM_API_KEY || null,
         model: CLIENT_CONFIG?.llm?.model || process.env.LLM_MODEL || null,
-        apiUrl: CLIENT_CONFIG?.llm?.apiUrl || process.env.LLM_API_URL || null, // Custom API URL (for Golem, etc.)
-        enabled: !!(CLIENT_CONFIG?.llm?.apiKey || process.env.LLM_API_KEY),
+        apiUrl: CLIENT_CONFIG?.llm?.apiUrl || process.env.LLM_API_URL || null, // Custom API URL (required for self-hosted)
+        enabled: !!(CLIENT_CONFIG?.llm?.apiUrl || process.env.LLM_API_URL || CLIENT_CONFIG?.llm?.apiKey || process.env.LLM_API_KEY),
       },
     };
   }
