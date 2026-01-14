@@ -26,7 +26,18 @@ class AutoDispatch {
   async checkAutoDispatchConditions(detectionResults, telemetryState, officerInfo) {
     const conditions = [];
 
-    // 1. Threat level = Critical
+    // 1. Multi-Modal SOS Trigger (consensus: HR + Visual + Audio)
+    const multiModalSOS = this.checkMultiModalSOS(detectionResults, telemetryState);
+    if (multiModalSOS.triggered) {
+      conditions.push({
+        type: 'MULTI_MODAL_SOS',
+        trigger: 'Multi-modal consensus: HR spike + visual struggle + audio keyword',
+        autoDispatch: true,
+        consensus: multiModalSOS.consensus,
+      });
+    }
+
+    // 2. Threat level = Critical
     if (this.isThreatLevelCritical(detectionResults)) {
       conditions.push({
         type: 'THREAT_CRITICAL',
@@ -35,7 +46,7 @@ class AutoDispatch {
       });
     }
 
-    // 2. HR >160 BPM for >10 seconds
+    // 3. HR >160 BPM for >10 seconds
     if (await this.isHeartRateElevated(telemetryState)) {
       conditions.push({
         type: 'HEART_RATE_ELEVATED',
@@ -44,10 +55,10 @@ class AutoDispatch {
       });
     }
 
-    // 3. "Officer down" voice command
+    // 4. "Officer down" voice command
     // (Handled separately via voice command recognition)
 
-    // 4. No movement + elevated HR for 30 seconds
+    // 5. No movement + elevated HR for 30 seconds
     if (await this.isNoMovementElevatedHR(telemetryState)) {
       conditions.push({
         type: 'NO_MOVEMENT_ELEVATED_HR',
@@ -56,7 +67,7 @@ class AutoDispatch {
       });
     }
 
-    // 5. Manual button press
+    // 6. Manual button press
     // (Handled via UI button)
 
     // If any condition met, dispatch
@@ -67,6 +78,74 @@ class AutoDispatch {
     }
 
     return false;
+  }
+
+  /**
+   * Multi-Modal SOS Trigger
+   * Requires consensus of: [Heart Rate Spike] + [Visual Struggle/Grappling] + [Audio Keyword Trigger]
+   * @param {Object} detectionResults - Detection results
+   * @param {Object} telemetryState - Telemetry state
+   * @returns {Object} Multi-modal SOS check result
+   */
+  checkMultiModalSOS(detectionResults, telemetryState) {
+    const consensus = {
+      heartRateSpike: false,
+      visualStruggle: false,
+      audioKeyword: false,
+    };
+
+    // 1. Check Heart Rate Spike (140+ BPM while on call)
+    const baselineHR = telemetryState?.calibrationData?.heartRateBaseline;
+    const currentHR = this.heartRateHistory[this.heartRateHistory.length - 1]?.value;
+    if (baselineHR && currentHR) {
+      const spikeThreshold = 140; // BPM
+      const isOnCall = telemetryState?.markerEvents?.some(m => {
+        const markerTime = new Date(m.timestamp);
+        const now = new Date();
+        return (now - markerTime) / 1000 < 3600; // Active call within last hour
+      });
+      
+      consensus.heartRateSpike = currentHR >= spikeThreshold && isOnCall;
+    }
+
+    // 2. Check Visual Struggle/Grappling
+    // Look for: weapon detected, fighting stance, hands hidden, or grappling indicators
+    const visualIndicators = [];
+    if (detectionResults?.detections?.weapon?.detected) {
+      visualIndicators.push('weapon');
+    }
+    if (detectionResults?.detections?.stance?.detected && 
+        detectionResults.detections.stance.stanceType === 'fighting_stance') {
+      visualIndicators.push('fighting_stance');
+    }
+    if (detectionResults?.detections?.hands?.detected &&
+        detectionResults.detections.hands.pattern === 'hands_hidden') {
+      visualIndicators.push('hands_hidden');
+    }
+    
+    consensus.visualStruggle = visualIndicators.length >= 2; // Multiple visual indicators
+
+    // 3. Check Audio Keyword Trigger
+    // Look for Code 3 keywords: "Drop it!", "10-33", "Gun!", etc.
+    const audioTranscripts = telemetryState?.audioTranscripts || [];
+    const recentTranscripts = audioTranscripts.slice(-5); // Last 5 transcripts
+    const code3Keywords = ['drop it', '10-33', 'gun', 'weapon', 'backup', 'help', 'officer down'];
+    
+    const hasKeyword = recentTranscripts.some(transcript => {
+      const lower = transcript.toLowerCase();
+      return code3Keywords.some(keyword => lower.includes(keyword));
+    });
+    
+    consensus.audioKeyword = hasKeyword;
+
+    // Trigger if ALL three conditions met (consensus)
+    const triggered = consensus.heartRateSpike && consensus.visualStruggle && consensus.audioKeyword;
+
+    return {
+      triggered,
+      consensus,
+      confidence: triggered ? 0.95 : 0, // High confidence when all agree
+    };
   }
 
   /**

@@ -20,6 +20,11 @@ const integrationFramework = require('./services/integrationFramework');
 const trainingMode = require('./services/trainingMode');
 const patternLearning = require('./services/patternLearning');
 const accuracyMonitoring = require('./services/accuracyMonitoring');
+const peripheralOverwatch = require('./services/peripheralOverwatch');
+const kinematicIntentPrediction = require('./services/kinematicIntentPrediction');
+const deEscalationReferee = require('./services/deEscalationReferee');
+const factAnchoring = require('./services/factAnchoring');
+const dictationOverlay = require('./services/dictationOverlay');
 const logger = require('./utils/logger');
 
 const app = express();
@@ -860,6 +865,138 @@ app.get('/api/accuracy/report', (req, res) => {
     res.json({ success: true, report });
   } catch (error) {
     logger.error('Accuracy report error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Peripheral Overwatch
+app.post('/api/peripheral/scan', async (req, res) => {
+  try {
+    const { frameBase64, officerName, frameTime } = req.body;
+    
+    if (!frameBase64) {
+      return res.status(400).json({ error: 'Frame data required' });
+    }
+
+    const result = await peripheralOverwatch.scanPeriphery(frameBase64, {
+      officerName,
+      frameTime,
+    });
+
+    res.json({ success: true, result });
+  } catch (error) {
+    logger.error('Peripheral scan error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Kinematic Intent Prediction
+app.post('/api/kinematic/predict', (req, res) => {
+  try {
+    const { officerName, movementData, options } = req.body;
+    
+    if (!officerName || !movementData) {
+      return res.status(400).json({ error: 'Officer name and movement data required' });
+    }
+
+    const prediction = kinematicIntentPrediction.predictIntent(officerName, movementData, options);
+    res.json({ success: true, prediction });
+  } catch (error) {
+    logger.error('Kinematic prediction error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// De-escalation Referee
+app.post('/api/de-escalation/check', async (req, res) => {
+  try {
+    const { officerName, detectionResults, telemetryState, audioTranscripts } = req.body;
+    
+    if (!officerName) {
+      return res.status(400).json({ error: 'Officer name required' });
+    }
+
+    const result = await deEscalationReferee.checkStabilization(
+      officerName,
+      detectionResults,
+      telemetryState,
+      audioTranscripts
+    );
+
+    res.json({ success: true, result });
+  } catch (error) {
+    logger.error('De-escalation check error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Fact Anchoring
+app.post('/api/facts/anchor', (req, res) => {
+  try {
+    const { officerName, fact, metadata } = req.body;
+    
+    if (!officerName || !fact) {
+      return res.status(400).json({ error: 'Officer name and fact required' });
+    }
+
+    const factEntry = factAnchoring.anchorFact(officerName, fact, metadata);
+    res.json({ success: true, fact: factEntry });
+  } catch (error) {
+    logger.error('Fact anchoring error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/facts/log', (req, res) => {
+  try {
+    const { officerName, startTime, endTime, limit } = req.query;
+    
+    if (!officerName) {
+      return res.status(400).json({ error: 'Officer name required' });
+    }
+
+    const log = factAnchoring.getFactLog(officerName, {
+      startTime,
+      endTime,
+      limit: limit ? parseInt(limit) : null,
+    });
+
+    res.json({ success: true, log, count: log.length });
+  } catch (error) {
+    logger.error('Fact log retrieval error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/facts/timeline', (req, res) => {
+  try {
+    const { officerName } = req.query;
+    
+    if (!officerName) {
+      return res.status(400).json({ error: 'Officer name required' });
+    }
+
+    const timeline = factAnchoring.formatTimeline(officerName);
+    res.json({ success: true, timeline });
+  } catch (error) {
+    logger.error('Fact timeline error', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Dictation Overlay
+app.post('/api/dictation/command', async (req, res) => {
+  try {
+    const { officerName, transcript, context } = req.body;
+    
+    if (!officerName || !transcript) {
+      return res.status(400).json({ error: 'Officer name and transcript required' });
+    }
+
+    const result = await dictationOverlay.processCommand(officerName, transcript, context);
+    res.json({ success: true, result });
+  } catch (error) {
+    logger.error('Dictation command error', error);
     res.status(500).json({ error: error.message });
   }
 });
