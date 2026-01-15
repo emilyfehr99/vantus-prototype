@@ -2,6 +2,9 @@ import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 // import styles from '../styles/Dashboard.module.css'; // Commented out if file doesn't exist
 import logger from '../utils/logger';
+import { useTranslation } from 'next-i18next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { useRouter } from 'next/router';
 
 // Temporary styles object if CSS module doesn't exist
 const styles: any = {};
@@ -69,6 +72,8 @@ interface MarkerEvent {
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation('common');
+  const router = useRouter();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [officers, setOfficers] = useState<Map<string, OfficerState>>(new Map());
   const [selectedOfficer, setSelectedOfficer] = useState<string | null>(null);
@@ -78,9 +83,13 @@ export default function Dashboard() {
   const [supervisorId] = useState<string>('SUPERVISOR_001'); // Would come from auth
   const mapRef = useRef<HTMLDivElement>(null);
 
+  const changeLanguage = (locale: string) => {
+    router.push(router.pathname, router.asPath, { locale });
+  };
+
   useEffect(() => {
     setMounted(true);
-    
+
     // Update time every second
     const updateTime = () => {
       setCurrentTime(new Date().toLocaleTimeString());
@@ -98,7 +107,7 @@ export default function Dashboard() {
       try {
         const response = await fetch(`${BRIDGE_SERVER_URL}/api/officers`);
         const data = await response.json();
-        
+
         setOfficers((prev: Map<string, OfficerState>) => {
           const updated = new Map(prev);
           data.officers.forEach((officer: any) => {
@@ -109,13 +118,13 @@ export default function Dashboard() {
               location: null,
               signals: [],
             };
-            
+
             existing.sessionId = officer.sessionId;
             existing.lastContact = new Date(officer.lastContact);
             if (officer.location) {
               existing.location = officer.location;
             }
-            
+
             updated.set(officer.officerName, existing);
           });
           return updated;
@@ -138,7 +147,7 @@ export default function Dashboard() {
     // Listen for contextual signals
     newSocket.on('CONTEXTUAL_SIGNALS_UPDATE', (data: { officerName: string; signals: ContextualSignal[]; timestamp: string }) => {
       logger.info('CONTEXTUAL_SIGNALS_UPDATE received', { data });
-      
+
       setOfficers(prev => {
         const updated = new Map(prev);
         const officer = updated.get(data.officerName) || {
@@ -148,10 +157,10 @@ export default function Dashboard() {
           location: null,
           signals: [],
         };
-        
+
         officer.signals = [...officer.signals, ...data.signals].slice(-50); // Keep last 50
         officer.lastContact = new Date();
-        
+
         updated.set(data.officerName, officer);
         return updated;
       });
@@ -166,7 +175,7 @@ export default function Dashboard() {
     // Listen for enhanced audio signals
     newSocket.on('ENHANCED_AUDIO_SIGNAL', (data: { officerName: string; signalType: string; signal: any; timestamp: string }) => {
       logger.info('ENHANCED_AUDIO_SIGNAL received', { data });
-      
+
       setOfficers(prev => {
         const updated = new Map(prev);
         const officer = updated.get(data.officerName) || {
@@ -176,7 +185,7 @@ export default function Dashboard() {
           location: null,
           signals: [],
         };
-        
+
         officer.signals.push({
           signalType: data.signalType,
           signalCategory: data.signal.category,
@@ -189,7 +198,7 @@ export default function Dashboard() {
           },
         });
         officer.lastContact = new Date();
-        
+
         updated.set(data.officerName, officer);
         return updated;
       });
@@ -198,7 +207,7 @@ export default function Dashboard() {
     // Listen for coordination signals
     newSocket.on('COORDINATION_SIGNAL', (data: { officerName: string; signalType: string; signal: any; timestamp: string }) => {
       logger.info('COORDINATION_SIGNAL received', { data });
-      
+
       setOfficers(prev => {
         const updated = new Map(prev);
         const officer = updated.get(data.officerName) || {
@@ -208,7 +217,7 @@ export default function Dashboard() {
           location: null,
           signals: [],
         };
-        
+
         officer.signals.push({
           signalType: data.signalType,
           signalCategory: data.signal.category,
@@ -221,7 +230,7 @@ export default function Dashboard() {
           },
         });
         officer.lastContact = new Date();
-        
+
         updated.set(data.officerName, officer);
         return updated;
       });
@@ -230,7 +239,7 @@ export default function Dashboard() {
     // Listen for location signals
     newSocket.on('LOCATION_SIGNAL', (data: { officerName: string; signalType: string; signal: any; timestamp: string }) => {
       logger.info('LOCATION_SIGNAL received', { data });
-      
+
       setOfficers(prev => {
         const updated = new Map(prev);
         const officer = updated.get(data.officerName) || {
@@ -240,7 +249,7 @@ export default function Dashboard() {
           location: null,
           signals: [],
         };
-        
+
         officer.signals.push({
           signalType: data.signalType,
           signalCategory: data.signal.category,
@@ -253,7 +262,7 @@ export default function Dashboard() {
           },
         });
         officer.lastContact = new Date();
-        
+
         updated.set(data.officerName, officer);
         return updated;
       });
@@ -262,7 +271,7 @@ export default function Dashboard() {
     // Listen for signal correlations
     newSocket.on('SIGNAL_CORRELATION', (data: { officerName: string; signal: any; timestamp: string }) => {
       logger.info('SIGNAL_CORRELATION received', { data });
-      
+
       setOfficers(prev => {
         const updated = new Map(prev);
         const officer = updated.get(data.officerName) || {
@@ -272,7 +281,7 @@ export default function Dashboard() {
           location: null,
           signals: [],
         };
-        
+
         officer.signals.push({
           signalType: 'signal_correlation',
           signalCategory: data.signal.category,
@@ -285,7 +294,7 @@ export default function Dashboard() {
           },
         });
         officer.lastContact = new Date();
-        
+
         updated.set(data.officerName, officer);
         return updated;
       });
@@ -302,11 +311,11 @@ export default function Dashboard() {
           location: null,
           signals: [],
         };
-        
+
         officer.sessionId = data.sessionId;
         officer.sessionStartTime = data.timestamp;
         officer.lastContact = new Date();
-        
+
         updated.set(data.officerName, officer);
         return updated;
       });
@@ -432,7 +441,7 @@ export default function Dashboard() {
           traceability: { source: 'legacy_system' },
         },
       };
-      
+
       setOfficers(prev => {
         const updated = new Map(prev);
         const officer = updated.get(data.officerName) || {
@@ -442,11 +451,11 @@ export default function Dashboard() {
           location: { lat: data.location.lat, lng: data.location.lng },
           signals: [],
         };
-        
+
         officer.signals = [...officer.signals, signal].slice(-50);
         officer.location = data.location;
         officer.lastContact = new Date();
-        
+
         updated.set(data.officerName, officer);
         return updated;
       });
@@ -501,7 +510,7 @@ export default function Dashboard() {
     const baseLng = center.lng;
     const latOffset = (lat - baseLat) * 1000;
     const lngOffset = (lng - baseLng) * 1000;
-    
+
     return {
       x: 50 + lngOffset * 0.1,
       y: 50 - latOffset * 0.1,
@@ -545,9 +554,9 @@ export default function Dashboard() {
   // NOTE: Signals are sorted by timestamp only, NOT by probability/risk
   // This prevents "highest risk" sorting which could mislead supervisors
   const recentSignals = selectedOfficerData
-    ? [...selectedOfficerData.signals].sort((a, b) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      ).slice(0, 10)
+    ? [...selectedOfficerData.signals].sort((a, b) =>
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    ).slice(0, 10)
     : [];
 
   return (
@@ -555,20 +564,33 @@ export default function Dashboard() {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <h1 className={styles.title}>VANTUS SUPERVISOR DASHBOARD</h1>
+          <h1 className={styles.title}>{t('title')}</h1>
           <div className={styles.statusBar}>
             <span className={`${styles.statusIndicator} ${socket?.connected ? styles.connected : styles.disconnected}`}>
               <span className={styles.statusDot}></span>
-              {socket?.connected ? 'ONLINE' : 'OFFLINE'}
+              {socket?.connected ? t('status_online') : t('status_offline')}
             </span>
             <span className={styles.systemTime}>
               {mounted ? currentTime : '--:--:--'}
             </span>
           </div>
+          <button
+            onClick={() => changeLanguage(router.locale === 'en' ? 'fr' : 'en')}
+            style={{
+              marginLeft: '10px',
+              padding: '5px 10px',
+              backgroundColor: '#333',
+              color: '#fff',
+              border: '1px solid #666',
+              cursor: 'pointer'
+            }}
+          >
+            {router.locale === 'en' ? 'FR' : 'EN'}
+          </button>
         </div>
         <div className={styles.headerRight}>
           <div className={styles.secureBanner}>
-            CONTEXTUAL MONITORING
+            {t('secure_banner')}
           </div>
         </div>
       </header>
@@ -577,8 +599,7 @@ export default function Dashboard() {
       <div className={styles.guardrailBanner}>
         <div className={styles.guardrailIcon}>⚠</div>
         <div className={styles.guardrailContent}>
-          <strong>SIGNALS ARE NON-DIAGNOSTIC:</strong> These contextual indicators are probabilistic patterns, not threat assessments. 
-          They provide situational awareness only and should not be used to make operational decisions without additional context.
+          <strong>{t('guardrail_title')}</strong> {t('guardrail_text')}
         </div>
       </div>
 
@@ -587,16 +608,16 @@ export default function Dashboard() {
         {/* Unit Tiles Panel */}
         <div className={styles.unitsPanel}>
           <div className={styles.unitsHeader}>
-            <h2>ACTIVE UNITS</h2>
+            <h2>{t('active_units')}</h2>
             <span className={styles.unitCount}>{officers.size}</span>
           </div>
-          
+
           <div className={styles.unitsList}>
             {Array.from(officers.values()).map((officer) => {
               const hasSignals = officer.signals.length > 0;
               const recentSignal = officer.signals[officer.signals.length - 1];
               const timeSince = getTimeSinceLastContact(officer.lastContact);
-              
+
               return (
                 <div
                   key={officer.officerName}
@@ -609,31 +630,31 @@ export default function Dashboard() {
                       <span className={styles.sessionBadge}>ACTIVE</span>
                     )}
                   </div>
-                  
+
                   <div className={styles.unitTileInfo}>
                     <div className={styles.unitInfoRow}>
-                      <span className={styles.unitInfoLabel}>Last Contact:</span>
+                      <span className={styles.unitInfoLabel}>{t('last_contact')}</span>
                       <span className={styles.unitInfoValue}>{timeSince}</span>
                     </div>
-                    
+
                     {hasSignals && (
                       <div className={styles.unitInfoRow}>
-                        <span className={styles.unitInfoLabel}>Signals:</span>
-                        <span 
+                        <span className={styles.unitInfoLabel}>{t('signals')}</span>
+                        <span
                           className={styles.unitInfoValue}
-                          title="Total contextual signals received. Signal count does not indicate risk level."
+                          title={t('signals_title_tooltip')}
                         >
                           {officer.signals.length}
                         </span>
                       </div>
                     )}
-                    
+
                     {recentSignal && (
                       <div className={styles.unitInfoRow}>
-                        <span 
+                        <span
                           className={styles.signalIndicator}
                           style={{ color: getSignalColor(recentSignal) }}
-                          title="Most recent signal category. Color indicates pattern strength, not risk level. No red colors are used to prevent risk interpretation."
+                          title={t('recent_signal_tooltip')}
                         >
                           ● {recentSignal.signalCategory}
                         </span>
@@ -643,11 +664,11 @@ export default function Dashboard() {
                 </div>
               );
             })}
-            
+
             {officers.size === 0 && (
               <div className={styles.unitsEmpty}>
-                <p>No active units</p>
-                <p className={styles.unitsEmptySub}>Waiting for connections...</p>
+                <p>{t('no_active_units')}</p>
+                <p className={styles.unitsEmptySub}>{t('waiting_connection')}</p>
               </div>
             )}
           </div>
@@ -657,10 +678,10 @@ export default function Dashboard() {
         <div className={styles.mapContainer}>
           <div ref={mapRef} className={styles.tacticalMap}>
             <div className={styles.gridOverlay}></div>
-            
+
             <div className={styles.mapCenter}>
               <div className={styles.centerMarker}></div>
-              <div className={styles.centerLabel}>OPERATIONS CENTER</div>
+              <div className={styles.centerLabel}>{t('operations_center')}</div>
             </div>
 
             {/* Officer markers */}
@@ -670,7 +691,7 @@ export default function Dashboard() {
                 const pos = getMapPosition(officer.location!.lat, officer.location!.lng);
                 const hasSignals = officer.signals.length > 0;
                 const recentSignal = officer.signals[officer.signals.length - 1];
-                
+
                 return (
                   <div
                     key={officer.officerName}
@@ -682,9 +703,9 @@ export default function Dashboard() {
                     onClick={() => setSelectedOfficer(officer.officerName)}
                   >
                     <div className={styles.markerPulse}></div>
-                    <div 
+                    <div
                       className={styles.markerIcon}
-                      style={hasSignals && recentSignal ? { 
+                      style={hasSignals && recentSignal ? {
                         borderColor: getSignalColor(recentSignal),
                         boxShadow: `0 0 15px ${getSignalColor(recentSignal)}40`
                       } : {}}
@@ -703,9 +724,9 @@ export default function Dashboard() {
           {selectedOfficerData ? (
             <>
               <div className={styles.signalsHeader}>
-                <h2>SIGNALS: {selectedOfficerData.officerName}</h2>
+                <h2>{t('signals_header', { officerName: selectedOfficerData.officerName })}</h2>
               </div>
-              
+
               {/* Triage Gate Countdown */}
               {selectedOfficerData.triageCountdown && selectedOfficer !== null && (
                 <TriageGateCountdown
@@ -738,58 +759,58 @@ export default function Dashboard() {
                 />
               )}
 
-            {/* Peripheral Threat Display */}
-            {selectedOfficerData.peripheralThreats && selectedOfficerData.peripheralThreats.length > 0 && selectedOfficer && (
-              <PeripheralThreatDisplay
-                threats={selectedOfficerData.peripheralThreats}
-                officerName={selectedOfficer as string}
-              />
-            )}
-
-            {/* Kinematic Prediction Alert */}
-            {selectedOfficerData.kinematicPrediction && selectedOfficer && (
-              <KinematicPredictionAlert
-                prediction={selectedOfficerData.kinematicPrediction}
-                officerName={selectedOfficer as string}
-              />
-            )}
-
-            {/* De-escalation Status Indicator */}
-            {selectedOfficerData.deEscalationStatus && selectedOfficer && (
-              <DeEscalationStatusIndicator
-                stabilization={selectedOfficerData.deEscalationStatus}
-                officerName={selectedOfficer as string}
-              />
-            )}
-
-            {/* Fact Timeline View */}
-            {selectedOfficerData.facts && selectedOfficerData.facts.length > 0 && selectedOfficer && (
-              <FactTimelineView
-                facts={selectedOfficerData.facts}
-                officerName={selectedOfficer as string}
-              />
-            )}
-
-            {/* Dictation Command Log */}
-            {selectedOfficerData.dictationCommands && selectedOfficerData.dictationCommands.length > 0 && selectedOfficer && (
-              <DictationCommandLog
-                commands={selectedOfficerData.dictationCommands}
-                officerName={selectedOfficer as string}
-              />
-            )}
-
-            {/* Pattern Timeline */}
-            {selectedOfficerData.signals.length > 0 && (
-              <div style={{ marginBottom: '20px' }}>
-                <PatternTimeline 
-                  signals={selectedOfficerData.signals} 
-                  officerName={selectedOfficerData.officerName}
+              {/* Peripheral Threat Display */}
+              {selectedOfficerData.peripheralThreats && selectedOfficerData.peripheralThreats.length > 0 && selectedOfficer && (
+                <PeripheralThreatDisplay
+                  threats={selectedOfficerData.peripheralThreats}
+                  officerName={selectedOfficer as string}
                 />
-              </div>
-            )}
-              
+              )}
+
+              {/* Kinematic Prediction Alert */}
+              {selectedOfficerData.kinematicPrediction && selectedOfficer && (
+                <KinematicPredictionAlert
+                  prediction={selectedOfficerData.kinematicPrediction}
+                  officerName={selectedOfficer as string}
+                />
+              )}
+
+              {/* De-escalation Status Indicator */}
+              {selectedOfficerData.deEscalationStatus && selectedOfficer && (
+                <DeEscalationStatusIndicator
+                  stabilization={selectedOfficerData.deEscalationStatus}
+                  officerName={selectedOfficer as string}
+                />
+              )}
+
+              {/* Fact Timeline View */}
+              {selectedOfficerData.facts && selectedOfficerData.facts.length > 0 && selectedOfficer && (
+                <FactTimelineView
+                  facts={selectedOfficerData.facts}
+                  officerName={selectedOfficer as string}
+                />
+              )}
+
+              {/* Dictation Command Log */}
+              {selectedOfficerData.dictationCommands && selectedOfficerData.dictationCommands.length > 0 && selectedOfficer && (
+                <DictationCommandLog
+                  commands={selectedOfficerData.dictationCommands}
+                  officerName={selectedOfficer as string}
+                />
+              )}
+
+              {/* Pattern Timeline */}
+              {selectedOfficerData.signals.length > 0 && (
+                <div style={{ marginBottom: '20px' }}>
+                  <PatternTimeline
+                    signals={selectedOfficerData.signals}
+                    officerName={selectedOfficerData.officerName}
+                  />
+                </div>
+              )}
+
               <div className={styles.signalsHeader}>
-                <button 
+                <button
                   className={styles.summaryButton}
                   onClick={() => {
                     // Generate post-shift summary
@@ -799,119 +820,79 @@ export default function Dashboard() {
                       signalCount: selectedOfficerData.signals.length,
                       signalsByCategory: {} as Record<string, number>,
                     };
-                    
+
+                    // Count signals by category
                     selectedOfficerData.signals.forEach(s => {
-                      summary.signalsByCategory[s.signalCategory] = 
-                        (summary.signalsByCategory[s.signalCategory] || 0) + 1;
+                      summary.signalsByCategory[s.signalCategory] = (summary.signalsByCategory[s.signalCategory] || 0) + 1;
                     });
-                    
-                    logger.info('Post-shift summary', { summary });
-                    alert(`Post-Shift Summary:\n\nOfficer: ${selectedOfficerData.officerName}\nTotal Signals: ${selectedOfficerData.signals.length}\nCategories: ${Object.keys(summary.signalsByCategory).length}\n\nNote: This summary is for contextual awareness only, not performance evaluation.`);
+
+                    logger.info('Generated post-shift summary', summary);
+                    alert(`Daily Summary Generated for ${selectedOfficerData.officerName}\nTotal Signals: ${selectedOfficerData.signals.length}`);
                   }}
-                  title="Generate a post-shift summary of contextual signals. This is for review purposes only, not for performance evaluation or disciplinary action."
                 >
-                  GENERATE SUMMARY
+                  GENERATE DAILY SUMMARY
                 </button>
               </div>
-              
-              <div className={styles.signalsContent}>
-                {recentSignals.length === 0 ? (
-                  <div className={styles.signalsEmpty}>
-                    <p>No contextual signals</p>
-                    <p className={styles.signalsEmptySub}>All systems normal</p>
-                  </div>
-                ) : (
-                  recentSignals.map((signal, idx) => {
-                    const signalId = `${signal.timestamp}-${idx}`;
-                    const isFlagged = flaggedSignals.has(signalId);
-                    
-                    return (
-                      <div
-                        key={signalId}
-                        className={`${styles.signalCard} ${isFlagged ? styles.signalCardFlagged : ''}`}
-                        style={{ borderLeftColor: getSignalColor(signal) }}
-                      >
-                        <div className={styles.signalHeader}>
-                          <div className={styles.signalHeaderRow}>
-                          <div className={styles.signalCategory}>
-                            <span 
-                              className={styles.signalDot}
-                              style={{ backgroundColor: getSignalColor(signal) }}
-                            ></span>
-                            {signal.signalCategory}
-                            <span 
-                              className={styles.tooltipTrigger}
-                              title="This is a probabilistic pattern indicator, not a threat assessment. Probability indicates pattern strength, not risk level."
-                            >
-                              ℹ️
-                            </span>
-                          </div>
-                          <div className={styles.signalMeta}>
-                            <span 
-                              className={styles.signalProbability}
-                              title="Probability indicates pattern detection confidence, not risk severity. Higher probability means stronger pattern match, not higher danger."
-                            >
-                              {(signal.probability * 100).toFixed(0)}%
-                            </span>
-                            <span className={styles.signalTime}>
-                              {new Date(signal.timestamp).toLocaleTimeString()}
-                            </span>
-                          </div>
-                        </div>
-                        </div>
-                        
-                        <div className={styles.signalDescription}>
-                          {signal.explanation.description}
-                        </div>
-                        
-                        <details className={styles.signalDetails}>
-                          <summary className={styles.signalDetailsSummary}>
-                            View Explanation
-                            <span 
-                              className={styles.tooltipTrigger}
-                              title="Explanation shows the raw data and algorithm that generated this signal. This helps verify signal validity but does not indicate risk level."
-                            >
-                              ℹ️
-                            </span>
-                          </summary>
-                          <div className={styles.signalDetailsContent}>
-                            <div className={styles.signalDetailsSection}>
-                              <strong>Origin Data:</strong>
-                              <p className={styles.signalDisclaimer}>
-                                Raw telemetry data that triggered this signal. This is contextual information only, not a threat indicator.
-                              </p>
-                              <pre>{JSON.stringify(signal.explanation.originData, null, 2)}</pre>
-                            </div>
-                            <div className={styles.signalDetailsSection}>
-                              <strong>Traceability:</strong>
-                              <p className={styles.signalDisclaimer}>
-                                Algorithm and parameters used to generate this signal. All signals are explainable and verifiable.
-                              </p>
-                              <pre>{JSON.stringify(signal.explanation.traceability, null, 2)}</pre>
-                            </div>
-                          </div>
-                        </details>
-                        
+
+              <div className={styles.signalsList}>
+                {recentSignals.map((signal, index) => (
+                  <div
+                    key={index}
+                    className={styles.signalCard}
+                    style={{ borderLeftColor: getSignalColor(signal) }}
+                  >
+                    <div className={styles.signalHeader}>
+                      <span className={styles.signalType}>{signal.signalCategory}</span>
+                      <span className={styles.signalTime}>
+                        {new Date(signal.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className={styles.signalBody}>
+                      <div className={styles.signalConfidence}>
+                        Pattern Strength: {(signal.probability * 100).toFixed(0)}%
+                      </div>
+                      <div className={styles.signalDescription}>
+                        {signal.explanation.description}
+                      </div>
+
+                      {/* Flagging UI */}
+                      <div className={styles.signalActions}>
                         <button
-                          className={`${styles.flagButton} ${isFlagged ? styles.flagButtonActive : ''}`}
-                          onClick={() => flagSignal(signalId)}
-                          title="Flag this signal for post-shift review. Flagging does not indicate urgency or risk - it's for administrative review only."
+                          onClick={() => flagSignal(`signal-${index}`)}
+                          className={styles.flagButton}
+                          disabled={flaggedSignals.has(`signal-${index}`)}
                         >
-                          {isFlagged ? '✓ FLAGGED' : 'FLAG FOR REVIEW'}
+                          {flaggedSignals.has(`signal-${index}`) ? 'FLAGGED FOR REVIEW' : 'FLAG FOR REVIEW'}
                         </button>
                       </div>
-                    );
-                  })
+                    </div>
+                  </div>
+                ))}
+
+                {recentSignals.length === 0 && (
+                  <div className={styles.signalsEmpty}>
+                    No recent signals to display.
+                  </div>
                 )}
               </div>
             </>
           ) : (
-            <div className={styles.signalsEmpty}>
-              <p>Select a unit to view signals</p>
+            <div className={styles.noSelection}>
+              <div className={styles.noSelectionIcon}>👮</div>
+              <h3>Select a unit to view details</h3>
+              <p>Click on a unit tile or map marker to view real-time pattern analysis.</p>
             </div>
           )}
         </div>
       </div>
     </div>
   );
+}
+
+export async function getStaticProps({ locale }: { locale: string }) {
+  return {
+    props: {
+      ...(await serverSideTranslations(locale, ['common'])),
+    },
+  };
 }

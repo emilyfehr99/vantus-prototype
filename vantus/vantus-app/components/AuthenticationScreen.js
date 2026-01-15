@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import rosterService from '../services/rosterService';
 import { DEMO_BADGES } from '../utils/constants';
 import { isDemoMode, getDemoBadges } from '../utils/client-config';
 import { isValidBadgeNumber, isValidPIN } from '../utils/validationUtils';
+import { validatePinFormat } from '../utils/securityConfig';
+import rateLimiter from '../utils/rateLimiter';
+import sessionManager from '../services/sessionManager';
 import logger from '../utils/logger';
 
 export default function AuthenticationScreen({ onAuthenticated }) {
@@ -13,8 +16,10 @@ export default function AuthenticationScreen({ onAuthenticated }) {
   const [authenticating, setAuthenticating] = useState(false);
   const [useBiometric, setUseBiometric] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [remainingAttempts, setRemainingAttempts] = useState(5);
+  const [lockoutMessage, setLockoutMessage] = useState(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     // Check if biometric authentication is available
     (async () => {
       const compatible = await LocalAuthentication.hasHardwareAsync();
@@ -22,6 +27,29 @@ export default function AuthenticationScreen({ onAuthenticated }) {
       setBiometricAvailable(compatible && enrolled);
     })();
   }, []);
+
+  // Check rate limit status when badge number changes
+  useEffect(() => {
+    if (badgeNumber.trim().length >= 4) {
+      checkRateLimitStatus();
+    } else {
+      setLockoutMessage(null);
+      setRemainingAttempts(5);
+    }
+  }, [badgeNumber]);
+
+  const checkRateLimitStatus = async () => {
+    if (!badgeNumber.trim()) return;
+
+    const lockoutStatus = await rateLimiter.isLockedOut(badgeNumber);
+    if (lockoutStatus.locked) {
+      setLockoutMessage(lockoutStatus.reason);
+    } else {
+      setLockoutMessage(null);
+      const remaining = await rateLimiter.getRemainingAttempts(badgeNumber);
+      setRemainingAttempts(remaining);
+    }
+  };
 
   const handleBiometricAuth = async () => {
     try {
@@ -52,15 +80,26 @@ export default function AuthenticationScreen({ onAuthenticated }) {
 
   const verifyIdentity = async (badge, pinCode, biometricUsed = false) => {
     try {
+      // Check rate limit first
+      const lockoutStatus = await rateLimiter.isLockedOut(badge);
+      if (lockoutStatus.locked) {
+        setLockoutMessage(lockoutStatus.reason);
+        Alert.alert('Account Locked', lockoutStatus.reason);
+        setAuthenticating(false);
+        return;
+      }
+
       // Use roster service (will use API if configured, otherwise demo validation)
       let isValid = false;
       let officerData = null;
-      
+      let officerRole = 'officer';
+
       try {
         const result = await rosterService.verifyOfficer(badge, pinCode);
         if (result && result.valid) {
           isValid = true;
           officerData = result.officer;
+          officerRole = result.officer?.role || 'officer';
         }
       } catch (error) {
         // In production, fail if roster service is unavailable
@@ -68,26 +107,66 @@ export default function AuthenticationScreen({ onAuthenticated }) {
         logger.error('Roster service error - authentication failed', error);
         isValid = false;
       }
-      
+
       if (!isValid) {
-        Alert.alert('Authentication Failed', 'Badge number not found in department roster');
+        // Record failed attempt
+        const failResult = await rateLimiter.recordFailedAttempt(badge);
+        setRemainingAttempts(failResult.remainingAttempts);
+
+        if (failResult.locked) {
+          const lockoutMinutes = Math.ceil(failResult.lockoutDuration / (1000 * 60));
+          setLockoutMessage(`Account locked for ${lockoutMinutes} minutes`);
+          Alert.alert(
+            'Account Locked',
+            `Too many failed attempts. Account locked for ${lockoutMinutes} minutes.`
+          );
+        } else {
+          Alert.alert(
+            'Authentication Failed',
+            `Badge number not found in department roster. ${failResult.remainingAttempts} attempts remaining.`
+          );
+        }
         setAuthenticating(false);
         return;
       }
 
-      // If using PIN (not biometric), verify PIN
+      // If using PIN (not biometric), verify PIN format
       if (!biometricUsed && pinCode) {
-        // Validate PIN format
-        if (!isValidPIN(pinCode, 4)) {
-          Alert.alert('Invalid PIN', 'PIN must be at least 4 digits');
+        const pinValidation = validatePinFormat(pinCode);
+        if (!pinValidation.valid) {
+          Alert.alert('Invalid PIN', pinValidation.error);
           setAuthenticating(false);
           return;
         }
       }
 
+      // Authentication successful - record success and create session
+      await rateLimiter.recordSuccessfulLogin(badge);
+
+      // Create secure session
+      const sessionResult = await sessionManager.createSession(badge, officerRole, {
+        platform: Platform.OS,
+        biometricUsed,
+        officerName: officerData?.name || null,
+        unit: officerData?.unit || null,
+      });
+
+      if (!sessionResult.success) {
+        logger.error('Failed to create session', sessionResult.error);
+        Alert.alert('Session Error', 'Failed to create secure session. Please try again.');
+        setAuthenticating(false);
+        return;
+      }
+
+      logger.info('Authentication successful', {
+        badge,
+        biometricUsed,
+        sessionCreated: true,
+      });
+
       // Identity confirmed - proceed to calibration
       setAuthenticating(false);
-      onAuthenticated(badge);
+      onAuthenticated(badge, officerData);
     } catch (error) {
       logger.error('Identity verification error', error);
       Alert.alert('Verification Error', 'Failed to verify identity with department roster');
@@ -101,7 +180,7 @@ export default function AuthenticationScreen({ onAuthenticated }) {
       Alert.alert('Invalid Badge Number', 'Please enter a valid badge number');
       return;
     }
-    
+
     // Validate PIN if provided
     if (pin && !isValidPIN(pin, 4)) {
       Alert.alert('Invalid PIN', 'PIN must be at least 4 digits');

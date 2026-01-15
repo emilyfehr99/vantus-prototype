@@ -1,0 +1,18 @@
+{
+    "title": "VANTUS SUPERVISOR DASHBOARD",
+    "status_online": "ONLINE",
+    "status_offline": "OFFLINE",
+    "secure_banner": "CONTEXTUAL MONITORING",
+    "guardrail_title": "SIGNALS ARE NON-DIAGNOSTIC:",
+    "guardrail_text": "These contextual indicators are probabilistic patterns, not threat assessments. They provide situational awareness only and should not be used to make operational decisions without additional context.",
+    "active_units": "ACTIVE UNITS",
+    "no_active_units": "No active units",
+    "waiting_connection": "Waiting for connections...",
+    "operations_center": "OPERATIONS CENTER",
+    "last_contact": "Last Contact:",
+    "signals": "Signals:",
+    "signals_title_tooltip": "Total contextual signals received. Signal count does not indicate risk level.",
+    "recent_signal_tooltip": "Most recent signal category. Color indicates pattern strength, not risk level. No red colors are used to prevent risk interpretation.",
+    "signals_header": "SIGNALS: {{officerName}}",
+    "change_language": "Change Language"
+}

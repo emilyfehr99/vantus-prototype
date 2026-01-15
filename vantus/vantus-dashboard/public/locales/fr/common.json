@@ -1,0 +1,18 @@
+{
+    "title": "TABLEAU DE BORD SUPERVISEUR VANTUS",
+    "status_online": "EN LIGNE",
+    "status_offline": "HORS LIGNE",
+    "secure_banner": "SURVEILLANCE CONTEXTUELLE",
+    "guardrail_title": "LES SIGNAUX NE SONT PAS DIAGNOSTIQUES :",
+    "guardrail_text": "Ces indicateurs contextuels sont des modèles probabilistes, pas des évaluations de menace. Ils fournissent uniquement une conscience situationnelle et ne doivent pas être utilisés pour prendre des décisions opérationnelles sans contexte supplémentaire.",
+    "active_units": "UNITÉS ACTIVES",
+    "no_active_units": "Aucune unité active",
+    "waiting_connection": "En attente de connexions...",
+    "operations_center": "CENTRE D'OPÉRATIONS",
+    "last_contact": "Dernier contact :",
+    "signals": "Signaux :",
+    "signals_title_tooltip": "Total des signaux contextuels reçus. Le nombre de signaux n'indique pas le niveau de risque.",
+    "recent_signal_tooltip": "Catégorie du signal le plus récent. La couleur indique la force du modèle, pas le niveau de risque. Aucune couleur rouge n'est utilisée pour éviter l'interprétation de risque.",
+    "signals_header": "SIGNAUX : {{officerName}}",
+    "change_language": "Changer la langue"
+}
