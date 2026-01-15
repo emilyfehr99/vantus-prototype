@@ -1,16 +1,31 @@
 /**
  * PDF Report Generation Service
- * Generates court-ready incident documentation
+ * Generates court-ready incident documentation with actual PDF output
  */
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const PDFDocument = require('pdfkit');
 const logger = require('../utils/logger');
 
 // Report template
 const REPORT_VERSION = '1.0.0';
 const DEPARTMENT_PLACEHOLDER = 'YOUR DEPARTMENT';
+
+// PDF Styling
+const COLORS = {
+    primary: '#1a365d',      // Dark blue
+    secondary: '#2c5282',    // Medium blue
+    accent: '#3182ce',       // Light blue
+    success: '#38a169',      // Green
+    danger: '#e53e3e',       // Red
+    warning: '#dd6b20',      // Orange
+    text: '#1a202c',         // Dark gray
+    textLight: '#4a5568',    // Medium gray
+    border: '#e2e8f0',       // Light gray
+    background: '#f7fafc',   // Very light gray
+};
 
 class PDFReportService {
     constructor() {
@@ -128,10 +143,14 @@ class PDFReportService {
         // Generate text report
         const textReport = this.generateTextReport(reportContent);
 
-        // Save report
-        const reportPath = await this.saveReport(reportId, reportContent, textReport);
+        // Generate actual PDF
+        const pdfPath = await this.generatePDF(reportId, reportContent);
 
-        logger.info('Incident report generated', { reportId, path: reportPath });
+        // Save report (JSON and TXT)
+        const reportPath = await this.saveReport(reportId, reportContent, textReport);
+        reportPath.pdf = pdfPath;
+
+        logger.info('Incident report generated', { reportId, paths: reportPath });
 
         return {
             reportId,
@@ -140,6 +159,201 @@ class PDFReportService {
             content: reportContent,
             textReport,
         };
+    }
+
+    /**
+     * Generate actual PDF document
+     */
+    async generatePDF(reportId, content) {
+        return new Promise((resolve, reject) => {
+            const pdfPath = path.join(this.outputDir, `${reportId}.pdf`);
+            const doc = new PDFDocument({
+                size: 'LETTER',
+                margins: { top: 50, bottom: 50, left: 50, right: 50 },
+                info: {
+                    Title: `Vantus Incident Report - ${reportId}`,
+                    Author: 'Vantus Safety Systems',
+                    Subject: 'Incident Report',
+                    Keywords: 'incident, report, vantus, safety',
+                }
+            });
+
+            const stream = fs.createWriteStream(pdfPath);
+            doc.pipe(stream);
+
+            // Header Section
+            this.drawPDFHeader(doc, content.header);
+
+            // Incident Summary Section
+            this.drawPDFSection(doc, 'INCIDENT SUMMARY', () => {
+                const summary = content.incidentSummary;
+                doc.fontSize(11).fillColor(COLORS.text);
+                doc.text(`Officer: ${summary.officer.name} (Badge: ${summary.officer.badge})`, { continued: false });
+                doc.moveDown(0.3);
+                doc.text(`Date/Time: ${summary.dateTime.start} - ${summary.dateTime.end?.split(' ')[1] || 'ongoing'}`);
+                doc.moveDown(0.3);
+                doc.text(`Location: ${summary.location}`);
+                doc.moveDown(0.3);
+                doc.text(`Call Type: ${summary.callType}`);
+                doc.moveDown(0.3);
+                doc.text(`CAD Reference: ${summary.cadReference}`);
+            });
+
+            // Detection Timeline Section
+            this.drawPDFSection(doc, 'VANTUS DETECTION TIMELINE', () => {
+                if (content.detectionTimeline.length === 0) {
+                    doc.fontSize(10).fillColor(COLORS.textLight).text('No detections recorded');
+                } else {
+                    // Table header
+                    const startX = doc.x;
+                    doc.fontSize(9).fillColor(COLORS.secondary).font('Helvetica-Bold');
+                    doc.text('TIME', startX, doc.y, { width: 70, continued: true });
+                    doc.text('TYPE', startX + 80, doc.y, { width: 100, continued: true });
+                    doc.text('DESCRIPTION', startX + 190, doc.y, { width: 200 });
+                    doc.moveDown(0.5);
+                    doc.font('Helvetica');
+
+                    // Table rows
+                    for (const detection of content.detectionTimeline) {
+                        const y = doc.y;
+                        doc.fontSize(10).fillColor(COLORS.text);
+                        doc.text(detection.time, startX, y, { width: 70 });
+
+                        // Color-code alert types
+                        let typeColor = COLORS.text;
+                        if (detection.type.includes('WEAPON')) typeColor = COLORS.danger;
+                        else if (detection.type.includes('DISPATCH')) typeColor = COLORS.warning;
+                        else if (detection.type.includes('STANCE') || detection.type.includes('HANDS')) typeColor = COLORS.accent;
+
+                        doc.fillColor(typeColor).text(detection.type, startX + 80, y, { width: 100 });
+                        doc.fillColor(COLORS.text).text(detection.description || 'N/A', startX + 190, y, { width: 200 });
+                        doc.moveDown(0.3);
+                    }
+                }
+            });
+
+            // Biometric Data Section
+            this.drawPDFSection(doc, 'BIOMETRIC DATA', () => {
+                const bio = content.biometricData;
+                doc.fontSize(11).fillColor(COLORS.text);
+                doc.text(`Baseline HR: ${bio.baselineHR}`);
+                doc.moveDown(0.3);
+                doc.text(`Peak HR: ${bio.peakHR} (${bio.peakTime})`);
+                doc.moveDown(0.3);
+                doc.text(`Duration of elevated state: ${bio.elevatedDuration}`);
+            });
+
+            // Evidence Integrity Section
+            this.drawPDFSection(doc, 'EVIDENCE INTEGRITY', () => {
+                const evidence = content.evidenceIntegrity;
+                doc.fontSize(11).fillColor(COLORS.text);
+                doc.text(`Fact Log Entries: ${evidence.factLogEntries}`);
+                doc.moveDown(0.3);
+
+                // Chain verification with color
+                const isValid = evidence.chainVerification === 'VALID';
+                doc.text('Chain Verification: ', { continued: true });
+                doc.fillColor(isValid ? COLORS.success : COLORS.danger)
+                    .text(isValid ? '✓ VALID' : '✗ ' + evidence.chainVerification);
+                doc.fillColor(COLORS.text);
+                doc.moveDown(0.3);
+                doc.text(`Video Clips Attached: ${evidence.videoClipsAttached}`);
+                doc.moveDown(0.3);
+                doc.text(`All timestamps GPS-synchronized: ${evidence.timestampsSynchronized ? 'Yes' : 'No'}`);
+            });
+
+            // Technical Appendix Note
+            this.drawPDFSection(doc, 'TECHNICAL APPENDIX', () => {
+                doc.fontSize(10).fillColor(COLORS.textLight);
+                doc.text('Full detection parameters, model versions, and raw confidence scores');
+                doc.text('available in attached appendix (See Exhibit A).');
+            });
+
+            // Footer
+            this.drawPDFFooter(doc, content.header);
+
+            // Finalize PDF
+            doc.end();
+
+            stream.on('finish', () => {
+                resolve(pdfPath);
+            });
+
+            stream.on('error', (error) => {
+                logger.error('Failed to generate PDF', error);
+                reject(error);
+            });
+        });
+    }
+
+    /**
+     * Draw PDF header with logo placeholder and report info
+     */
+    drawPDFHeader(doc, header) {
+        // Header background
+        doc.rect(50, 50, 512, 100).fill(COLORS.primary);
+
+        // Title
+        doc.fontSize(24).fillColor('white').font('Helvetica-Bold');
+        doc.text('VANTUS INCIDENT REPORT', 50, 70, { width: 512, align: 'center' });
+
+        // Department placeholder
+        doc.fontSize(12).fillColor('#a0aec0').font('Helvetica');
+        doc.text('[DEPARTMENT LOGO/SEAL]', 50, 100, { width: 512, align: 'center' });
+
+        // Report info bar
+        doc.rect(50, 150, 512, 50).fill(COLORS.background);
+        doc.fontSize(10).fillColor(COLORS.text);
+        doc.text(`Report ID: ${header.reportId}`, 60, 160);
+        doc.text(`Generated: ${header.generatedAt}`, 60, 175);
+        doc.text(`Verification Hash: ${header.verificationHash}`, 300, 167);
+
+        doc.moveDown(3);
+        doc.y = 220;
+    }
+
+    /**
+     * Draw a section with title and content
+     */
+    drawPDFSection(doc, title, contentFn) {
+        // Section title
+        doc.fontSize(14).fillColor(COLORS.secondary).font('Helvetica-Bold');
+        doc.text(title);
+        doc.moveDown(0.3);
+
+        // Underline
+        const startX = doc.x;
+        doc.moveTo(startX, doc.y).lineTo(startX + 200, doc.y).stroke(COLORS.border);
+        doc.moveDown(0.5);
+
+        // Section content
+        doc.font('Helvetica');
+        contentFn();
+        doc.moveDown(1);
+    }
+
+    /**
+     * Draw PDF footer
+     */
+    drawPDFFooter(doc, header) {
+        const pageHeight = doc.page.height;
+        const footerY = pageHeight - 70;
+
+        // Footer line
+        doc.moveTo(50, footerY).lineTo(562, footerY).stroke(COLORS.border);
+
+        // Footer text
+        doc.fontSize(9).fillColor(COLORS.textLight);
+        doc.text(
+            'This report was automatically generated by Vantus Safety Systems.',
+            50, footerY + 10,
+            { width: 512, align: 'center' }
+        );
+        doc.text(
+            `Verification: vantus.io/verify/${header.verificationHash}`,
+            50, footerY + 25,
+            { width: 512, align: 'center' }
+        );
     }
 
     /**
