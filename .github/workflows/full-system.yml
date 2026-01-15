@@ -27,7 +27,7 @@ jobs:
 
     - name: Install Dashboard dependencies
       working-directory: ./vantus/vantus-dashboard
-      run: npm ci
+      run: npm install --ignore-scripts
 
     - name: Install Mobile App dependencies
       working-directory: ./vantus/vantus-app
