@@ -11,6 +11,7 @@ import baselineCalibration from './services/baselineCalibration';
 import AuthenticationScreen from './components/AuthenticationScreen';
 import CalibrationScreen from './components/CalibrationScreen';
 import WelfareCheckPrompt from './components/WelfareCheckPrompt';
+import DemoModeScreen from './components/DemoModeScreen';
 import multiModelDetection from './services/multiModelDetection';
 import modelLoader from './services/modelLoader';
 import modelRegistry from './services/modelRegistry';
@@ -41,7 +42,7 @@ export default function App() {
   const [calibrated, setCalibrated] = useState(false);
   const [badgeNumber, setBadgeNumber] = useState(null);
   const [calibrationData, setCalibrationData] = useState(null);
-  const [appMode, setAppMode] = useState('auth'); // 'auth' | 'calibration' | 'standby' | 'active'
+  const [appMode, setAppMode] = useState('auth'); // 'auth' | 'calibration' | 'standby' | 'active' | 'demo'
 
   // Camera & Detection State
   const [hasPermission, setHasPermission] = useState(null);
@@ -52,7 +53,7 @@ export default function App() {
   const [modelLoading, setModelLoading] = useState(false);
   const [modelReady, setModelReady] = useState(false);
   const detectionIntervalRef = useRef(null);
-  
+
   // Session & Telemetry State
   const [sessionActive, setSessionActive] = useState(false);
   const [telemetryState, setTelemetryState] = useState(null);
@@ -71,15 +72,15 @@ export default function App() {
     setCalibrationData(data);
     setCalibrated(true);
     setAppMode('standby');
-    
+
     // Store calibration data in telemetry service for detection use
     telemetryService.setCalibrationData(data);
-    
+
     // Show completion message
     Alert.alert(
       'Calibration Complete',
       'Vantus Active. Stay safe.',
-      [{ text: 'OK', onPress: () => {} }]
+      [{ text: 'OK', onPress: () => { } }]
     );
   };
 
@@ -99,7 +100,7 @@ export default function App() {
         logger.info('LLM service not configured - using fallback audio analysis');
       }
     };
-    
+
     // Initialize Knowledge Base service
     const initKnowledgeBase = () => {
       const kbConfig = configService.getKnowledgeBaseConfig();
@@ -114,7 +115,7 @@ export default function App() {
         logger.info('Knowledge Base service not configured - using local knowledge only');
       }
     };
-    
+
     // Initialize RAG service (depends on Knowledge Base)
     const initRAG = () => {
       const kbConfig = configService.getKnowledgeBaseConfig();
@@ -126,11 +127,11 @@ export default function App() {
         logger.info('RAG service not enabled - using direct LLM analysis');
       }
     };
-    
+
     initLLM();
     initKnowledgeBase();
     initRAG();
-    
+
     // Only request camera permission after calibration
     if (calibrated) {
       (async () => {
@@ -165,7 +166,7 @@ export default function App() {
           // hands: 'path/to/movenet/model.json', // Can share with stance
           // audio: 'path/to/audio-classifier/model.json',
         };
-        
+
         // Only load if paths are provided
         if (Object.keys(modelPaths).length > 0) {
           await modelLoader.loadAllModels(modelPaths);
@@ -248,17 +249,17 @@ export default function App() {
       }
 
       logger.debug('Processing frame for detection...');
-      
+
       // Run object detection
       const result = await detectionService.detectObjects(photo.uri);
-      
+
       if (result.detected) {
         logger.warn('THREAT DETECTED! Cell phone found', { detections: result.detections });
         triggerThreatAlert();
       } else {
         logger.debug('No threat detected', { objectCount: result.allDetections.length });
       }
-      
+
     } catch (error) {
       logger.error('Detection error', error);
       // Don't show alert to user for detection errors, just log
@@ -273,15 +274,15 @@ export default function App() {
       const sessionId = await telemetryService.startSession(officerName);
       setSessionActive(true);
       setAppMode('active');
-      
+
       // Initialize systems
       // 1. Voice advisory
       voiceAdvisory.vantusActive();
-      
+
       // 2. Video buffer
       videoBuffer.setCameraRef(cameraRef.current);
       await videoBuffer.startBuffer();
-      
+
       // 3. Real-time video processing
       if (cameraRef.current) {
         realtimeVideoProcessor.setCameraRef(cameraRef.current);
@@ -293,13 +294,13 @@ export default function App() {
           onDetection: (detectionResults) => {
             // Handle detections from real-time processing
             logger.info('Real-time detection', { detections: detectionResults.detections });
-            
+
             // Process voice advisories
             if (detectionResults && detectionResults.detections) {
               Object.values(detectionResults.detections).forEach(detection => {
                 if (detection.detected) {
                   voiceAdvisory.processDetection(detection);
-                  
+
                   // Trigger video clip save on weapon detection
                   if (detection.category === 'weapon' && detection.confidence >= 0.70) {
                     videoBuffer.triggerClipSave({
@@ -326,7 +327,7 @@ export default function App() {
         });
         logger.info('Real-time video processing started');
       }
-      
+
       // 3. Start periodic welfare checks (after 10 minutes)
       setTimeout(() => {
         const officerInfo = {
@@ -336,23 +337,23 @@ export default function App() {
         };
         welfareCheck.startPeriodicChecks(telemetryService.getTelemetryState(), officerInfo, 10);
       }, 10 * 60 * 1000); // 10 minutes
-      
+
       // Start signal analysis loop (every 30 seconds)
       // Signals are baseline-relative (per-officer, per-context)
       signalAnalysisIntervalRef.current = setInterval(() => {
         analyzeAndSendSignals();
       }, 30000);
-      
+
       // Start auto-dispatch monitoring (every 5 seconds)
       const dispatchCheckInterval = setInterval(() => {
         checkAutoDispatch();
       }, 5000);
-      
+
       // Store interval for cleanup
       if (!window.dispatchInterval) {
         window.dispatchInterval = dispatchCheckInterval;
       }
-      
+
       // Send initial session start to bridge
       if (socket && socket.connected) {
         socket.emit('SESSION_STARTED', {
@@ -363,7 +364,7 @@ export default function App() {
           calibrationData: calibrationData, // Include calibration data
         });
       }
-      
+
       logger.info('Session started', { sessionId });
     } catch (error) {
       logger.error('Failed to start session', error);
@@ -480,37 +481,37 @@ export default function App() {
     };
 
     const result = welfareCheck.handleResponse(responseType, state, officerInfo);
-    
+
     if (result.action === 'dispatched') {
       Alert.alert('Backup Dispatched', 'Emergency backup has been requested');
     }
-    
+
     return result;
   };
 
   // Stop session (manual session stop)
   const stopSession = async () => {
     if (!sessionActive) return;
-    
+
     const sessionData = telemetryService.stopSession();
     setSessionActive(false);
     setAppMode('standby');
-    
+
     // Stop systems
     await videoBuffer.stopBuffer();
     welfareCheck.clearPeriodicChecks();
     welfareCheck.clearWelfareTimer();
-    
+
     if (signalAnalysisIntervalRef.current) {
       clearInterval(signalAnalysisIntervalRef.current);
       signalAnalysisIntervalRef.current = null;
     }
-    
+
     if (window.dispatchInterval) {
       clearInterval(window.dispatchInterval);
       window.dispatchInterval = null;
     }
-    
+
     // Update baseline calibration at session end
     try {
       const officerName = generateOfficerId(badgeNumber);
@@ -526,7 +527,7 @@ export default function App() {
     } catch (error) {
       logger.error('Failed to update baseline', error);
     }
-    
+
     // Send session end to bridge
     if (socket && socket.connected) {
       socket.emit('SESSION_ENDED', {
@@ -541,20 +542,20 @@ export default function App() {
         },
       });
     }
-    
+
     logger.info('Session stopped', { sessionId: sessionData.sessionId });
   };
 
   // Analyze and send contextual signals (baseline-relative)
   const analyzeAndSendSignals = () => {
     if (!sessionActive) return;
-    
+
     const state = telemetryService.getTelemetryState();
     const movementData = telemetryService.getMovementPatternData();
     const audioTranscripts = telemetryService.audioTranscripts;
     const markerEvents = telemetryService.markerEvents;
     const calData = telemetryService.getCalibrationData(); // Get calibration data
-    
+
     // Generate baseline-relative signals
     // This uses per-officer baselines, not global thresholds
     const officerName = getOfficerId(badgeNumber);
@@ -565,7 +566,7 @@ export default function App() {
       markerEvents,
       officerName
     );
-    
+
     // Validate signals to reduce false positives
     const validatedSignals = rawSignals.map(signal => {
       const validation = signalValidation.validateSignal(
@@ -574,7 +575,7 @@ export default function App() {
         state,
         { operationalContext: state.operationalContext }
       );
-      
+
       // Use adjusted confidence if validation changed it
       if (validation.adjustedConfidence !== validation.confidence) {
         return {
@@ -587,19 +588,19 @@ export default function App() {
           },
         };
       }
-      
+
       return signal;
     });
-    
+
     // Fuse related signals for better accuracy
     const fusedSignals = signalFusion.fuseSignals(validatedSignals, {
       operationalContext: state.operationalContext,
       sessionDuration: state.sessionDuration,
     });
-    
+
     // Use fused signals (they include validated signals that weren't fused)
     let signals = fusedSignals.length > 0 ? fusedSignals : validatedSignals;
-    
+
     // Final accuracy gate: Only send signals with 70%+ confidence after all validation
     signals = signals.filter(signal => {
       const finalConfidence = signal.probability || signal.confidence || 0;
@@ -612,39 +613,39 @@ export default function App() {
       }
       return true;
     });
-    
+
     // Run multi-model detections (weapon, stance, hands, biometric, audio)
     // Note: Models may not be loaded yet, but system is ready
     (async () => {
       try {
         // Get current heart rate if available (from wearable)
         const currentHeartRate = calData?.heartRateBaseline || null; // In production, get from wearable
-        
+
         // Add heart rate to auto-dispatch monitoring
         if (currentHeartRate) {
           autoDispatch.addHeartRateReading(currentHeartRate);
         }
-        
+
         // Add movement data to auto-dispatch monitoring
         if (movementData.movementHistory && movementData.movementHistory.length > 0) {
           const latestMovement = movementData.movementHistory[movementData.movementHistory.length - 1];
           autoDispatch.addMovementReading(latestMovement);
         }
-        
+
         // Note: Real-time video processing handles frame capture and detection
         // This analysis loop focuses on signals and telemetry
         // Video frames are processed by realtimeVideoProcessor service
-        
+
         // Run detections if we have a frame (otherwise real-time processor handles it)
         // For now, real-time processor handles all video processing
         const detectionResults = null; // Real-time processor handles video detection
-        
+
         // Process voice advisories based on detections
         if (detectionResults && detectionResults.detections) {
           Object.values(detectionResults.detections).forEach(detection => {
             if (detection.detected) {
               voiceAdvisory.processDetection(detection);
-              
+
               // Trigger video clip save on threat detection
               if (detection.category === 'weapon' && detection.confidence >= 0.70) {
                 videoBuffer.triggerClipSave({
@@ -656,14 +657,14 @@ export default function App() {
             }
           });
         }
-        
+
         logger.debug('Multi-model detection results', { detectionResults });
       } catch (error) {
         logger.error('Multi-model detection error', error);
         // Continue even if detection fails
       }
     })();
-    
+
     // Fallback to old edge intelligence if baseline not available yet
     // (for first few sessions before baseline is established)
     let finalSignals = signals;
@@ -676,10 +677,10 @@ export default function App() {
       );
       finalSignals = fallbackSignals;
     }
-    
+
     if (finalSignals.length > 0) {
       setContextualSignals(prev => [...prev, ...finalSignals].slice(-20)); // Keep last 20
-      
+
       // Send signals to bridge server (for supervisors only)
       if (socket && socket.connected) {
         socket.emit('CONTEXTUAL_SIGNALS', {
@@ -691,7 +692,7 @@ export default function App() {
         });
       }
     }
-    
+
     // Update telemetry state display
     setTelemetryState(state);
 
@@ -752,7 +753,7 @@ export default function App() {
       const recentTranscripts = audioTranscripts.slice(-5); // Last 5 transcripts
       recentTranscripts.forEach(transcript => {
         const transcriptText = transcript.text || transcript.transcript || '';
-        
+
         // 5. DICTATION OVERLAY: Check if transcript contains voice command
         // Look for wake word "Vantus" at start of transcript
         if (transcriptText.toLowerCase().trim().startsWith('vantus')) {
@@ -822,7 +823,7 @@ export default function App() {
     if (detectionIntervalRef.current) {
       clearInterval(detectionIntervalRef.current);
     }
-    
+
     setDetectionActive(true);
     // Run detection every 2 seconds
     detectionIntervalRef.current = setInterval(() => {
@@ -830,14 +831,14 @@ export default function App() {
     }, 2000);
   };
 
-    // Stop detection loop
+  // Stop detection loop
   const stopDetection = () => {
     if (detectionIntervalRef.current) {
       clearInterval(detectionIntervalRef.current);
       detectionIntervalRef.current = null;
     }
     setDetectionActive(false);
-    
+
     // Stop real-time video processing
     realtimeVideoProcessor.stopProcessing();
   };
@@ -848,13 +849,13 @@ export default function App() {
       Alert.alert('Session Required', 'Please start a session first');
       return;
     }
-    
+
     const marker = telemetryService.addMarkerEvent(
       eventType,
       `Manual marker: ${eventType}`,
       { manual: true }
     );
-    
+
     // Send marker to bridge
     if (socket && socket.connected) {
       socket.emit('MARKER_EVENT', {
@@ -863,7 +864,7 @@ export default function App() {
         marker,
       });
     }
-    
+
     Alert.alert('Marker Added', `Event: ${eventType}`);
   };
 
@@ -894,7 +895,7 @@ export default function App() {
 
       socket.emit('THREAT_DETECTED', threatData);
       logger.warn('THREAT_DETECTED emitted', { threatData });
-      
+
       // Trigger video clip save
       videoBuffer.triggerClipSave({
         type: 'THREAT_DETECTED',
@@ -907,16 +908,35 @@ export default function App() {
 
   const clearAlert = () => {
     setAlertActive(false);
-    
+
     if (socket && socket.connected) {
       socket.emit('ALERT_CLEARED');
       logger.info('ALERT_CLEARED emitted');
     }
   };
 
+  // Show demo mode screen
+  if (appMode === 'demo') {
+    return (
+      <DemoModeScreen
+        onExit={() => setAppMode('auth')}
+      />
+    );
+  }
+
   // Show authentication screen
   if (appMode === 'auth' || !authenticated) {
-    return <AuthenticationScreen onAuthenticated={handleAuthenticated} />;
+    return (
+      <View style={styles.container}>
+        <AuthenticationScreen onAuthenticated={handleAuthenticated} />
+        <TouchableOpacity
+          style={styles.demoModeButton}
+          onPress={() => setAppMode('demo')}
+        >
+          <Text style={styles.demoModeButtonText}>🎬 Demo Mode</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   // Show calibration screen
@@ -984,12 +1004,12 @@ export default function App() {
         facing="back"
         onCameraReady={() => {
           logger.info('Camera ready');
-          
+
           // Set camera reference for real-time processing
           if (cameraRef.current) {
             realtimeVideoProcessor.setCameraRef(cameraRef.current);
           }
-          
+
           // Optionally start detection automatically when session is active
           if (sessionActive) {
             // Real-time processing will start when session starts
@@ -1011,15 +1031,15 @@ export default function App() {
               {sessionActive ? 'SESSION ACTIVE' : 'PRIVACY MODE ACTIVE'}
             </Text>
             <Text style={styles.statusSubtext}>
-              {sessionActive 
+              {sessionActive
                 ? `Session: ${telemetryState?.sessionId?.substring(0, 15)}...`
-                : detectionActive 
-                  ? 'Detection Active...' 
+                : detectionActive
+                  ? 'Detection Active...'
                   : 'Monitoring...'}
             </Text>
             {telemetryState && (
               <Text style={styles.telemetryInfo}>
-                Data Points: {telemetryState.dataCount} | 
+                Data Points: {telemetryState.dataCount} |
                 Markers: {telemetryState.markerEventCount}
               </Text>
             )}
@@ -1090,8 +1110,8 @@ export default function App() {
               </Text>
               {realtimeVideoProcessor.isProcessing && (
                 <Text style={styles.statsSubtext}>
-                  Frames: {realtimeVideoProcessor.frameCount} | 
-                  Processed: {realtimeVideoProcessor.processedFrames} | 
+                  Frames: {realtimeVideoProcessor.frameCount} |
+                  Processed: {realtimeVideoProcessor.processedFrames} |
                   Detections: {realtimeVideoProcessor.detectionHistory.length}
                 </Text>
               )}
@@ -1383,6 +1403,25 @@ const styles = StyleSheet.create({
   welfareBackupButton: {
     flex: 1,
     backgroundColor: '#FFAA00',
+  },
+  demoModeButton: {
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    backgroundColor: '#3498db',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  demoModeButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
