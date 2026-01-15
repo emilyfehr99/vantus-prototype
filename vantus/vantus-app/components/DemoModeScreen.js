@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
+import { Asset } from 'expo-asset';
 import demoVideoService from '../services/demoVideoService';
 import {
     DEMO_SCRIPTS,
@@ -23,6 +23,9 @@ import {
     ALERT_COLORS,
 } from '../utils/demoScripts';
 import logger from '../utils/logger';
+
+// Bundled demo video asset
+const BUNDLED_DEMO_VIDEO = require('../assets/demo/traffic_stop.mp4');
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -84,6 +87,19 @@ export default function DemoModeScreen({ onExit }) {
         } catch (error) {
             logger.error('Failed to pick video', error);
             Alert.alert('Error', 'Failed to load video');
+        }
+    };
+
+    // Load bundled demo video
+    const loadBundledVideo = async () => {
+        try {
+            const asset = Asset.fromModule(BUNDLED_DEMO_VIDEO);
+            await asset.downloadAsync();
+            setVideoUri(asset.localUri || asset.uri);
+            logger.info('Bundled demo video loaded', { uri: asset.localUri });
+        } catch (error) {
+            logger.error('Failed to load bundled video', error);
+            Alert.alert('Error', 'Failed to load bundled demo video');
         }
     };
 
@@ -210,9 +226,13 @@ export default function DemoModeScreen({ onExit }) {
                     />
                 ) : (
                     <View style={styles.videoPlaceholder}>
-                        <Text style={styles.placeholderText}>No Video Loaded</Text>
-                        <TouchableOpacity style={styles.loadButton} onPress={pickVideo}>
-                            <Text style={styles.loadButtonText}>📹 Load Video</Text>
+                        <Text style={styles.placeholderText}>Load Demo Video</Text>
+                        <TouchableOpacity style={styles.loadButton} onPress={loadBundledVideo}>
+                            <Text style={styles.loadButtonText}>🎬 Use Demo Video</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.orText}>— or —</Text>
+                        <TouchableOpacity style={styles.loadButtonSecondary} onPress={pickVideo}>
+                            <Text style={styles.loadButtonSecondaryText}>📁 Pick from Library</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -437,6 +457,23 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    orText: {
+        color: '#666',
+        fontSize: 14,
+        marginVertical: 12,
+    },
+    loadButtonSecondary: {
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: '#3498db',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 8,
+    },
+    loadButtonSecondaryText: {
+        color: '#3498db',
+        fontSize: 14,
     },
     overlay: {
         position: 'absolute',
