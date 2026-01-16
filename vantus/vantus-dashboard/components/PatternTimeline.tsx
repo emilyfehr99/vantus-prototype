@@ -4,7 +4,6 @@
  */
 
 import React from 'react';
-import styles from '../styles/PatternTimeline.module.css';
 
 interface Signal {
   signalType: string;
@@ -26,14 +25,14 @@ interface PatternTimelineProps {
 export default function PatternTimeline({ signals, officerName }: PatternTimelineProps) {
   if (!signals || signals.length === 0) {
     return (
-      <div className={styles.timelineEmpty}>
-        <p>No signals to display</p>
+      <div className="vantus-card text-center py-8 text-gray-500 font-mono text-sm border-dashed">
+        <p>NO SIGNALS DETECTED</p>
       </div>
     );
   }
 
   // Sort signals by timestamp
-  const sortedSignals = [...signals].sort((a, b) => 
+  const sortedSignals = [...signals].sort((a, b) =>
     new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
 
@@ -58,71 +57,65 @@ export default function PatternTimeline({ signals, officerName }: PatternTimelin
   };
 
   return (
-    <div className={styles.timelineContainer}>
-      <div className={styles.timelineHeader}>
-        <h3>Pattern Timeline: {officerName}</h3>
-        <div className={styles.timelineLegend}>
-          <span className={styles.legendItem}>
-            <span className={styles.legendDot} style={{ backgroundColor: '#FFAA00' }}></span>
-            High Pattern Strength
+    <div className="vantus-card mb-4 min-w-[600px]">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+          Pattern Timeline: <span className="text-white">{officerName}</span>
+        </h3>
+        <div className="flex gap-4 text-[10px]">
+          <span className="flex items-center gap-2 text-gray-400">
+            <span className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_5px_rgba(255,170,0,0.5)]"></span>
+            High
           </span>
-          <span className={styles.legendItem}>
-            <span className={styles.legendDot} style={{ backgroundColor: '#FFD700' }}></span>
-            Medium Pattern Strength
+          <span className="flex items-center gap-2 text-gray-400">
+            <span className="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_5px_rgba(255,215,0,0.5)]"></span>
+            Medium
           </span>
-          <span className={styles.legendItem}>
-            <span className={styles.legendDot} style={{ backgroundColor: '#00FF41' }}></span>
-            Low Pattern Strength
-          </span>
-        </div>
-      </div>
-
-      <div className={styles.timeline}>
-        <div className={styles.timelineTrack}>
-          {sortedSignals.map((signal, idx) => {
-            const position = getTimelinePosition(signal.timestamp);
-            const color = getSignalColor(signal);
-            
-            return (
-              <div
-                key={`${signal.timestamp}-${idx}`}
-                className={styles.timelineMarker}
-                style={{
-                  left: `${position}%`,
-                  backgroundColor: color,
-                }}
-                title={`${signal.signalCategory} (${(signal.probability * 100).toFixed(0)}%) - ${new Date(signal.timestamp).toLocaleTimeString()}`}
-              />
-            );
-          })}
-        </div>
-
-        <div className={styles.timelineLabels}>
-          <span className={styles.timeLabel}>
-            {firstTime.toLocaleTimeString()}
-          </span>
-          <span className={styles.timeLabel}>
-            {lastTime.toLocaleTimeString()}
+          <span className="flex items-center gap-2 text-gray-400">
+            <span className="w-2 h-2 rounded-full bg-[#00FF41] shadow-[0_0_5px_rgba(0,255,65,0.5)]"></span>
+            Low
           </span>
         </div>
       </div>
 
-      <div className={styles.timelineStats}>
-        <div className={styles.stat}>
-          <span className={styles.statLabel}>Total Signals:</span>
-          <span className={styles.statValue}>{signals.length}</span>
+      <div className="relative h-24 mb-2">
+        <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-800 transform -translate-y-1/2"></div>
+        {sortedSignals.map((signal, idx) => {
+          const position = getTimelinePosition(signal.timestamp);
+          const color = getSignalColor(signal);
+
+          return (
+            <div
+              key={`${signal.timestamp}-${idx}`}
+              className="absolute top-1/2 w-3 h-3 rounded-sm transform -translate-y-1/2 -translate-x-1/2 cursor-pointer hover:scale-150 transition-transform z-10 border border-black"
+              style={{
+                left: `${position}%`,
+                backgroundColor: color,
+                boxShadow: `0 0 10px ${color}50`
+              }}
+              title={`${signal.signalCategory} (${(signal.probability * 100).toFixed(0)}%) - ${new Date(signal.timestamp).toLocaleTimeString()}`}
+            />
+          );
+        })}
+      </div>
+
+      <div className="flex justify-between text-[10px] font-mono text-gray-600">
+        <span>{firstTime.toLocaleTimeString()}</span>
+        <span>{lastTime.toLocaleTimeString()}</span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4 mt-6 border-t border-gray-800 pt-4">
+        <div className="text-center">
+          <span className="block text-[10px] text-gray-500 uppercase mb-1">Total Signals</span>
+          <span className="text-xl font-mono text-white">{signals.length}</span>
         </div>
-        <div className={styles.stat}>
-          <span className={styles.statLabel}>Time Range:</span>
-          <span className={styles.statValue}>
-            {Math.round(timeRange / 1000 / 60)} minutes
-          </span>
+        <div className="text-center border-l border-gray-800">
+          <span className="block text-[10px] text-gray-500 uppercase mb-1">Duration</span>
+          <span className="text-xl font-mono text-white">{Math.max(1, Math.round(timeRange / 1000 / 60))}m</span>
         </div>
-        <div className={styles.stat}>
-          <span className={styles.statLabel}>Categories:</span>
-          <span className={styles.statValue}>
-            {new Set(signals.map(s => s.signalCategory)).size}
-          </span>
+        <div className="text-center border-l border-gray-800">
+          <span className="block text-[10px] text-gray-500 uppercase mb-1">Categories</span>
+          <span className="text-xl font-mono text-white">{new Set(signals.map(s => s.signalCategory)).size}</span>
         </div>
       </div>
     </div>

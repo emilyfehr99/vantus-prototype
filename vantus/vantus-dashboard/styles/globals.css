@@ -52,8 +52,13 @@ a {
 }
 
 @keyframes scanline {
-  0% { bottom: 100%; }
-  100% { bottom: -100px; }
+  0% {
+    bottom: 100%;
+  }
+
+  100% {
+    bottom: -100px;
+  }
 }
 
 /* Noise Grain Texture */
@@ -94,3 +99,50 @@ a {
   color: black;
 }
 
+/* Neon Text Utilities */
+.text-neon-green {
+  color: #00FF41;
+  text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+}
+
+.text-neon-red {
+  color: #FF3B30;
+  text-shadow: 0 0 10px rgba(255, 59, 48, 0.5);
+}
+
+.border-neon-green {
+  border-color: #00FF41;
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+}
+
+/* Common UI Elements */
+.vantus-card {
+  background: #0a0a0a;
+  border: 1px solid #171717;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.vantus-card:hover {
+  border-color: #00FF41;
+  background: #0f0f0f;
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
+}
+
+.vantus-header {
+  border-bottom: 1px solid #171717;
+  background: #0a0a0a;
+  backdrop-filter: blur(10px);
+}
+
+.vantus-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
+.vantus-mono {
+  font-family: 'JetBrains Mono', monospace;
+}

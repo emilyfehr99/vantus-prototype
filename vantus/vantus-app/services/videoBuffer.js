@@ -15,7 +15,7 @@ try {
 } catch (e) {
   videoEncryption = require('./videoEncryption').default;
 }
-import videoEncryption from './videoEncryption';
+// import videoEncryption from './videoEncryption';
 
 class VideoBuffer {
   constructor() {
@@ -51,7 +51,7 @@ class VideoBuffer {
       // In production, would use expo-av Recording API or native recording
       if (this.cameraRef) {
         this.isRecording = true;
-        
+
         // Record to cache directory (RAM-backed)
         const cacheDir = FileSystem.cacheDirectory;
         const bufferPath = `${cacheDir}vantus_buffer_${Date.now()}.mp4`;
@@ -59,7 +59,7 @@ class VideoBuffer {
         // In production, this would start actual video recording
         // For now, mark as recording (will be implemented with proper recording API)
         logger.info('Video buffer started (placeholder - requires recording API)', { bufferPath });
-        
+
         // Placeholder: In production would use:
         // const { recording } = await Camera.Recording.createAsync({
         //   quality: Camera.VideoQuality['480p'],
@@ -82,7 +82,7 @@ class VideoBuffer {
     try {
       // In production, would stop actual recording
       // await this.recording.stopAndUnloadAsync();
-      
+
       this.isRecording = false;
       this.recording = null;
       logger.info('Video buffer stopped');
@@ -108,14 +108,14 @@ class VideoBuffer {
       // 3. Wait for post-trigger to complete
       // 4. Combine videos
       // 5. Encrypt and save
-      
+
       // For now, create placeholder clip info
       const cacheDir = FileSystem.cacheDirectory;
       const bufferPath = `${cacheDir}vantus_buffer_${Date.now()}.mp4`;
-      
+
       // Simulate video data (in production, would be actual video)
       const simulatedVideoData = 'VIDEO_DATA_PLACEHOLDER';
-      
+
       // Encrypt clip
       const encryptedClip = await this.encryptClipData(simulatedVideoData);
 
@@ -142,7 +142,7 @@ class VideoBuffer {
     try {
       // Generate encryption key
       const encryptionKey = await videoEncryption.generateKey();
-      
+
       // If videoData is a URI, encrypt the file
       // Otherwise, treat as data to encrypt
       if (typeof videoData === 'string' && videoData.startsWith('file://')) {
@@ -178,10 +178,10 @@ class VideoBuffer {
     // In production, use FFmpeg or similar to combine videos
     // For now, return pre-trigger (would be combined in production)
     logger.debug('Combining videos', { preTriggerUri, postTriggerUri });
-    
+
     // Placeholder - would use FFmpeg in production
     // const combined = await ffmpeg.combine([preTriggerUri, postTriggerUri]);
-    
+
     return preTriggerUri; // Placeholder
   }
 

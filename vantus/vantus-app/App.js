@@ -1,1388 +1,555 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
-import { CameraView, Camera } from 'expo-camera';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Animated, Dimensions, Platform, StatusBar } from 'react-native';
+import { Camera } from 'expo-camera';
+import * as Location from 'expo-location';
+import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { io } from 'socket.io-client';
-import detectionService from './services/detectionService';
-import telemetryService from './services/telemetryService';
-import edgeIntelligence from './services/edgeIntelligence';
-import baselineRelativeSignals from './services/baselineRelativeSignals';
-import baselineCalibration from './services/baselineCalibration';
-import AuthenticationScreen from './components/AuthenticationScreen';
-import CalibrationScreen from './components/CalibrationScreen';
-import WelfareCheckPrompt from './components/WelfareCheckPrompt';
-import multiModelDetection from './services/multiModelDetection';
-import modelLoader from './services/modelLoader';
-import modelRegistry from './services/modelRegistry';
-import voiceAdvisory from './services/voiceAdvisory';
-import autoDispatch from './services/autoDispatch';
-import videoBuffer from './services/videoBuffer';
-import welfareCheck from './services/welfareCheck';
-import configService from './utils/config';
-import { getServerUrl } from './utils/constants';
-import { generateOfficerId } from './utils/client-config';
-import logger from './utils/logger';
-import llmService from './services/llmService';
-import signalFusion from './services/signalFusion';
-import signalValidation from './services/signalValidation';
-import knowledgeBase from './services/knowledgeBase';
-import ragService from './services/ragService';
-import realtimeVideoProcessor from './services/realtimeVideoProcessor';
 
-// Bridge server URL - now from config
-const BRIDGE_SERVER_URL = configService.getServerUrl('bridge') || 'http://localhost:3001';
+// --- Constants ---
+const COLORS = {
+  BLACK: '#000000',
+  NEUTRAL_950: '#0a0a0a',
+  NEUTRAL_900: '#171717',
+  NEUTRAL_800: '#262626',
+  NEUTRAL_700: '#404040',
+  NEUTRAL_500: '#737373',
+  NEUTRAL_400: '#a3a3a3',
+  NEON_GREEN: '#00FF41',
+  NEON_RED: '#FF3B30',
+  ORANGE: '#F97316',
+  WHITE: '#FFFFFF',
+};
 
-// GPS coordinates - now from config
-const SIMULATED_GPS = configService.getMapCenter();
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export default function App() {
-  // Authentication & Calibration State
-  const [authenticated, setAuthenticated] = useState(false);
-  const [calibrated, setCalibrated] = useState(false);
-  const [badgeNumber, setBadgeNumber] = useState(null);
-  const [calibrationData, setCalibrationData] = useState(null);
-  const [appMode, setAppMode] = useState('auth'); // 'auth' | 'calibration' | 'standby' | 'active'
+// --- Mock Data Generators ---
+const generateTimestamp = () => {
+  const now = new Date();
+  return now.toISOString().split('T')[1].slice(0, 12);
+};
 
-  // Camera & Detection State
-  const [hasPermission, setHasPermission] = useState(null);
-  const [alertActive, setAlertActive] = useState(false);
-  const [socket, setSocket] = useState(null);
-  const cameraRef = useRef(null);
-  const [detectionActive, setDetectionActive] = useState(false);
-  const [modelLoading, setModelLoading] = useState(false);
-  const [modelReady, setModelReady] = useState(false);
-  const detectionIntervalRef = useRef(null);
-  
-  // Session & Telemetry State
-  const [sessionActive, setSessionActive] = useState(false);
-  const [telemetryState, setTelemetryState] = useState(null);
-  const [contextualSignals, setContextualSignals] = useState([]);
-  const signalAnalysisIntervalRef = useRef(null);
+// --- Components ---
 
-  // Handle authentication
-  const handleAuthenticated = (badge) => {
-    setBadgeNumber(badge);
-    setAuthenticated(true);
-    setAppMode('calibration');
-  };
-
-  // Handle calibration complete
-  const handleCalibrationComplete = (data) => {
-    setCalibrationData(data);
-    setCalibrated(true);
-    setAppMode('standby');
-    
-    // Store calibration data in telemetry service for detection use
-    telemetryService.setCalibrationData(data);
-    
-    // Show completion message
-    Alert.alert(
-      'Calibration Complete',
-      'Vantus Active. Stay safe.',
-      [{ text: 'OK', onPress: () => {} }]
-    );
-  };
+const Scanline = () => {
+  const animatedValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Initialize LLM service for audio analysis
-    const initLLM = () => {
-      const llmConfig = configService.getLLMConfig();
-      if (llmConfig.enabled && llmConfig.apiKey && llmConfig.provider) {
-        llmService.initialize(
-          llmConfig.provider,
-          llmConfig.apiKey,
-          llmConfig.model,
-          llmConfig.apiUrl // Custom API URL for providers like Golem
-        );
-        logger.info('LLM service initialized for audio analysis');
-      } else {
-        logger.info('LLM service not configured - using fallback audio analysis');
-      }
-    };
-    
-    // Initialize Knowledge Base service
-    const initKnowledgeBase = () => {
-      const kbConfig = configService.getKnowledgeBaseConfig();
-      if (kbConfig.enabled && kbConfig.apiUrl) {
-        knowledgeBase.initialize(
-          kbConfig.provider || 'api',
-          kbConfig.apiUrl,
-          kbConfig.apiKey
-        );
-        logger.info('Knowledge Base service initialized');
-      } else {
-        logger.info('Knowledge Base service not configured - using local knowledge only');
-      }
-    };
-    
-    // Initialize RAG service (depends on Knowledge Base)
-    const initRAG = () => {
-      const kbConfig = configService.getKnowledgeBaseConfig();
-      const ragEnabled = kbConfig.enabled && kbConfig.apiUrl; // RAG requires knowledge base
-      ragService.initialize(ragEnabled);
-      if (ragEnabled) {
-        logger.info('RAG service initialized - knowledge retrieval enabled');
-      } else {
-        logger.info('RAG service not enabled - using direct LLM analysis');
-      }
-    };
-    
-    initLLM();
-    initKnowledgeBase();
-    initRAG();
-    
-    // Only request camera permission after calibration
-    if (calibrated) {
-      (async () => {
-        const { status } = await Camera.requestCameraPermissionsAsync();
-        setHasPermission(status === 'granted');
-      })();
-    }
+    Animated.loop(
+      Animated.timing(animatedValue, {
+        toValue: 1,
+        duration: 8000,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, []);
 
-    // Initialize detection service (legacy COCO-SSD)
-    const initDetection = async () => {
-      try {
-        setModelLoading(true);
-        await detectionService.initialize();
-        setModelReady(true);
-        logger.info('Legacy detection model ready');
-      } catch (error) {
-        logger.error('Failed to initialize detection model', error);
-        // Don't show alert - models may not be available yet
-      } finally {
-        setModelLoading(false);
-      }
-    };
+  const translateY = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-SCREEN_HEIGHT, SCREEN_HEIGHT],
+  });
 
-    // Initialize multi-model detection system
-    const initMultiModelDetection = async () => {
-      try {
-        // Load models when paths are available
-        // In production, these paths would come from config or API
-        const modelPaths = {
-          // weapon: 'path/to/yolov8-nano/model.json',
-          // stance: 'path/to/movenet/model.json',
-          // hands: 'path/to/movenet/model.json', // Can share with stance
-          // audio: 'path/to/audio-classifier/model.json',
-        };
-        
-        // Only load if paths are provided
-        if (Object.keys(modelPaths).length > 0) {
-          await modelLoader.loadAllModels(modelPaths);
-          logger.info('Multi-model detection system initialized');
-        } else {
-          logger.info('Model paths not configured - models will load when available');
-        }
-      } catch (error) {
-        logger.error('Failed to initialize multi-model detection', error);
-        // Models will remain in 'pending' status
-      }
-    };
-
-    initDetection();
-    initMultiModelDetection();
-
-    // Connect to bridge server
-    const newSocket = io(BRIDGE_SERVER_URL, {
-      transports: ['websocket'],
-      reconnection: true,
-    });
-
-    newSocket.on('connect', () => {
-      console.log('Connected to bridge server');
-    });
-
-    newSocket.on('disconnect', () => {
-      logger.info('Disconnected from bridge server');
-      voiceAdvisory.connectionLost();
-    });
-
-    newSocket.on('connect', () => {
-      if (sessionActive) {
-        voiceAdvisory.connectionRestored();
-      }
-    });
-
-    setSocket(newSocket);
-
-    return () => {
-      newSocket.close();
-      if (detectionIntervalRef.current) {
-        clearInterval(detectionIntervalRef.current);
-      }
-      if (signalAnalysisIntervalRef.current) {
-        clearInterval(signalAnalysisIntervalRef.current);
-      }
-      // Stop session if active
-      if (sessionActive) {
-        telemetryService.stopSession();
-      }
-    };
-  }, [sessionActive]);
-
-  // Simulated threat detection (manual button press)
-  const simulateThreat = () => {
-    triggerThreatAlert();
-  };
-
-  // Real camera detection using TensorFlow.js
-  const detectThreatFromCamera = async () => {
-    if (!cameraRef.current || alertActive || !modelReady) {
-      if (!modelReady) {
-        logger.debug('Model not ready yet');
-      }
-      return;
-    }
-
-    try {
-      // Take a picture from the camera
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.7,
-        base64: false,
-        skipProcessing: false,
-      });
-
-      if (!photo || !photo.uri) {
-        logger.warn('No photo data available');
-        return;
-      }
-
-      logger.debug('Processing frame for detection...');
-      
-      // Run object detection
-      const result = await detectionService.detectObjects(photo.uri);
-      
-      if (result.detected) {
-        logger.warn('THREAT DETECTED! Cell phone found', { detections: result.detections });
-        triggerThreatAlert();
-      } else {
-        logger.debug('No threat detected', { objectCount: result.allDetections.length });
-      }
-      
-    } catch (error) {
-      logger.error('Detection error', error);
-      // Don't show alert to user for detection errors, just log
-    }
-  };
-
-  // Start session (manual session start)
-  const startSession = async () => {
-    try {
-      // Use badge number as officer identifier
-      const officerName = generateOfficerId(badgeNumber);
-      const sessionId = await telemetryService.startSession(officerName);
-      setSessionActive(true);
-      setAppMode('active');
-      
-      // Initialize systems
-      // 1. Voice advisory
-      voiceAdvisory.vantusActive();
-      
-      // 2. Video buffer
-      videoBuffer.setCameraRef(cameraRef.current);
-      await videoBuffer.startBuffer();
-      
-      // 3. Real-time video processing
-      if (cameraRef.current) {
-        realtimeVideoProcessor.setCameraRef(cameraRef.current);
-        realtimeVideoProcessor.startProcessing({
-          frameInterval: 2000, // Process frame every 2 seconds
-          officerName: officerName,
-          context: null, // Will be set from telemetry state
-          calibrationData: calibrationData,
-          onDetection: (detectionResults) => {
-            // Handle detections from real-time processing
-            logger.info('Real-time detection', { detections: detectionResults.detections });
-            
-            // Process voice advisories
-            if (detectionResults && detectionResults.detections) {
-              Object.values(detectionResults.detections).forEach(detection => {
-                if (detection.detected) {
-                  voiceAdvisory.processDetection(detection);
-                  
-                  // Trigger video clip save on weapon detection
-                  if (detection.category === 'weapon' && detection.confidence >= 0.70) {
-                    videoBuffer.triggerClipSave({
-                      type: 'WEAPON_DETECTED',
-                      timestamp: new Date().toISOString(),
-                      confidence: detection.confidence,
-                    });
-                  }
-                }
-              });
-            }
-          },
-          onPeripheralScan: async (frameBase64, officerName, context) => {
-            // PERIPHERAL OVERWATCH: Request peripheral scan from bridge server
-            if (socket && socket.connected) {
-              socket.emit('PERIPHERAL_SCAN_REQUEST', {
-                officerName,
-                frameBase64,
-                context: context || {},
-                timestamp: new Date().toISOString(),
-              });
-            }
-          },
-        });
-        logger.info('Real-time video processing started');
-      }
-      
-      // 3. Start periodic welfare checks (after 10 minutes)
-      setTimeout(() => {
-        const officerInfo = {
-          badgeNumber: badgeNumber,
-          name: null, // Would come from roster
-          unit: null, // Would come from roster
-        };
-        welfareCheck.startPeriodicChecks(telemetryService.getTelemetryState(), officerInfo, 10);
-      }, 10 * 60 * 1000); // 10 minutes
-      
-      // Start signal analysis loop (every 30 seconds)
-      // Signals are baseline-relative (per-officer, per-context)
-      signalAnalysisIntervalRef.current = setInterval(() => {
-        analyzeAndSendSignals();
-      }, 30000);
-      
-      // Start auto-dispatch monitoring (every 5 seconds)
-      const dispatchCheckInterval = setInterval(() => {
-        checkAutoDispatch();
-      }, 5000);
-      
-      // Store interval for cleanup
-      if (!window.dispatchInterval) {
-        window.dispatchInterval = dispatchCheckInterval;
-      }
-      
-      // Send initial session start to bridge
-      if (socket && socket.connected) {
-        socket.emit('SESSION_STARTED', {
-          officerName: officerName,
-          badgeNumber: badgeNumber,
-          sessionId,
-          timestamp: new Date().toISOString(),
-          calibrationData: calibrationData, // Include calibration data
-        });
-      }
-      
-      logger.info('Session started', { sessionId });
-    } catch (error) {
-      logger.error('Failed to start session', error);
-      Alert.alert('Error', 'Failed to start session');
-    }
-  };
-
-  // Check auto-dispatch conditions
-  const checkAutoDispatch = async () => {
-    if (!sessionActive) return;
-
-    try {
-      const state = telemetryService.getTelemetryState();
-      const officerInfo = {
-        badgeNumber: badgeNumber,
-        name: null, // Would come from roster
-        unit: null, // Would come from roster
-      };
-
-      // Run multi-model detections
-      const detectionResults = await multiModelDetection.runAllDetections(
-        null, // imageUri - would be from camera
-        null, // audioData
-        null, // heartRate - would be from wearable
-        getOfficerId(badgeNumber),
-        null, // context
-        calibrationData
-      );
-
-      // Check auto-dispatch conditions
-      const dispatched = await autoDispatch.checkAutoDispatchConditions(
-        detectionResults,
-        state,
-        officerInfo
-      );
-
-      if (dispatched) {
-        // Trigger video clip save
-        await videoBuffer.triggerClipSave({
-          type: 'AUTO_DISPATCH',
-          timestamp: new Date().toISOString(),
-        });
-
-        // Voice advisory
-        voiceAdvisory.backupDispatched();
-      }
-    } catch (error) {
-      logger.error('Auto-dispatch check error', error);
-    }
-  };
-
-  // Manual dispatch button handler
-  const handleManualDispatch = async () => {
-    if (!sessionActive) {
-      Alert.alert('Session Required', 'Please start a session first');
-      return;
-    }
-
-    const confirmed = await new Promise((resolve) => {
-      Alert.alert(
-        'Dispatch Backup',
-        'Are you sure you want to request emergency backup?',
-        [
-          { text: 'Cancel', onPress: () => resolve(false), style: 'cancel' },
-          { text: 'Dispatch', onPress: () => resolve(true), style: 'destructive' },
-        ]
-      );
-    });
-
-    if (!confirmed) return;
-
-    try {
-      const state = telemetryService.getTelemetryState();
-      const officerInfo = {
-        badgeNumber: badgeNumber,
-        name: null,
-        unit: null,
-      };
-
-      const dispatchPayload = await autoDispatch.manualDispatch(
-        null,
-        state,
-        officerInfo
-      );
-
-      // Trigger video clip save
-      await videoBuffer.triggerClipSave({
-        type: 'MANUAL_DISPATCH',
-        timestamp: new Date().toISOString(),
-      });
-
-      // Voice advisory
-      voiceAdvisory.backupDispatched();
-
-      // Send to bridge server
-      if (socket && socket.connected) {
-        socket.emit('EMERGENCY_DISPATCH', dispatchPayload);
-      }
-
-      Alert.alert('Backup Dispatched', 'Emergency backup has been requested');
-    } catch (error) {
-      logger.error('Manual dispatch error', error);
-      Alert.alert('Error', 'Failed to dispatch backup');
-    }
-  };
-
-  // Handle welfare check response
-  const handleWelfareResponse = (responseType) => {
-    const state = telemetryService.getTelemetryState();
-    const officerInfo = {
-      badgeNumber: badgeNumber,
-      name: null,
-      unit: null,
-    };
-
-    const result = welfareCheck.handleResponse(responseType, state, officerInfo);
-    
-    if (result.action === 'dispatched') {
-      Alert.alert('Backup Dispatched', 'Emergency backup has been requested');
-    }
-    
-    return result;
-  };
-
-  // Stop session (manual session stop)
-  const stopSession = async () => {
-    if (!sessionActive) return;
-    
-    const sessionData = telemetryService.stopSession();
-    setSessionActive(false);
-    setAppMode('standby');
-    
-    // Stop systems
-    await videoBuffer.stopBuffer();
-    welfareCheck.clearPeriodicChecks();
-    welfareCheck.clearWelfareTimer();
-    
-    if (signalAnalysisIntervalRef.current) {
-      clearInterval(signalAnalysisIntervalRef.current);
-      signalAnalysisIntervalRef.current = null;
-    }
-    
-    if (window.dispatchInterval) {
-      clearInterval(window.dispatchInterval);
-      window.dispatchInterval = null;
-    }
-    
-    // Update baseline calibration at session end
-    try {
-      const officerName = generateOfficerId(badgeNumber);
-      baselineCalibration.accumulateSessionData(
-        sessionData.sessionId,
-        sessionData.telemetryData,
-        sessionData.movementHistory,
-        sessionData.audioTranscripts,
-        sessionData.markerEvents
-      );
-      baselineCalibration.updateBaseline(officerName, sessionData.sessionId);
-      logger.info('Baseline updated for session', { sessionId: sessionData.sessionId });
-    } catch (error) {
-      logger.error('Failed to update baseline', error);
-    }
-    
-    // Send session end to bridge
-    if (socket && socket.connected) {
-      socket.emit('SESSION_ENDED', {
-        officerName: getOfficerId(badgeNumber),
-        badgeNumber: badgeNumber,
-        sessionId: sessionData.sessionId,
-        timestamp: new Date().toISOString(),
-        summary: {
-          duration: sessionData.endTime - sessionData.startTime,
-          telemetryCount: sessionData.telemetryData.length,
-          markerCount: sessionData.markerEvents.length,
-        },
-      });
-    }
-    
-    logger.info('Session stopped', { sessionId: sessionData.sessionId });
-  };
-
-  // Analyze and send contextual signals (baseline-relative)
-  const analyzeAndSendSignals = () => {
-    if (!sessionActive) return;
-    
-    const state = telemetryService.getTelemetryState();
-    const movementData = telemetryService.getMovementPatternData();
-    const audioTranscripts = telemetryService.audioTranscripts;
-    const markerEvents = telemetryService.markerEvents;
-    const calData = telemetryService.getCalibrationData(); // Get calibration data
-    
-    // Generate baseline-relative signals
-    // This uses per-officer baselines, not global thresholds
-    const officerName = getOfficerId(badgeNumber);
-    const rawSignals = baselineRelativeSignals.generateAllSignals(
-      state,
-      movementData,
-      audioTranscripts,
-      markerEvents,
-      officerName
-    );
-    
-    // Validate signals to reduce false positives
-    const validatedSignals = rawSignals.map(signal => {
-      const validation = signalValidation.validateSignal(
-        signal,
-        rawSignals.filter(s => s !== signal), // Other signals for context
-        state,
-        { operationalContext: state.operationalContext }
-      );
-      
-      // Use adjusted confidence if validation changed it
-      if (validation.adjustedConfidence !== validation.confidence) {
-        return {
-          ...signal,
-          probability: validation.adjustedConfidence,
-          validation: {
-            originalConfidence: validation.confidence,
-            adjustedConfidence: validation.adjustedConfidence,
-            warnings: validation.warnings,
-          },
-        };
-      }
-      
-      return signal;
-    });
-    
-    // Fuse related signals for better accuracy
-    const fusedSignals = signalFusion.fuseSignals(validatedSignals, {
-      operationalContext: state.operationalContext,
-      sessionDuration: state.sessionDuration,
-    });
-    
-    // Use fused signals (they include validated signals that weren't fused)
-    let signals = fusedSignals.length > 0 ? fusedSignals : validatedSignals;
-    
-    // Final accuracy gate: Only send signals with 70%+ confidence after all validation
-    signals = signals.filter(signal => {
-      const finalConfidence = signal.probability || signal.confidence || 0;
-      if (finalConfidence < 0.70) {
-        logger.debug('Signal filtered: confidence too low', {
-          category: signal.signalCategory || signal.category,
-          confidence: finalConfidence,
-        });
-        return false;
-      }
-      return true;
-    });
-    
-    // Run multi-model detections (weapon, stance, hands, biometric, audio)
-    // Note: Models may not be loaded yet, but system is ready
-    (async () => {
-      try {
-        // Get current heart rate if available (from wearable)
-        const currentHeartRate = calData?.heartRateBaseline || null; // In production, get from wearable
-        
-        // Add heart rate to auto-dispatch monitoring
-        if (currentHeartRate) {
-          autoDispatch.addHeartRateReading(currentHeartRate);
-        }
-        
-        // Add movement data to auto-dispatch monitoring
-        if (movementData.movementHistory && movementData.movementHistory.length > 0) {
-          const latestMovement = movementData.movementHistory[movementData.movementHistory.length - 1];
-          autoDispatch.addMovementReading(latestMovement);
-        }
-        
-        // Note: Real-time video processing handles frame capture and detection
-        // This analysis loop focuses on signals and telemetry
-        // Video frames are processed by realtimeVideoProcessor service
-        
-        // Run detections if we have a frame (otherwise real-time processor handles it)
-        // For now, real-time processor handles all video processing
-        const detectionResults = null; // Real-time processor handles video detection
-        
-        // Process voice advisories based on detections
-        if (detectionResults && detectionResults.detections) {
-          Object.values(detectionResults.detections).forEach(detection => {
-            if (detection.detected) {
-              voiceAdvisory.processDetection(detection);
-              
-              // Trigger video clip save on threat detection
-              if (detection.category === 'weapon' && detection.confidence >= 0.70) {
-                videoBuffer.triggerClipSave({
-                  type: 'WEAPON_DETECTED',
-                  timestamp: new Date().toISOString(),
-                  confidence: detection.confidence,
-                });
-              }
-            }
-          });
-        }
-        
-        logger.debug('Multi-model detection results', { detectionResults });
-      } catch (error) {
-        logger.error('Multi-model detection error', error);
-        // Continue even if detection fails
-      }
-    })();
-    
-    // Fallback to old edge intelligence if baseline not available yet
-    // (for first few sessions before baseline is established)
-    let finalSignals = signals;
-    if (signals.length === 0) {
-      const fallbackSignals = edgeIntelligence.generateContextualSignals(
-        state,
-        movementData,
-        audioTranscripts,
-        markerEvents
-      );
-      finalSignals = fallbackSignals;
-    }
-    
-    if (finalSignals.length > 0) {
-      setContextualSignals(prev => [...prev, ...finalSignals].slice(-20)); // Keep last 20
-      
-      // Send signals to bridge server (for supervisors only)
-      if (socket && socket.connected) {
-        socket.emit('CONTEXTUAL_SIGNALS', {
-          officerName: getOfficerId(badgeNumber),
-          badgeNumber: badgeNumber,
-          sessionId: state.sessionId,
-          signals: finalSignals,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    }
-    
-    // Update telemetry state display
-    setTelemetryState(state);
-
-    // 2. KINEMATIC INTENT PREDICTION: Send movement data
-    if (movementData && movementData.movementHistory && movementData.movementHistory.length > 0) {
-      if (socket && socket.connected) {
-        socket.emit('KINEMATIC_PREDICTION_REQUEST', {
-          officerName: getOfficerId(badgeNumber),
-          movementData: {
-            movementHistory: movementData.movementHistory.slice(-20), // Last 20 movements
-            positionHistory: movementData.positionHistory?.slice(-20) || [],
-            currentSpeed: movementData.currentSpeed || 0,
-            currentHeading: movementData.currentHeading || null,
-          },
-          timestamp: new Date().toISOString(),
-        });
-      }
-    }
-
-    // 3. DE-ESCALATION REFEREE: Monitor situation stabilization
-    if (socket && socket.connected) {
-      const detectionResults = null; // Would come from real-time processor
-      socket.emit('DE_ESCALATION_CHECK_REQUEST', {
-        officerName: getOfficerId(badgeNumber),
-        detectionResults: detectionResults || {},
-        telemetryState: state,
-        audioTranscripts: audioTranscripts.slice(-10), // Last 10 transcripts
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // 4. FACT ANCHORING: Log significant events
-    if (finalSignals.length > 0 && socket && socket.connected) {
-      finalSignals.forEach(signal => {
-        // Only log high-confidence signals as facts
-        if (signal.probability >= 0.80) {
-          socket.emit('FACT_ANCHOR', {
-            officerName: getOfficerId(badgeNumber),
-            fact: {
-              type: 'detection',
-              category: signal.signalCategory || signal.category,
-              description: signal.explanation?.description || 'Signal detected',
-              confidence: signal.probability,
-              timestamp: signal.timestamp || new Date().toISOString(),
-            },
-            metadata: {
-              signalId: signal.signalId || null,
-              context: state.operationalContext || null,
-            },
-          });
-        }
-      });
-    }
-
-    // 5. ENHANCED SERVICES: Send data for enhanced analysis
-    // Enhanced Audio Analysis
-    if (audioTranscripts.length > 0 && socket && socket.connected) {
-      const recentTranscripts = audioTranscripts.slice(-5); // Last 5 transcripts
-      recentTranscripts.forEach(transcript => {
-        const transcriptText = transcript.text || transcript.transcript || '';
-        
-        // 5. DICTATION OVERLAY: Check if transcript contains voice command
-        // Look for wake word "Vantus" at start of transcript
-        if (transcriptText.toLowerCase().trim().startsWith('vantus')) {
-          socket.emit('DICTATION_COMMAND', {
-            officerName: getOfficerId(badgeNumber),
-            transcript: transcriptText,
-            context: {
-              timestamp: transcript.timestamp || new Date().toISOString(),
-              location: state.lastLocation,
-              operationalContext: state.operationalContext,
-            },
-          });
-        }
-
-        // Send to Enhanced Audio Analysis
-        socket.emit('ENHANCED_AUDIO_ANALYSIS', {
-          officerName: getOfficerId(badgeNumber),
-          transcript: transcriptText,
-          options: {
-            detectMultiSpeaker: true,
-            analyzeCommunicationPatterns: true,
-            analyzeBackgroundNoise: true,
-          },
-        });
-      });
-    }
-
-    // Location Intelligence
-    if (state.lastLocation && socket && socket.connected) {
-      socket.emit('LOCATION_CLASSIFY', {
-        officerName: getOfficerId(badgeNumber),
-        location: state.lastLocation,
-        context: state.operationalContext || null,
-      });
-    }
-
-    // Coordination Analysis (if multiple officers)
-    if (socket && socket.connected) {
-      socket.emit('COORDINATION_ANALYSIS', {
-        officerName: getOfficerId(badgeNumber),
-        location: state.lastLocation,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // Temporal Analysis
-    if (socket && socket.connected) {
-      socket.emit('TEMPORAL_ANALYSIS', {
-        officerName: getOfficerId(badgeNumber),
-        signals: finalSignals,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // Signal Correlation
-    if (finalSignals.length > 0 && socket && socket.connected) {
-      socket.emit('SIGNAL_CORRELATION', {
-        officerName: getOfficerId(badgeNumber),
-        signals: finalSignals,
-        timestamp: new Date().toISOString(),
-      });
-    }
-  };
-
-  // Start continuous detection loop
-  const startDetection = () => {
-    if (detectionIntervalRef.current) {
-      clearInterval(detectionIntervalRef.current);
-    }
-    
-    setDetectionActive(true);
-    // Run detection every 2 seconds
-    detectionIntervalRef.current = setInterval(() => {
-      detectThreatFromCamera();
-    }, 2000);
-  };
-
-    // Stop detection loop
-  const stopDetection = () => {
-    if (detectionIntervalRef.current) {
-      clearInterval(detectionIntervalRef.current);
-      detectionIntervalRef.current = null;
-    }
-    setDetectionActive(false);
-    
-    // Stop real-time video processing
-    realtimeVideoProcessor.stopProcessing();
-  };
-
-  // Add manual marker event
-  const addMarkerEvent = (eventType) => {
-    if (!sessionActive) {
-      Alert.alert('Session Required', 'Please start a session first');
-      return;
-    }
-    
-    const marker = telemetryService.addMarkerEvent(
-      eventType,
-      `Manual marker: ${eventType}`,
-      { manual: true }
-    );
-    
-    // Send marker to bridge
-    if (socket && socket.connected) {
-      socket.emit('MARKER_EVENT', {
-        officerName: getOfficerId(badgeNumber),
-        badgeNumber: badgeNumber,
-        marker,
-      });
-    }
-    
-    Alert.alert('Marker Added', `Event: ${eventType}`);
-  };
-
-  const triggerThreatAlert = async () => {
-    if (alertActive) return;
-
-    setAlertActive(true);
-
-    // Trigger loud vibration
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    // Repeat vibration for intensity
-    setTimeout(() => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    }, 200);
-    setTimeout(() => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    }, 400);
-
-    // Emit THREAT_DETECTED event to bridge server
-    if (socket && socket.connected) {
-      const location = telemetryState?.lastLocation || SIMULATED_GPS;
-      const threatData = {
-        officerName: badgeNumber ? getOfficerId(badgeNumber) : 'UNKNOWN',
-        badgeNumber: badgeNumber,
-        location: location,
-        timestamp: new Date().toISOString(),
-      };
-
-      socket.emit('THREAT_DETECTED', threatData);
-      logger.warn('THREAT_DETECTED emitted', { threatData });
-      
-      // Trigger video clip save
-      videoBuffer.triggerClipSave({
-        type: 'THREAT_DETECTED',
-        timestamp: new Date().toISOString(),
-      });
-    } else {
-      Alert.alert('Error', 'Not connected to bridge server');
-    }
-  };
-
-  const clearAlert = () => {
-    setAlertActive(false);
-    
-    if (socket && socket.connected) {
-      socket.emit('ALERT_CLEARED');
-      logger.info('ALERT_CLEARED emitted');
-    }
-  };
-
-  // Show authentication screen
-  if (appMode === 'auth' || !authenticated) {
-    return <AuthenticationScreen onAuthenticated={handleAuthenticated} />;
-  }
-
-  // Show calibration screen
-  if (appMode === 'calibration' || !calibrated) {
-    return (
-      <CalibrationScreen
-        badgeNumber={badgeNumber}
-        onCalibrationComplete={handleCalibrationComplete}
+  return (
+    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      <Animated.View
+        style={{
+          width: '100%',
+          height: 80,
+          backgroundColor: COLORS.NEON_GREEN,
+          opacity: 0.08,
+          transform: [{ translateY }],
+        }}
       />
-    );
-  }
+    </View>
+  );
+};
 
-  // Standby mode - show ready screen
-  if (appMode === 'standby' && !sessionActive) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.standbyContainer}>
-          <Text style={styles.standbyTitle}>VANTUS ACTIVE</Text>
-          <Text style={styles.standbySubtitle}>Officer {badgeNumber}</Text>
-          <Text style={styles.standbyMessage}>Stay safe.</Text>
-          <Text style={styles.standbyStatus}>Standby Mode</Text>
-          <TouchableOpacity
-            style={styles.startSessionButton}
-            onPress={startSession}
-          >
-            <Text style={styles.startSessionButtonText}>START SESSION</Text>
-          </TouchableOpacity>
+const ThreatEscalationTracker = ({ peaks }) => {
+  return (
+    <View style={styles.trackerContainer}>
+      <View style={styles.sectionHeader}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Feather name="trending-up" size={10} color={COLORS.NEON_GREEN} />
+          <Text style={styles.label}>THREAT PROGRESSION</Text>
+        </View>
+        <Text style={styles.value}>ESC: {(peaks[peaks.length - 1]?.level || 0).toFixed(0)}%</Text>
+      </View>
+      <View style={styles.barsContainer}>
+        {peaks.slice(-30).map((peak, i) => (
+          <View
+            key={i}
+            style={[
+              styles.bar,
+              {
+                height: `${Math.max(peak.level, 5)}%`,
+                backgroundColor: peak.level > 80 ? COLORS.NEON_RED : peak.level > 50 ? COLORS.ORANGE : COLORS.NEON_GREEN,
+              },
+            ]}
+          />
+        ))}
+      </View>
+    </View>
+  );
+};
+
+// Custom Tactical Map (No external dependencies)
+const TacticalGroundingMap = ({ state, location }) => {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.5, duration: 1500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <View style={styles.mapOuterContainer}>
+      <View style={styles.sectionHeader}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Feather name="globe" size={10} color={COLORS.NEON_GREEN} />
+          <Text style={styles.label}>TACTICAL GROUNDING</Text>
+        </View>
+        <Text style={styles.label}>CORDON: ALPHA-1</Text>
+      </View>
+
+      <View style={styles.mapContainer}>
+        {/* Grid Background */}
+        <View style={styles.mapGrid} />
+
+        {/* Cordon Rings */}
+        <View style={[styles.ring, { width: 60, height: 60, borderRadius: 30 }]} />
+        <Animated.View style={[styles.ring, { width: 100, height: 100, borderRadius: 50, opacity: 0.15, transform: [{ scale: pulseAnim }] }]} />
+        <View style={[styles.ring, { width: 140, height: 140, borderRadius: 70, opacity: 0.05 }]} />
+
+        {/* Self Marker (Center) */}
+        <View style={styles.selfMarker}>
+          <View style={styles.markerInner} />
+        </View>
+
+        {/* Backup Unit Marker (CODE_3 only) */}
+        {state === 'CODE_3' && (
+          <View style={styles.backupMarkerContainer}>
+            <View style={styles.backupMarker} />
+            <Text style={styles.backupLabel}>UNIT_4B-08</Text>
+          </View>
+        )}
+
+        {/* Location Text */}
+        <View style={styles.mapLocationLabel}>
+          <Feather name="map-pin" size={8} color={COLORS.NEON_GREEN} />
+          <Text style={styles.mapLocationText}>
+            {location ? `${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}` : 'GPS SYNC...'}
+          </Text>
         </View>
       </View>
-    );
-  }
 
-  // Camera permission checks (only after calibration)
-  if (hasPermission === null) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.text}>Requesting camera permission...</Text>
+      <View style={styles.mapButtons}>
+        <TouchableOpacity style={styles.mapBtn}>
+          <Feather name="navigation" size={10} color={COLORS.WHITE} />
+          <Text style={styles.mapBtnText}>ROUTE</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.mapBtn}>
+          <Feather name="search" size={10} color={COLORS.WHITE} />
+          <Text style={styles.mapBtnText}>HISTORY</Text>
+        </TouchableOpacity>
       </View>
-    );
-  }
+    </View>
+  );
+};
 
+const DeploymentNodesPanel = ({ state }) => {
+  return (
+    <View style={styles.panelContainer}>
+      <View style={styles.sectionHeader}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Feather name="radio" size={10} color={COLORS.NEON_GREEN} />
+          <Text style={styles.label}>DEPLOYMENT NODES</Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 2 }}>
+          {[1, 2, 3].map((i) => (
+            <View key={i} style={[styles.indicator, { opacity: 0.2 }]} />
+          ))}
+        </View>
+      </View>
+
+      <ScrollView style={{ flex: 1 }}>
+        <View style={styles.nodeItem}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={[styles.nodeDot, { backgroundColor: COLORS.NEON_GREEN }]} />
+            <Text style={styles.nodeLabel}>NODE_ALPHA-1</Text>
+          </View>
+          <Text style={styles.nodeStatus}>SYNCED</Text>
+        </View>
+
+        {state === 'CODE_3' && (
+          <View style={[styles.nodeItem, styles.nodeItemAlert]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={[styles.nodeDot, { backgroundColor: COLORS.NEON_RED }]} />
+              <Text style={[styles.nodeLabel, { color: COLORS.NEON_RED }]}>BACKUP_ETA_90S</Text>
+            </View>
+          </View>
+        )}
+      </ScrollView>
+
+      <View style={styles.advisorBox}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+          <Feather name="volume-2" size={10} color={COLORS.NEON_GREEN} />
+          <Text style={[styles.label, { color: COLORS.NEON_GREEN }]}>VANTUS ADVISOR</Text>
+        </View>
+        <Text style={styles.advisorText}>
+          {state === 'CODE_3'
+            ? 'Alert: Cordon Alpha-1 is being reinforced. Maintain 360 overwatch.'
+            : 'Scanning sector. Stress patterns nominal. GPS precision synchronized.'}
+        </Text>
+      </View>
+    </View>
+  );
+};
+
+const SettingsPanel = ({ thresholds, setThresholds }) => {
+  return (
+    <View style={styles.settingsContainer}>
+      <View style={styles.sectionHeader}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Feather name="settings" size={10} color={COLORS.NEON_GREEN} />
+          <Text style={styles.label}>ALERT CONFIG</Text>
+        </View>
+      </View>
+
+      {[
+        { key: 'weaponDetection', label: 'Weapon Sensitivity', icon: 'crosshair' },
+        { key: 'vocalStress', label: 'Vocal Stress', icon: 'mic' },
+        { key: 'postureAnomaly', label: 'Posture Anomaly', icon: 'activity' },
+      ].map((item) => (
+        <View key={item.key} style={styles.sliderRow}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Feather name={item.icon} size={8} color={COLORS.NEUTRAL_500} />
+              <Text style={styles.sliderLabel}>{item.label}</Text>
+            </View>
+            <Text style={[styles.sliderLabel, { color: COLORS.NEON_GREEN }]}>{thresholds[item.key]}%</Text>
+          </View>
+          <View style={styles.sliderTrack}>
+            <View style={[styles.sliderFill, { width: `${thresholds[item.key]}%` }]} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+};
+
+// --- Main App ---
+export default function App() {
+  const [state, setState] = useState('IDLE');
+  const [logs, setLogs] = useState([]);
+  const [time, setTime] = useState('');
+  const [timer, setTimer] = useState(10);
+  const [isMuted, setIsMuted] = useState(false);
+  const [threatPeaks, setThreatPeaks] = useState([]);
+  const [thresholds, setThresholds] = useState({
+    weaponDetection: 85,
+    vocalStress: 70,
+    postureAnomaly: 60,
+  });
+  const [hasPermission, setHasPermission] = useState(null);
+  const [location, setLocation] = useState(null);
+  const cameraRef = useRef(null);
+
+  // Permissions
+  useEffect(() => {
+    (async () => {
+      const { status: camStatus } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(camStatus === 'granted');
+
+      const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
+      if (locStatus === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({});
+        setLocation(loc);
+      }
+    })();
+  }, []);
+
+  // Time & Simulation Loop
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      setTime(now.toLocaleTimeString([], { hour12: false }));
+
+      setThreatPeaks((prev) => {
+        const baseLevel = state === 'CODE_3' ? 90 : state === 'THREAT' ? 75 : state === 'SUSPICIOUS' ? 40 : 10;
+        const newPeak = {
+          timestamp: Date.now(),
+          level: Math.min(100, Math.max(0, baseLevel + (Math.random() * 15 - 5))),
+        };
+        return [...prev, newPeak].slice(-50);
+      });
+    }, 1000);
+
+    addLog('SYS', 'Operational Terminal Initialized v5.0.5', 'low');
+    addLog('SYS', 'Dynamic Cordon Generation: Sector 4-B ACTIVE', 'low');
+
+    return () => clearInterval(interval);
+  }, [state]);
+
+  const addLog = (source, message, severity = 'low') => {
+    const newLog = {
+      id: Math.random().toString(36),
+      timestamp: generateTimestamp(),
+      source,
+      message,
+      severity,
+    };
+    setLogs((prev) => [newLog, ...prev].slice(0, 50));
+  };
+
+  const triggerThreat = () => {
+    setState('THREAT');
+    addLog('CV', 'WEAPON SIGNATURE DETECTED: 92% PROBABILITY', 'high');
+    addLog('NLP', `High-Arousal detected (Threshold: ${thresholds.vocalStress}%)`, 'high');
+    setTimer(10);
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+  };
+
+  // Threat Escalation Timer
+  useEffect(() => {
+    let interval;
+    if (state === 'THREAT' && timer > 0) {
+      interval = setInterval(() => setTimer((t) => t - 1), 1000);
+    } else if (state === 'THREAT' && timer === 0) {
+      setState('CODE_3');
+      addLog('SYS', 'SILENT 10-33: BACKUP DISPATCHED', 'high');
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }
+    }
+    return () => clearInterval(interval);
+  }, [state, timer]);
+
+  if (hasPermission === null) {
+    return <View style={styles.container} />;
+  }
   if (hasPermission === false) {
     return (
       <View style={styles.container}>
-        <Text style={styles.text}>Camera permission is required</Text>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={async () => {
-            const { status } = await Camera.requestCameraPermissionsAsync();
-            setHasPermission(status === 'granted');
-          }}
-        >
-          <Text style={styles.buttonText}>Grant Permission</Text>
-        </TouchableOpacity>
+        <Text style={{ color: 'white' }}>No access to camera</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Camera feed in background */}
-      <CameraView
-        ref={cameraRef}
-        style={styles.camera}
-        facing="back"
-        onCameraReady={() => {
-          logger.info('Camera ready');
-          
-          // Set camera reference for real-time processing
-          if (cameraRef.current) {
-            realtimeVideoProcessor.setCameraRef(cameraRef.current);
-          }
-          
-          // Optionally start detection automatically when session is active
-          if (sessionActive) {
-            // Real-time processing will start when session starts
-            logger.info('Camera ready - real-time processing available');
-          }
-        }}
-      />
+      <StatusBar barStyle="light-content" />
+      <Scanline />
 
-      {/* Overlay UI */}
-      <ScrollView style={styles.overlay} contentContainerStyle={styles.overlayContent}>
-        {alertActive ? (
-          <View style={styles.alertContainer}>
-            <Text style={styles.alertText}>THREAT DETECTED</Text>
-            <Text style={styles.alertSubtext}>Alert sent to dashboard</Text>
+      {/* HEADER */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.logoBox}>
+            <Text style={styles.logoText}>V</Text>
           </View>
-        ) : (
-          <View style={styles.statusContainer}>
-            <Text style={styles.statusText}>
-              {sessionActive ? 'SESSION ACTIVE' : 'PRIVACY MODE ACTIVE'}
-            </Text>
-            <Text style={styles.statusSubtext}>
-              {sessionActive 
-                ? `Session: ${telemetryState?.sessionId?.substring(0, 15)}...`
-                : detectionActive 
-                  ? 'Detection Active...' 
-                  : 'Monitoring...'}
-            </Text>
-            {telemetryState && (
-              <Text style={styles.telemetryInfo}>
-                Data Points: {telemetryState.dataCount} | 
-                Markers: {telemetryState.markerEventCount}
-              </Text>
-            )}
-            {modelLoading && (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#FFFFFF" />
-                <Text style={styles.loadingText}>Loading detection model...</Text>
+          <Text style={styles.headerTitle}>VANTUS TACTICAL</Text>
+          <View style={styles.divider} />
+          <Feather name="map-pin" size={10} color={COLORS.NEON_GREEN} />
+          <Text style={styles.headerInfoText}>SECTOR_4-B</Text>
+          <Feather name="clock" size={10} color={COLORS.NEON_GREEN} style={{ marginLeft: 8 }} />
+          <Text style={styles.clockText}>{time}</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => setIsMuted(!isMuted)}>
+            <Feather name={isMuted ? 'volume-x' : 'volume-2'} size={14} color={COLORS.NEUTRAL_500} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => addLog('USER', 'Manual Clip Staged', 'low')}>
+            <Feather name="mic" size={14} color={COLORS.NEUTRAL_500} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setState('IDLE')} style={styles.endWatchBtn}>
+            <Text style={styles.endWatchText}>END_WATCH</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* MAIN LAYOUT */}
+      <View style={styles.mainContent}>
+        {/* LEFT COLUMN: Tracker, Logs, Settings */}
+        <View style={styles.leftColumn}>
+          <View style={{ height: 100 }}>
+            <ThreatEscalationTracker peaks={threatPeaks} />
+          </View>
+          <View style={styles.logsPanel}>
+            <View style={styles.sectionHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Feather name="database" size={10} color={COLORS.NEUTRAL_500} />
+                <Text style={styles.label}>EVENT SCRIBE</Text>
+              </View>
+              <Text style={[styles.value, { color: COLORS.NEON_GREEN, opacity: 0.4 }]}>ROLL_CACHE: ON</Text>
+            </View>
+            <ScrollView style={{ flex: 1 }}>
+              {logs.map((log) => (
+                <View key={log.id} style={styles.logRow}>
+                  <Text style={styles.logTime}>{log.timestamp.split(':')[2]}s</Text>
+                  <Text style={[styles.logSource, { color: log.severity === 'high' ? COLORS.NEON_RED : COLORS.NEON_GREEN }]}>
+                    [{log.source}]
+                  </Text>
+                  <Text style={styles.logMessage}>{log.message}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+          <SettingsPanel thresholds={thresholds} setThresholds={setThresholds} />
+        </View>
+
+        {/* CENTER: Camera Feed */}
+        <View style={styles.centerColumn}>
+          <Camera ref={cameraRef} style={styles.camera} type={Camera.Constants.Type.back} />
+
+          {/* HUD Overlays */}
+          <View style={styles.hudOverlay} pointerEvents="none">
+            <View style={[styles.corner, { top: 16, left: 16, borderTopWidth: 2, borderLeftWidth: 2 }]} />
+            <View style={[styles.corner, { top: 16, right: 16, borderTopWidth: 2, borderRightWidth: 2 }]} />
+            <View style={[styles.corner, { bottom: 16, left: 16, borderBottomWidth: 2, borderLeftWidth: 2 }]} />
+            <View style={[styles.corner, { bottom: 16, right: 16, borderBottomWidth: 2, borderRightWidth: 2 }]} />
+            <View style={styles.crosshair}>
+              <View style={{ width: 20, height: 1, backgroundColor: COLORS.NEON_GREEN, opacity: 0.5 }} />
+              <View style={{ width: 1, height: 20, backgroundColor: COLORS.NEON_GREEN, opacity: 0.5, position: 'absolute' }} />
+            </View>
+            <View style={styles.camStatus}>
+              <Text style={styles.statusText}>BWC_STREAM_01 // ACTIVE</Text>
+              <Text style={styles.statusText}>MODE: {state}</Text>
+            </View>
+
+            {state === 'THREAT' && (
+              <View style={styles.alertBox}>
+                <Feather name="alert-triangle" size={32} color={COLORS.WHITE} />
+                <Text style={styles.alertTitle}>SILENT 10-33 PENDING</Text>
+                <Text style={styles.alertSubtitle}>Dispatch in {timer}s. Veto available.</Text>
+                <TouchableOpacity onPress={() => setState('ROUTINE')} style={styles.vetoBtn}>
+                  <Text style={styles.vetoBtnText}>VETO</Text>
+                </TouchableOpacity>
               </View>
             )}
-            {!modelReady && !modelLoading && (
-              <Text style={styles.warningText}>Detection model not available</Text>
-            )}
+            {state === 'CODE_3' && <View style={[StyleSheet.absoluteFill, { borderColor: COLORS.NEON_RED, borderWidth: 4 }]} />}
           </View>
-        )}
 
-        {/* Session Controls */}
-        <View style={styles.buttonGroup}>
+          {/* Action Button */}
           <TouchableOpacity
-            style={[styles.button, sessionActive ? styles.stopSessionButton : styles.startSessionButton]}
-            onPress={sessionActive ? stopSession : startSession}
+            style={[styles.actionButton, { backgroundColor: state === 'IDLE' ? COLORS.NEON_GREEN : COLORS.NEON_RED }]}
+            onPress={() => (state === 'IDLE' ? setState('ROUTINE') : triggerThreat())}
           >
-            <Text style={styles.buttonText}>
-              {sessionActive ? 'STOP SESSION' : 'START SESSION'}
-            </Text>
+            {state === 'IDLE' ? <Feather name="zap" size={24} color={COLORS.BLACK} /> : <Feather name="crosshair" size={24} color={COLORS.WHITE} />}
           </TouchableOpacity>
         </View>
 
-        {/* Marker Event Buttons */}
-        {sessionActive && (
-          <View style={styles.buttonGroup}>
-            <Text style={styles.sectionLabel}>MARKER EVENTS</Text>
-            <TouchableOpacity
-              style={[styles.button, styles.markerButton]}
-              onPress={() => addMarkerEvent('traffic_stop')}
-            >
-              <Text style={styles.buttonText}>TRAFFIC STOP</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.markerButton]}
-              onPress={() => addMarkerEvent('suspicious_activity')}
-            >
-              <Text style={styles.buttonText}>SUSPICIOUS</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.markerButton]}
-              onPress={() => addMarkerEvent('checkpoint')}
-            >
-              <Text style={styles.buttonText}>CHECKPOINT</Text>
-            </TouchableOpacity>
+        {/* RIGHT COLUMN: Map & Deployment Nodes */}
+        <View style={styles.rightColumn}>
+          <View style={{ height: '45%' }}>
+            <TacticalGroundingMap state={state} location={location} />
           </View>
-        )}
-
-        {/* Detection Controls */}
-        <View style={styles.buttonGroup}>
-          <TouchableOpacity
-            style={[styles.button, detectionActive ? styles.stopDetectionButton : styles.startDetectionButton]}
-            onPress={detectionActive ? stopDetection : startDetection}
-            disabled={!modelReady}
-          >
-            <Text style={[styles.buttonText, !modelReady && styles.buttonTextDisabled]}>
-              {detectionActive ? 'STOP DETECTION' : 'START DETECTION'}
-            </Text>
-          </TouchableOpacity>
-          {sessionActive && (
-            <View style={styles.statsContainer}>
-              <Text style={styles.statsText}>
-                Real-time Processing: {realtimeVideoProcessor.isProcessing ? 'ACTIVE' : 'INACTIVE'}
-              </Text>
-              {realtimeVideoProcessor.isProcessing && (
-                <Text style={styles.statsSubtext}>
-                  Frames: {realtimeVideoProcessor.frameCount} | 
-                  Processed: {realtimeVideoProcessor.processedFrames} | 
-                  Detections: {realtimeVideoProcessor.detectionHistory.length}
-                </Text>
-              )}
-            </View>
-          )}
+          <DeploymentNodesPanel state={state} />
         </View>
+      </View>
 
-        {/* Emergency Dispatch Button */}
-        {sessionActive && (
-          <View style={styles.buttonGroup}>
-            <TouchableOpacity
-              style={[styles.button, styles.emergencyButton]}
-              onPress={handleManualDispatch}
-            >
-              <Text style={styles.buttonText}>EMERGENCY BACKUP</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Welfare Check Response (if active) */}
-        {welfareCheck.getStatus().promptActive && (
-          <View style={styles.buttonGroup}>
-            <Text style={styles.welfarePrompt}>Status check: Are you okay?</Text>
-            <View style={styles.welfareButtons}>
-              <TouchableOpacity
-                style={[styles.button, styles.welfareOkButton]}
-                onPress={() => handleWelfareResponse('ok')}
-              >
-                <Text style={styles.buttonText}>I'M OK</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.button, styles.welfareBackupButton]}
-                onPress={() => handleWelfareResponse('need_backup')}
-              >
-                <Text style={styles.buttonText}>NEED BACKUP</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Simulated Threat button */}
-        <View style={styles.buttonGroup}>
-          <TouchableOpacity
-            style={[styles.button, styles.simulateButton]}
-            onPress={simulateThreat}
-          >
-            <Text style={styles.buttonText}>SIMULATED THREAT</Text>
-          </TouchableOpacity>
+      {/* FOOTER */}
+      <View style={styles.footer}>
+        <View style={styles.footerLeft}>
+          <View style={[styles.indicator, { backgroundColor: COLORS.NEON_GREEN }]} />
+          <Text style={styles.footerText}>NPU: 42°C</Text>
+          <View style={[styles.indicator, { backgroundColor: COLORS.NEON_GREEN, marginLeft: 8 }]} />
+          <Text style={styles.footerText}>AUD: OPUS_64</Text>
+          <View style={[styles.indicator, { backgroundColor: COLORS.NEON_GREEN, marginLeft: 8 }]} />
+          <Text style={styles.footerText}>GPS: 0.1m</Text>
         </View>
-
-        {/* Stop/Clear button */}
-        {alertActive && (
-          <View style={styles.buttonGroup}>
-            <TouchableOpacity
-              style={[styles.button, styles.stopButton]}
-              onPress={clearAlert}
-            >
-              <Text style={styles.buttonText}>STOP</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Welfare Check Prompt Modal */}
-      <WelfareCheckPrompt
-        visible={welfareCheck.getStatus().promptActive}
-        onResponse={handleWelfareResponse}
-      />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Text style={[styles.footerText, { color: COLORS.WHITE, fontWeight: 'bold' }]}>VANTUS_SECURE_KERNEL v5.0.5</Text>
+          <View style={[styles.indicator, { backgroundColor: COLORS.NEON_GREEN }]} />
+        </View>
+      </View>
     </View>
   );
 }
 
+// --- Styles ---
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  camera: {
-    flex: 1,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  },
-  overlayContent: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  buttonGroup: {
-    width: '100%',
-    marginVertical: 10,
-    alignItems: 'center',
-  },
-  sectionLabel: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textTransform: 'uppercase',
-  },
-  telemetryInfo: {
-    color: '#AAAAAA',
-    fontSize: 12,
-    marginTop: 5,
-  },
-  statusContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  statusText: {
-    color: '#00FF00',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  statusSubtext: {
-    color: '#FFFFFF',
-    fontSize: 16,
-  },
-  alertContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  alertText: {
-    color: '#FF0000',
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  alertSubtext: {
-    color: '#FFFFFF',
-    fontSize: 16,
-  },
-  button: {
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    marginVertical: 5,
-    minWidth: 200,
-    alignItems: 'center',
-  },
-  startSessionButton: {
-    backgroundColor: '#00AA00',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  stopSessionButton: {
-    backgroundColor: '#AA0000',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  markerButton: {
-    backgroundColor: '#666666',
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-    minWidth: 150,
-  },
-  simulateButton: {
-    backgroundColor: '#333333',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  startDetectionButton: {
-    backgroundColor: '#0066FF',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  stopDetectionButton: {
-    backgroundColor: '#FF6600',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  statsContainer: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 5,
-  },
-  statsText: {
-    color: '#00FF41',
-    fontSize: 12,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  statsSubtext: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    textAlign: 'center',
-    marginTop: 5,
-  },
-  stopButton: {
-    backgroundColor: '#FF0000',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  text: {
-    color: '#FFFFFF',
-    fontSize: 18,
-  },
-  loadingContainer: {
+  container: { flex: 1, backgroundColor: COLORS.BLACK },
+  header: {
+    height: 50,
+    backgroundColor: COLORS.NEUTRAL_950,
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.NEUTRAL_800,
+    marginTop: Platform.OS === 'ios' ? 44 : 0,
   },
-  loadingText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    marginLeft: 10,
-  },
-  warningText: {
-    color: '#FFAA00',
-    fontSize: 14,
-    marginTop: 10,
-  },
-  buttonTextDisabled: {
-    opacity: 0.5,
-  },
-  standbyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  standbyTitle: {
-    fontSize: 48,
-    fontWeight: '900',
-    color: '#00FF41',
-    letterSpacing: 0.3,
-    marginBottom: 10,
-  },
-  standbySubtitle: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    marginBottom: 20,
-    fontWeight: '700',
-  },
-  standbyMessage: {
-    fontSize: 18,
-    color: '#00FF41',
-    marginBottom: 40,
-    textTransform: 'uppercase',
-    letterSpacing: 0.2,
-  },
-  standbyStatus: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 40,
-    textTransform: 'uppercase',
-    letterSpacing: 0.2,
-  },
-  startSessionButton: {
-    backgroundColor: '#00FF41',
-    padding: 20,
-    borderRadius: 10,
-    minWidth: 250,
-    alignItems: 'center',
-  },
-  startSessionButtonText: {
-    color: '#000000',
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: 0.2,
-  },
-  emergencyButton: {
-    backgroundColor: '#FF0000',
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-  },
-  welfarePrompt: {
-    color: '#FFAA00',
-    fontSize: 18,
-    fontWeight: '900',
-    textAlign: 'center',
-    marginBottom: 15,
-    textTransform: 'uppercase',
-  },
-  welfareButtons: {
-    flexDirection: 'row',
-    gap: 10,
-    width: '100%',
-  },
-  welfareOkButton: {
-    flex: 1,
-    backgroundColor: '#00AA00',
-  },
-  welfareBackupButton: {
-    flex: 1,
-    backgroundColor: '#FFAA00',
-  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logoBox: { width: 18, height: 18, backgroundColor: COLORS.WHITE, alignItems: 'center', justifyContent: 'center', borderRadius: 2 },
+  logoText: { fontWeight: '900', fontSize: 10, color: COLORS.BLACK },
+  headerTitle: { color: COLORS.WHITE, fontWeight: '900', fontSize: 11, letterSpacing: 0.5 },
+  divider: { width: 1, height: 14, backgroundColor: COLORS.NEUTRAL_700, marginHorizontal: 4 },
+  headerInfoText: { color: COLORS.NEUTRAL_500, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
+  clockText: { color: COLORS.NEON_GREEN, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: 'bold' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  endWatchBtn: { paddingHorizontal: 6, paddingVertical: 3, backgroundColor: 'rgba(255, 59, 48, 0.1)', borderWidth: 1, borderColor: 'rgba(255, 59, 48, 0.3)', borderRadius: 2 },
+  endWatchText: { color: COLORS.NEON_RED, fontSize: 8, fontWeight: 'bold' },
+  mainContent: { flex: 1, flexDirection: 'row', padding: 8, gap: 8 },
+  leftColumn: { width: SCREEN_WIDTH * 0.25, flexDirection: 'column', gap: 8 },
+  centerColumn: { flex: 1, position: 'relative', borderWidth: 1, borderColor: COLORS.NEUTRAL_800, overflow: 'hidden' },
+  rightColumn: { width: SCREEN_WIDTH * 0.25, flexDirection: 'column', gap: 8 },
+  camera: { flex: 1 },
+  hudOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
+  corner: { position: 'absolute', width: 16, height: 16, borderColor: COLORS.NEON_GREEN },
+  crosshair: { alignItems: 'center', justifyContent: 'center' },
+  camStatus: { position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(0,0,0,0.6)', padding: 4 },
+  statusText: { color: COLORS.NEON_GREEN, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 9, fontWeight: 'bold' },
+  alertBox: { position: 'absolute', backgroundColor: COLORS.NEON_RED, padding: 16, alignItems: 'center', borderRadius: 4, shadowColor: COLORS.NEON_RED, shadowOpacity: 0.5, shadowRadius: 20 },
+  alertTitle: { color: COLORS.WHITE, fontWeight: '900', fontSize: 14, marginTop: 4 },
+  alertSubtitle: { color: COLORS.WHITE, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 10 },
+  vetoBtn: { marginTop: 8, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: COLORS.WHITE },
+  vetoBtnText: { color: COLORS.BLACK, fontWeight: '900', fontSize: 10 },
+  actionButton: { position: 'absolute', bottom: 16, right: 16, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', elevation: 5 },
+  trackerContainer: { flex: 1, backgroundColor: COLORS.NEUTRAL_950, borderWidth: 1, borderColor: COLORS.NEUTRAL_800, padding: 8 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  label: { color: COLORS.NEUTRAL_500, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: 'bold', letterSpacing: 1 },
+  value: { color: COLORS.NEUTRAL_500, fontSize: 8, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
+  barsContainer: { flex: 1, flexDirection: 'row', alignItems: 'flex-end', gap: 1 },
+  bar: { flex: 1, minWidth: 2, borderTopLeftRadius: 1, borderTopRightRadius: 1 },
+  logsPanel: { flex: 1, backgroundColor: COLORS.NEUTRAL_950, borderWidth: 1, borderColor: COLORS.NEUTRAL_800, padding: 8 },
+  logRow: { flexDirection: 'row', marginBottom: 2, flexWrap: 'wrap' },
+  logTime: { color: COLORS.NEUTRAL_700, fontSize: 8, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', marginRight: 4 },
+  logSource: { fontSize: 8, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: 'bold', marginRight: 4 },
+  logMessage: { color: COLORS.NEUTRAL_400, fontSize: 8, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', flex: 1 },
+  settingsContainer: { backgroundColor: COLORS.NEUTRAL_950, borderWidth: 1, borderColor: COLORS.NEUTRAL_800, padding: 8 },
+  sliderRow: { marginBottom: 8 },
+  sliderLabel: { color: COLORS.NEUTRAL_500, fontSize: 8, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
+  sliderTrack: { height: 4, backgroundColor: COLORS.NEUTRAL_800, marginTop: 4, borderRadius: 2 },
+  sliderFill: { height: '100%', backgroundColor: COLORS.NEON_GREEN, borderRadius: 2 },
+  mapOuterContainer: { flex: 1, backgroundColor: COLORS.NEUTRAL_950, borderWidth: 1, borderColor: COLORS.NEUTRAL_800, padding: 8 },
+  mapContainer: { flex: 1, backgroundColor: COLORS.NEUTRAL_900, borderRadius: 2, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  mapGrid: { ...StyleSheet.absoluteFillObject, opacity: 0.15, borderWidth: 20, borderColor: 'transparent', borderStyle: 'dashed' },
+  mapButtons: { flexDirection: 'row', gap: 4, marginTop: 6 },
+  mapBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 4, backgroundColor: COLORS.NEUTRAL_900, borderWidth: 1, borderColor: COLORS.NEUTRAL_800 },
+  mapBtnText: { color: COLORS.WHITE, fontSize: 8, fontWeight: 'bold' },
+  ring: { position: 'absolute', borderWidth: 1, borderColor: 'rgba(0, 255, 65, 0.25)', borderStyle: 'dashed' },
+  selfMarker: { width: 12, height: 12, backgroundColor: COLORS.NEON_GREEN, transform: [{ rotate: '45deg' }], alignItems: 'center', justifyContent: 'center', shadowColor: COLORS.NEON_GREEN, shadowRadius: 10, shadowOpacity: 0.8, elevation: 3 },
+  markerInner: { width: 4, height: 4, backgroundColor: COLORS.BLACK, borderRadius: 2 },
+  backupMarkerContainer: { position: 'absolute', top: '25%', right: '25%', alignItems: 'center' },
+  backupMarker: { width: 8, height: 8, backgroundColor: COLORS.NEON_RED, borderRadius: 4 },
+  backupLabel: { color: COLORS.NEON_RED, fontSize: 8, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', marginTop: 2 },
+  mapLocationLabel: { position: 'absolute', bottom: 4, left: 4, flexDirection: 'row', alignItems: 'center', gap: 2 },
+  mapLocationText: { color: COLORS.NEON_GREEN, fontSize: 8, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
+  panelContainer: { flex: 1, backgroundColor: COLORS.NEUTRAL_950, borderWidth: 1, borderColor: COLORS.NEUTRAL_800, padding: 8 },
+  nodeItem: { padding: 8, backgroundColor: 'rgba(23, 23, 23, 0.5)', borderWidth: 1, borderColor: COLORS.NEUTRAL_800, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  nodeItemAlert: { backgroundColor: 'rgba(255, 59, 48, 0.1)', borderColor: 'rgba(255, 59, 48, 0.3)' },
+  nodeDot: { width: 6, height: 6, borderRadius: 3 },
+  nodeLabel: { color: COLORS.WHITE, fontSize: 9, fontWeight: 'bold' },
+  nodeStatus: { color: COLORS.NEUTRAL_500, fontSize: 8, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
+  advisorBox: { marginTop: 8, padding: 8, backgroundColor: 'rgba(0, 255, 65, 0.05)', borderWidth: 1, borderColor: 'rgba(0, 255, 65, 0.2)' },
+  advisorText: { color: COLORS.NEUTRAL_400, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontStyle: 'italic', lineHeight: 14 },
+  indicator: { width: 4, height: 4, borderRadius: 2 },
+  footer: { height: 28, backgroundColor: COLORS.BLACK, borderTopWidth: 1, borderTopColor: COLORS.NEUTRAL_800, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
+  footerLeft: { flexDirection: 'row', alignItems: 'center' },
+  footerText: { color: COLORS.NEUTRAL_500, fontSize: 8, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', marginLeft: 2 },
 });
-

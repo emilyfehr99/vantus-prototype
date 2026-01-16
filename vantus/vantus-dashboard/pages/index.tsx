@@ -1,10 +1,9 @@
+
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-// import styles from '../styles/Dashboard.module.css'; // Commented out if file doesn't exist
 import logger from '../utils/logger';
 
-// Temporary styles object if CSS module doesn't exist
-const styles: any = {};
+// Components
 import PatternTimeline from '../components/PatternTimeline';
 import TriageGateCountdown from '../components/TriageGateCountdown';
 import LiveFeedViewer from '../components/LiveFeedViewer';
@@ -13,9 +12,9 @@ import KinematicPredictionAlert from '../components/KinematicPredictionAlert';
 import DeEscalationStatusIndicator from '../components/DeEscalationStatusIndicator';
 import FactTimelineView from '../components/FactTimelineView';
 import DictationCommandLog from '../components/DictationCommandLog';
+import SystemMessageTerminal from '../components/SystemMessageTerminal';
 
 // Bridge server URL - update this to match your server
-// Bridge server URL - from config
 import { getServerUrl, getDepartmentCenter } from '../utils/client-config';
 const BRIDGE_SERVER_URL = getServerUrl('bridge');
 
@@ -69,6 +68,7 @@ interface MarkerEvent {
 }
 
 export default function Dashboard() {
+  const [activeTab, setActiveTab] = useState('LIVE OPERATIONS');
   const [socket, setSocket] = useState<Socket | null>(null);
   const [officers, setOfficers] = useState<Map<string, OfficerState>>(new Map());
   const [selectedOfficer, setSelectedOfficer] = useState<string | null>(null);
@@ -78,16 +78,19 @@ export default function Dashboard() {
   const [supervisorId] = useState<string>('SUPERVISOR_001'); // Would come from auth
   const mapRef = useRef<HTMLDivElement>(null);
 
+  // Update time for header
   useEffect(() => {
     setMounted(true);
-    
-    // Update time every second
     const updateTime = () => {
-      setCurrentTime(new Date().toLocaleTimeString());
+      setCurrentTime(new Date().toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit', second: '2-digit' }));
     };
     updateTime();
     const timeInterval = setInterval(updateTime, 1000);
+    return () => clearInterval(timeInterval);
+  }, []);
 
+  // Socket & Data Fetching Effect
+  useEffect(() => {
     // Connect to bridge server
     const newSocket = io(BRIDGE_SERVER_URL, {
       transports: ['websocket'],
@@ -98,7 +101,7 @@ export default function Dashboard() {
       try {
         const response = await fetch(`${BRIDGE_SERVER_URL}/api/officers`);
         const data = await response.json();
-        
+
         setOfficers((prev: Map<string, OfficerState>) => {
           const updated = new Map(prev);
           data.officers.forEach((officer: any) => {
@@ -109,13 +112,13 @@ export default function Dashboard() {
               location: null,
               signals: [],
             };
-            
+
             existing.sessionId = officer.sessionId;
             existing.lastContact = new Date(officer.lastContact);
             if (officer.location) {
               existing.location = officer.location;
             }
-            
+
             updated.set(officer.officerName, existing);
           });
           return updated;
@@ -127,18 +130,10 @@ export default function Dashboard() {
 
     newSocket.on('connect', () => {
       logger.info('Dashboard connected to bridge server');
-      // Fetch initial officer states
       fetchOfficerStates().catch(err => logger.error('Failed to fetch initial officer states', err));
     });
 
-    newSocket.on('disconnect', () => {
-      logger.info('Dashboard disconnected from bridge server');
-    });
-
-    // Listen for contextual signals
     newSocket.on('CONTEXTUAL_SIGNALS_UPDATE', (data: { officerName: string; signals: ContextualSignal[]; timestamp: string }) => {
-      logger.info('CONTEXTUAL_SIGNALS_UPDATE received', { data });
-      
       setOfficers(prev => {
         const updated = new Map(prev);
         const officer = updated.get(data.officerName) || {
@@ -148,187 +143,14 @@ export default function Dashboard() {
           location: null,
           signals: [],
         };
-        
-        officer.signals = [...officer.signals, ...data.signals].slice(-50); // Keep last 50
+        officer.signals = [...officer.signals, ...data.signals].slice(-50);
         officer.lastContact = new Date();
-        
         updated.set(data.officerName, officer);
         return updated;
       });
     });
 
-    // Listen for marker events
-    newSocket.on('MARKER_EVENT_UPDATE', (data: { officerName: string; marker: MarkerEvent }) => {
-      logger.info('MARKER_EVENT_UPDATE received', { data });
-      // Could add marker events to officer state if needed
-    });
-
-    // Listen for enhanced audio signals
-    newSocket.on('ENHANCED_AUDIO_SIGNAL', (data: { officerName: string; signalType: string; signal: any; timestamp: string }) => {
-      logger.info('ENHANCED_AUDIO_SIGNAL received', { data });
-      
-      setOfficers(prev => {
-        const updated = new Map(prev);
-        const officer = updated.get(data.officerName) || {
-          officerName: data.officerName,
-          sessionId: null,
-          lastContact: new Date(),
-          location: null,
-          signals: [],
-        };
-        
-        officer.signals.push({
-          signalType: data.signalType,
-          signalCategory: data.signal.category,
-          probability: data.signal.confidence,
-          timestamp: data.timestamp,
-          explanation: {
-            description: data.signal.description,
-            originData: data.signal,
-            traceability: { source: 'enhanced_audio' },
-          },
-        });
-        officer.lastContact = new Date();
-        
-        updated.set(data.officerName, officer);
-        return updated;
-      });
-    });
-
-    // Listen for coordination signals
-    newSocket.on('COORDINATION_SIGNAL', (data: { officerName: string; signalType: string; signal: any; timestamp: string }) => {
-      logger.info('COORDINATION_SIGNAL received', { data });
-      
-      setOfficers(prev => {
-        const updated = new Map(prev);
-        const officer = updated.get(data.officerName) || {
-          officerName: data.officerName,
-          sessionId: null,
-          lastContact: new Date(),
-          location: null,
-          signals: [],
-        };
-        
-        officer.signals.push({
-          signalType: data.signalType,
-          signalCategory: data.signal.category,
-          probability: data.signal.confidence,
-          timestamp: data.timestamp,
-          explanation: {
-            description: data.signal.description,
-            originData: data.signal,
-            traceability: { source: 'coordination' },
-          },
-        });
-        officer.lastContact = new Date();
-        
-        updated.set(data.officerName, officer);
-        return updated;
-      });
-    });
-
-    // Listen for location signals
-    newSocket.on('LOCATION_SIGNAL', (data: { officerName: string; signalType: string; signal: any; timestamp: string }) => {
-      logger.info('LOCATION_SIGNAL received', { data });
-      
-      setOfficers(prev => {
-        const updated = new Map(prev);
-        const officer = updated.get(data.officerName) || {
-          officerName: data.officerName,
-          sessionId: null,
-          lastContact: new Date(),
-          location: null,
-          signals: [],
-        };
-        
-        officer.signals.push({
-          signalType: data.signalType,
-          signalCategory: data.signal.category,
-          probability: data.signal.confidence,
-          timestamp: data.timestamp,
-          explanation: {
-            description: data.signal.description,
-            originData: data.signal,
-            traceability: { source: 'location' },
-          },
-        });
-        officer.lastContact = new Date();
-        
-        updated.set(data.officerName, officer);
-        return updated;
-      });
-    });
-
-    // Listen for signal correlations
-    newSocket.on('SIGNAL_CORRELATION', (data: { officerName: string; signal: any; timestamp: string }) => {
-      logger.info('SIGNAL_CORRELATION received', { data });
-      
-      setOfficers(prev => {
-        const updated = new Map(prev);
-        const officer = updated.get(data.officerName) || {
-          officerName: data.officerName,
-          sessionId: null,
-          lastContact: new Date(),
-          location: null,
-          signals: [],
-        };
-        
-        officer.signals.push({
-          signalType: 'signal_correlation',
-          signalCategory: data.signal.category,
-          probability: data.signal.confidence,
-          timestamp: data.timestamp,
-          explanation: {
-            description: data.signal.description,
-            originData: data.signal,
-            traceability: { source: 'correlation' },
-          },
-        });
-        officer.lastContact = new Date();
-        
-        updated.set(data.officerName, officer);
-        return updated;
-      });
-    });
-
-    // Listen for session started
-    newSocket.on('SESSION_STARTED', (data: { officerName: string; sessionId: string; timestamp: string }) => {
-      setOfficers(prev => {
-        const updated = new Map(prev);
-        const officer = updated.get(data.officerName) || {
-          officerName: data.officerName,
-          sessionId: null,
-          lastContact: new Date(),
-          location: null,
-          signals: [],
-        };
-        
-        officer.sessionId = data.sessionId;
-        officer.sessionStartTime = data.timestamp;
-        officer.lastContact = new Date();
-        
-        updated.set(data.officerName, officer);
-        return updated;
-      });
-    });
-
-    // Listen for session ended
-    newSocket.on('SESSION_ENDED_UPDATE', (data: { officerName: string; sessionId: string; summary: any }) => {
-      setOfficers(prev => {
-        const updated = new Map(prev);
-        const officer = updated.get(data.officerName);
-        if (officer) {
-          officer.sessionId = null;
-          officer.lastContact = new Date();
-        }
-        return updated;
-      });
-    });
-
-    // Listen for Triage Gate Countdown
-    newSocket.on('TRIAGE_GATE_COUNTDOWN', (data: { officerName: string; countdownId: string; countdown: any; dispatchPayload: any; remaining: number }) => {
-      logger.info('TRIAGE_GATE_COUNTDOWN received', { data });
-      // Store countdown state for UI display
+    newSocket.on('TRIAGE_GATE_COUNTDOWN', (data: any) => {
       setOfficers(prev => {
         const updated = new Map(prev);
         const officer = updated.get(data.officerName) || {
@@ -349,8 +171,7 @@ export default function Dashboard() {
       });
     });
 
-    // Listen for Triage Gate Updates
-    newSocket.on('TRIAGE_GATE_UPDATE', (data: { officerName: string; remaining: number; countdown: any }) => {
+    newSocket.on('TRIAGE_GATE_UPDATE', (data: any) => {
       setOfficers(prev => {
         const updated = new Map(prev);
         const officer = updated.get(data.officerName);
@@ -361,22 +182,18 @@ export default function Dashboard() {
       });
     });
 
-    // Listen for Triage Gate Vetoed
-    newSocket.on('TRIAGE_GATE_VETOED', (data: { officerName: string; supervisorId?: string; reason: string; autoVetoed?: boolean }) => {
-      logger.info('TRIAGE_GATE_VETOED received', { data });
+    newSocket.on('TRIAGE_GATE_VETOED', (data: any) => {
       setOfficers(prev => {
         const updated = new Map(prev);
         const officer = updated.get(data.officerName);
         if (officer && officer.triageCountdown) {
-          officer.triageCountdown = undefined; // Clear countdown
+          officer.triageCountdown = undefined;
         }
         return updated;
       });
     });
 
-    // Listen for Live Feed Hand-off
-    newSocket.on('LIVE_FEED_HANDOFF', (data: { officerName: string; streamId: string; stream: any; tacticalIntent: any }) => {
-      logger.info('LIVE_FEED_HANDOFF received', { data });
+    newSocket.on('LIVE_FEED_HANDOFF', (data: any) => {
       setOfficers(prev => {
         const updated = new Map(prev);
         const officer = updated.get(data.officerName) || {
@@ -397,9 +214,7 @@ export default function Dashboard() {
       });
     });
 
-    // Listen for Live Feed Ended
-    newSocket.on('LIVE_FEED_ENDED', (data: { officerName: string; reason: string }) => {
-      logger.info('LIVE_FEED_ENDED received', { data });
+    newSocket.on('LIVE_FEED_ENDED', (data: any) => {
       setOfficers(prev => {
         const updated = new Map(prev);
         const officer = updated.get(data.officerName);
@@ -411,507 +226,266 @@ export default function Dashboard() {
       });
     });
 
-    // Listen for Dispatch Prevented
-    newSocket.on('DISPATCH_PREVENTED', (data: { officerName: string; reason: string; thresholds: any; deEscalation: any }) => {
-      logger.info('DISPATCH_PREVENTED received', { data });
-      // Log that dispatch was prevented
-    });
-
-    // Legacy support for old alert system
-    newSocket.on('DASHBOARD_ALERT', (data: any) => {
-      logger.info('Legacy DASHBOARD_ALERT received', { data });
-      // Convert to contextual signal for compatibility
-      const signal: ContextualSignal = {
-        signalType: 'legacy_alert',
-        signalCategory: 'threat_detected',
-        probability: 0.9,
-        timestamp: new Date().toISOString(),
-        explanation: {
-          description: 'Legacy threat alert',
-          originData: data,
-          traceability: { source: 'legacy_system' },
-        },
-      };
-      
-      setOfficers(prev => {
-        const updated = new Map(prev);
-        const officer = updated.get(data.officerName) || {
-          officerName: data.officerName,
-          sessionId: null,
-          lastContact: new Date(),
-          location: { lat: data.location.lat, lng: data.location.lng },
-          signals: [],
-        };
-        
-        officer.signals = [...officer.signals, signal].slice(-50);
-        officer.location = data.location;
-        officer.lastContact = new Date();
-        
-        updated.set(data.officerName, officer);
-        return updated;
-      });
-    });
-
     setSocket(newSocket);
-
-    // Poll for officer states every 10 seconds
     const stateInterval = setInterval(fetchOfficerStates, 10000);
 
     return () => {
       newSocket.close();
-      clearInterval(timeInterval);
       clearInterval(stateInterval);
     };
-  }, []);
+  }, []); // End Socket Effect
 
-  // Handle triage gate veto
+  // Triage Veto Handler
   const handleTriageVeto = async (officerName: string, reason: string) => {
-    if (!socket || !socket.connected) {
-      logger.error('Socket not connected');
-      return;
-    }
-
+    if (!socket || !socket.connected) return;
     try {
-      const response = await fetch(`${BRIDGE_SERVER_URL}/api/triage/veto`, {
+      await fetch(`${BRIDGE_SERVER_URL}/api/triage/veto`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          officerName,
-          supervisorId: supervisorId,
-          reason,
-        }),
+        body: JSON.stringify({ officerName, supervisorId, reason }),
       });
-
-      if (response.ok) {
-        logger.info('Triage veto sent successfully', { officerName, reason });
-      } else {
-        logger.error('Triage veto failed', { officerName, reason });
-      }
     } catch (error) {
       logger.error('Triage veto error', error);
     }
   };
 
-
-  // Convert GPS coordinates to map position
+  // Map Position Helper
   const getMapPosition = (lat: number, lng: number) => {
-    // Map center - should come from config (defaulting to Winnipeg for now)
     const center = getDepartmentCenter();
-    const baseLat = center.lat;
-    const baseLng = center.lng;
-    const latOffset = (lat - baseLat) * 1000;
-    const lngOffset = (lng - baseLng) * 1000;
-    
-    return {
-      x: 50 + lngOffset * 0.1,
-      y: 50 - latOffset * 0.1,
-    };
+    const latOffset = (lat - center.lat) * 1000;
+    const lngOffset = (lng - center.lng) * 1000;
+    return { x: 50 + lngOffset * 0.1, y: 50 - latOffset * 0.1 };
   };
 
-  // Calculate time since last contact
+  // Helper for Last Contact
   const getTimeSinceLastContact = (lastContact: Date): string => {
     const seconds = Math.floor((new Date().getTime() - lastContact.getTime()) / 1000);
-    if (seconds < 60) return `${seconds}s ago`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ${minutes % 60}m ago`;
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    return `${Math.floor(seconds / 3600)}h`;
   };
 
-  // Get signal color based on category and probability
-  // NOTE: Colors indicate pattern strength, NOT risk level
-  // No red colors allowed - this is intentional to prevent risk interpretation
   const getSignalColor = (signal: ContextualSignal): string => {
     const prob = signal.probability;
-    if (prob > 0.7) return '#FFAA00'; // Orange for high pattern strength
-    if (prob > 0.5) return '#FFD700'; // Yellow for medium pattern strength
-    return '#00FF41'; // Green for lower pattern strength
-    // RED (#FF3B30) is explicitly NOT used - signals are non-diagnostic
+    if (prob > 0.7) return '#FFAA00';
+    if (prob > 0.5) return '#FFD700';
+    return '#00FF41';
   };
 
-  // Flag a signal for review
-  const flagSignal = (signalId: string) => {
-    setFlaggedSignals(prev => new Set(prev).add(signalId));
-    // In production, this would send to backend for archiving
-    if (socket && socket.connected) {
-      socket.emit('FLAG_SIGNAL', { signalId, timestamp: new Date().toISOString() });
+  const selectedOfficerData = selectedOfficer ? officers.get(selectedOfficer) : null;
+
+  // --- RENDER CONTENT BASED ON TAB ---
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'LIVE OPERATIONS':
+        return (
+          <div className="grid grid-cols-12 gap-6 h-[calc(100vh-250px)]">
+            {/* LEFT COL: ACTIVE UNITS LIST */}
+            <div className="col-span-3 bg-black/50 border border-gray-900 flex flex-col h-full overflow-hidden">
+              <div className="p-4 border-b border-gray-900 bg-black flex justify-between items-center">
+                <h3 className="font-mono text-gray-500 text-xs tracking-widest uppercase">Active Units</h3>
+                <span className="text-neon-green font-mono font-bold">{officers.size}</span>
+              </div>
+              <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                {Array.from(officers.values()).map((officer) => (
+                  <div
+                    key={officer.officerName}
+                    onClick={() => setSelectedOfficer(officer.officerName)}
+                    className={`p-3 border cursor-pointer transition-all ${selectedOfficer === officer.officerName ? 'bg-green-900/20 border-neon-green' : 'bg-transparent border-gray-800 hover:border-gray-600'}`}
+                  >
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-mono font-bold text-white text-sm">{officer.officerName}</span>
+                      {officer.sessionId && <span className="text-[10px] bg-green-900/40 text-neon-green px-1 rounded animate-pulse">ACTIVE</span>}
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] text-gray-500 font-mono">
+                      <span>Signal: {getTimeSinceLastContact(officer.lastContact)}</span>
+                      {officer.signals.length > 0 && <span className="text-white">{officer.signals.length} Events</span>}
+                    </div>
+                  </div>
+                ))}
+                {officers.size === 0 && (
+                  <div className="text-center py-10 text-gray-600 font-mono text-xs">NO ACTIVE UNITS CONNECTED</div>
+                )}
+              </div>
+            </div>
+
+            {/* MIDDLE COL: TACTICAL MAP */}
+            <div className="col-span-5 bg-black border border-gray-900 relative overflow-hidden group">
+              <div className="absolute inset-0 grid-overlay opacity-20 pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+              <div className="absolute top-4 left-4 z-10">
+                <h3 className="font-mono text-gray-500 text-xs tracking-widest uppercase">TACTICAL GEOMETRY</h3>
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-4 h-4 bg-gray-800 rounded-full flex items-center justify-center">
+                  <div className="w-2 h-2 bg-neon-green rounded-full"></div>
+                </div>
+              </div>
+              {/* Officer Markers */}
+              {Array.from(officers.values()).filter(o => o.location).map(officer => {
+                const pos = getMapPosition(officer.location!.lat, officer.location!.lng);
+                return (
+                  <div
+                    key={officer.officerName}
+                    className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-1000 ease-linear"
+                    style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+                    onClick={() => setSelectedOfficer(officer.officerName)}
+                  >
+                    <div className={`w-3 h-3 rotate-45 border-2 ${selectedOfficer === officer.officerName ? 'bg-neon-green border-white' : 'bg-black border-neon-green'} shadow-[0_0_10px_rgba(0,255,65,0.5)]`}></div>
+                    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 whitespace-nowrap bg-black/80 px-1 py-0.5 text-[8px] font-mono text-neon-green border border-green-900 rounded">{officer.officerName}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* RIGHT COL: SIGNAL DETAIL & INTELLIGENCE */}
+            <div className="col-span-4 flex flex-col gap-4 overflow-y-auto pr-2 pb-20">
+              {selectedOfficerData ? (
+                <>
+                  <div className="flex justify-between items-center bg-black border border-green-900 p-2 mb-2">
+                    <h3 className="font-bold text-white text-sm tracking-wide">UNIT: {selectedOfficerData.officerName}</h3>
+                    <span className="text-[10px] font-mono text-gray-400">SESSION: {selectedOfficerData.sessionId || 'N/A'}</span>
+                  </div>
+
+                  {/* TRIAGE GATE */}
+                  {selectedOfficerData.triageCountdown && (
+                    <TriageGateCountdown
+                      officerName={selectedOfficerData.officerName}
+                      countdownId={selectedOfficerData.triageCountdown.id}
+                      remaining={selectedOfficerData.triageCountdown.remaining}
+                      dispatchPayload={selectedOfficerData.triageCountdown.dispatchPayload}
+                      onVeto={handleTriageVeto}
+                      supervisorId={supervisorId}
+                    />
+                  )}
+
+                  {/* LIVE FEED */}
+                  {selectedOfficerData.liveStream && selectedOfficerData.liveStream.active && (
+                    <LiveFeedViewer
+                      officerName={selectedOfficerData.officerName}
+                      streamUrl={selectedOfficerData.liveStream.streamUrl}
+                      tacticalIntent={selectedOfficerData.liveStream.tacticalIntent}
+                      onClose={() => {
+                        /* Handle close local state if needed, but ideally driven by server */
+                      }}
+                    />
+                  )}
+
+                  {/* TIMELINE */}
+                  {selectedOfficerData.signals.length > 0 && (
+                    <PatternTimeline signals={selectedOfficerData.signals} officerName={selectedOfficerData.officerName} />
+                  )}
+
+                  {/* ALERTS */}
+                  {selectedOfficerData.kinematicPrediction && (
+                    <KinematicPredictionAlert prediction={selectedOfficerData.kinematicPrediction} officerName={selectedOfficerData.officerName} />
+                  )}
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-full border border-gray-900 border-dashed text-gray-600 font-mono text-xs">
+                  SELECT A UNIT TO VIEW INTELLIGENCE
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      case 'OFFICER STATUS':
+        return (
+          <div className="flex items-center justify-center h-96 border border-gray-900 bg-black/50 text-gray-500 font-mono">
+            [ OFFICER ROSTER MODULE - CONNECTING... ]
+          </div>
+        );
+      case 'INTELLIGENCE':
+        return (
+          <div className="flex items-center justify-center h-96 border border-gray-900 bg-black/50 text-gray-500 font-mono">
+            [ INTELLIGENCE REPORTS - UNAVAILABLE IN DEMO MODE ]
+          </div>
+        );
+      case 'SETTINGS':
+        return (
+          <div className="flex items-center justify-center h-96 border border-gray-900 bg-black/50 text-gray-500 font-mono">
+            [ SYSTEM CONFIGURATION - ACCESS RESTRICTED ]
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
-  // Get selected officer
-  const selectedOfficerData = selectedOfficer ? officers.get(selectedOfficer) : null;
+  const tabs = [
+    'LIVE OPERATIONS',
+    'OFFICER STATUS',
+    'INTELLIGENCE',
+    'SETTINGS',
+  ];
 
-  // Get recent signals for selected officer
-  // NOTE: Signals are sorted by timestamp only, NOT by probability/risk
-  // This prevents "highest risk" sorting which could mislead supervisors
-  const recentSignals = selectedOfficerData
-    ? [...selectedOfficerData.signals].sort((a, b) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      ).slice(0, 10)
-    : [];
+  if (!mounted) return <div className="bg-black h-screen w-screen"></div>;
 
   return (
-    <div className={styles.dashboard}>
-      {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.title}>VANTUS SUPERVISOR DASHBOARD</h1>
-          <div className={styles.statusBar}>
-            <span className={`${styles.statusIndicator} ${socket?.connected ? styles.connected : styles.disconnected}`}>
-              <span className={styles.statusDot}></span>
-              {socket?.connected ? 'ONLINE' : 'OFFLINE'}
+    <div className="min-h-screen bg-black text-white font-mono pb-12 overflow-hidden selection:bg-green-500 selection:text-black">
+      {/* GLOBAL BACKGROUND EFFECTS */}
+      <div className="scanline"></div>
+      <div className="noise"></div>
+
+      {/* HEADER */}
+      <header className="border-b border-gray-900 px-6 py-4 flex items-center justify-between bg-black/95 backdrop-blur-md z-10 relative">
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-black tracking-[0.2em] text-white italic">VANTUS</h1>
+            <span className="text-[10px] tracking-[0.3em] text-gray-500 font-bold uppercase ml-1">Supervisor Portal</span>
+          </div>
+          <div className="h-8 w-px bg-gray-800 mx-4"></div>
+          <div className="flex items-center gap-2 border border-gray-800 px-3 py-1 rounded bg-black">
+            <span className={`w-2 h-2 rounded-full ${socket?.connected ? 'bg-neon-green animate-pulse' : 'bg-red-500'}`}></span>
+            <span className={`font-bold text-xs tracking-wider ${socket?.connected ? 'text-neon-green' : 'text-red-500'}`}>
+              {socket?.connected ? 'ONLINE' : 'DISCONNECTED'}
             </span>
-            <span className={styles.systemTime}>
-              {mounted ? currentTime : '--:--:--'}
-            </span>
+            <span className="text-gray-600 text-xs ml-2 tracking-widest border-l border-gray-800 pl-2">{currentTime}</span>
           </div>
         </div>
-        <div className={styles.headerRight}>
-          <div className={styles.secureBanner}>
-            CONTEXTUAL MONITORING
+
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 px-3 py-1 border border-yellow-900/30 bg-yellow-900/10 rounded">
+            <span className="text-yellow-500 text-[10px] tracking-wider uppercase font-bold">⚠ Non-Diagnostic Signals</span>
+          </div>
+          <div className="border border-green-500/50 px-3 py-1 bg-green-900/10 shadow-[0_0_10px_rgba(0,255,65,0.1)]">
+            <span className="text-green-500 font-bold text-xs tracking-wider">SECURE LINK v2.0</span>
           </div>
         </div>
       </header>
 
-      {/* Non-Diagnostic Banner */}
-      <div className={styles.guardrailBanner}>
-        <div className={styles.guardrailIcon}>⚠</div>
-        <div className={styles.guardrailContent}>
-          <strong>SIGNALS ARE NON-DIAGNOSTIC:</strong> These contextual indicators are probabilistic patterns, not threat assessments. 
-          They provide situational awareness only and should not be used to make operational decisions without additional context.
-        </div>
-      </div>
+      {/* NAVIGATION TABS */}
+      <nav className="border-b border-gray-900 px-6 flex items-center gap-1 bg-black z-10 relative">
+        {tabs.map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`py-3 px-6 text-xs font-bold tracking-widest transition-all relative clip-path-slant ${activeTab === tab
+              ? 'text-black bg-neon-green'
+              : 'text-gray-500 hover:text-white hover:bg-gray-900'
+              }`}
+            style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0% 100%)' }}
+          >
+            {tab}
+          </button>
+        ))}
+      </nav>
 
-      {/* Main Content */}
-      <div className={styles.mainContent}>
-        {/* Unit Tiles Panel */}
-        <div className={styles.unitsPanel}>
-          <div className={styles.unitsHeader}>
-            <h2>ACTIVE UNITS</h2>
-            <span className={styles.unitCount}>{officers.size}</span>
-          </div>
-          
-          <div className={styles.unitsList}>
-            {Array.from(officers.values()).map((officer) => {
-              const hasSignals = officer.signals.length > 0;
-              const recentSignal = officer.signals[officer.signals.length - 1];
-              const timeSince = getTimeSinceLastContact(officer.lastContact);
-              
-              return (
-                <div
-                  key={officer.officerName}
-                  className={`${styles.unitTile} ${selectedOfficer === officer.officerName ? styles.unitTileSelected : ''} ${hasSignals ? styles.unitTileHasSignals : ''}`}
-                  onClick={() => setSelectedOfficer(officer.officerName)}
-                >
-                  <div className={styles.unitTileHeader}>
-                    <span className={styles.unitName}>{officer.officerName}</span>
-                    {officer.sessionId && (
-                      <span className={styles.sessionBadge}>ACTIVE</span>
-                    )}
-                  </div>
-                  
-                  <div className={styles.unitTileInfo}>
-                    <div className={styles.unitInfoRow}>
-                      <span className={styles.unitInfoLabel}>Last Contact:</span>
-                      <span className={styles.unitInfoValue}>{timeSince}</span>
-                    </div>
-                    
-                    {hasSignals && (
-                      <div className={styles.unitInfoRow}>
-                        <span className={styles.unitInfoLabel}>Signals:</span>
-                        <span 
-                          className={styles.unitInfoValue}
-                          title="Total contextual signals received. Signal count does not indicate risk level."
-                        >
-                          {officer.signals.length}
-                        </span>
-                      </div>
-                    )}
-                    
-                    {recentSignal && (
-                      <div className={styles.unitInfoRow}>
-                        <span 
-                          className={styles.signalIndicator}
-                          style={{ color: getSignalColor(recentSignal) }}
-                          title="Most recent signal category. Color indicates pattern strength, not risk level. No red colors are used to prevent risk interpretation."
-                        >
-                          ● {recentSignal.signalCategory}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            
-            {officers.size === 0 && (
-              <div className={styles.unitsEmpty}>
-                <p>No active units</p>
-                <p className={styles.unitsEmptySub}>Waiting for connections...</p>
-              </div>
-            )}
-          </div>
+      {/* MAIN CONTENT */}
+      <main className="p-6 max-w-[1920px] mx-auto z-0 relative h-full">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold tracking-widest text-white uppercase flex items-center gap-3">
+            <span className="w-1 h-6 bg-neon-green block"></span>
+            {activeTab}
+          </h2>
         </div>
 
-        {/* Tactical Map */}
-        <div className={styles.mapContainer}>
-          <div ref={mapRef} className={styles.tacticalMap}>
-            <div className={styles.gridOverlay}></div>
-            
-            <div className={styles.mapCenter}>
-              <div className={styles.centerMarker}></div>
-              <div className={styles.centerLabel}>OPERATIONS CENTER</div>
-            </div>
-
-            {/* Officer markers */}
-            {Array.from(officers.values())
-              .filter(o => o.location)
-              .map((officer) => {
-                const pos = getMapPosition(officer.location!.lat, officer.location!.lng);
-                const hasSignals = officer.signals.length > 0;
-                const recentSignal = officer.signals[officer.signals.length - 1];
-                
-                return (
-                  <div
-                    key={officer.officerName}
-                    className={`${styles.officerMarker} ${hasSignals ? styles.officerMarkerHasSignals : ''}`}
-                    style={{
-                      left: `${pos.x}%`,
-                      top: `${pos.y}%`,
-                    }}
-                    onClick={() => setSelectedOfficer(officer.officerName)}
-                  >
-                    <div className={styles.markerPulse}></div>
-                    <div 
-                      className={styles.markerIcon}
-                      style={hasSignals && recentSignal ? { 
-                        borderColor: getSignalColor(recentSignal),
-                        boxShadow: `0 0 15px ${getSignalColor(recentSignal)}40`
-                      } : {}}
-                    >
-                      👤
-                    </div>
-                    <div className={styles.markerLabel}>{officer.officerName}</div>
-                  </div>
-                );
-              })}
-          </div>
+        <div className="animate-fadeIn">
+          {renderContent()}
         </div>
+      </main>
 
-        {/* Signal Detail Panel */}
-        <div className={styles.signalsPanel}>
-          {selectedOfficerData ? (
-            <>
-              <div className={styles.signalsHeader}>
-                <h2>SIGNALS: {selectedOfficerData.officerName}</h2>
-              </div>
-              
-              {/* Triage Gate Countdown */}
-              {selectedOfficerData.triageCountdown && selectedOfficer !== null && (
-                <TriageGateCountdown
-                  officerName={selectedOfficer}
-                  countdownId={selectedOfficerData.triageCountdown.id}
-                  remaining={selectedOfficerData.triageCountdown.remaining}
-                  dispatchPayload={selectedOfficerData.triageCountdown.dispatchPayload}
-                  onVeto={handleTriageVeto}
-                  supervisorId={supervisorId}
-                />
-              )}
-
-              {/* Live Feed Viewer */}
-              {selectedOfficerData.liveStream && selectedOfficerData.liveStream.active && selectedOfficer !== null && (
-                <LiveFeedViewer
-                  officerName={selectedOfficer}
-                  streamUrl={selectedOfficerData.liveStream.streamUrl}
-                  tacticalIntent={selectedOfficerData.liveStream.tacticalIntent}
-                  onClose={() => {
-                    if (selectedOfficer === null) return;
-                    setOfficers(prev => {
-                      const updated = new Map(prev);
-                      const officer = updated.get(selectedOfficer);
-                      if (officer && officer.liveStream) {
-                        officer.liveStream.active = false;
-                      }
-                      return updated;
-                    });
-                  }}
-                />
-              )}
-
-            {/* Peripheral Threat Display */}
-            {selectedOfficerData.peripheralThreats && selectedOfficerData.peripheralThreats.length > 0 && selectedOfficer && (
-              <PeripheralThreatDisplay
-                threats={selectedOfficerData.peripheralThreats}
-                officerName={selectedOfficer as string}
-              />
-            )}
-
-            {/* Kinematic Prediction Alert */}
-            {selectedOfficerData.kinematicPrediction && selectedOfficer && (
-              <KinematicPredictionAlert
-                prediction={selectedOfficerData.kinematicPrediction}
-                officerName={selectedOfficer as string}
-              />
-            )}
-
-            {/* De-escalation Status Indicator */}
-            {selectedOfficerData.deEscalationStatus && selectedOfficer && (
-              <DeEscalationStatusIndicator
-                stabilization={selectedOfficerData.deEscalationStatus}
-                officerName={selectedOfficer as string}
-              />
-            )}
-
-            {/* Fact Timeline View */}
-            {selectedOfficerData.facts && selectedOfficerData.facts.length > 0 && selectedOfficer && (
-              <FactTimelineView
-                facts={selectedOfficerData.facts}
-                officerName={selectedOfficer as string}
-              />
-            )}
-
-            {/* Dictation Command Log */}
-            {selectedOfficerData.dictationCommands && selectedOfficerData.dictationCommands.length > 0 && selectedOfficer && (
-              <DictationCommandLog
-                commands={selectedOfficerData.dictationCommands}
-                officerName={selectedOfficer as string}
-              />
-            )}
-
-            {/* Pattern Timeline */}
-            {selectedOfficerData.signals.length > 0 && (
-              <div style={{ marginBottom: '20px' }}>
-                <PatternTimeline 
-                  signals={selectedOfficerData.signals} 
-                  officerName={selectedOfficerData.officerName}
-                />
-              </div>
-            )}
-              
-              <div className={styles.signalsHeader}>
-                <button 
-                  className={styles.summaryButton}
-                  onClick={() => {
-                    // Generate post-shift summary
-                    const summary = {
-                      officerName: selectedOfficerData.officerName,
-                      sessionId: selectedOfficerData.sessionId,
-                      signalCount: selectedOfficerData.signals.length,
-                      signalsByCategory: {} as Record<string, number>,
-                    };
-                    
-                    selectedOfficerData.signals.forEach(s => {
-                      summary.signalsByCategory[s.signalCategory] = 
-                        (summary.signalsByCategory[s.signalCategory] || 0) + 1;
-                    });
-                    
-                    logger.info('Post-shift summary', { summary });
-                    alert(`Post-Shift Summary:\n\nOfficer: ${selectedOfficerData.officerName}\nTotal Signals: ${selectedOfficerData.signals.length}\nCategories: ${Object.keys(summary.signalsByCategory).length}\n\nNote: This summary is for contextual awareness only, not performance evaluation.`);
-                  }}
-                  title="Generate a post-shift summary of contextual signals. This is for review purposes only, not for performance evaluation or disciplinary action."
-                >
-                  GENERATE SUMMARY
-                </button>
-              </div>
-              
-              <div className={styles.signalsContent}>
-                {recentSignals.length === 0 ? (
-                  <div className={styles.signalsEmpty}>
-                    <p>No contextual signals</p>
-                    <p className={styles.signalsEmptySub}>All systems normal</p>
-                  </div>
-                ) : (
-                  recentSignals.map((signal, idx) => {
-                    const signalId = `${signal.timestamp}-${idx}`;
-                    const isFlagged = flaggedSignals.has(signalId);
-                    
-                    return (
-                      <div
-                        key={signalId}
-                        className={`${styles.signalCard} ${isFlagged ? styles.signalCardFlagged : ''}`}
-                        style={{ borderLeftColor: getSignalColor(signal) }}
-                      >
-                        <div className={styles.signalHeader}>
-                          <div className={styles.signalHeaderRow}>
-                          <div className={styles.signalCategory}>
-                            <span 
-                              className={styles.signalDot}
-                              style={{ backgroundColor: getSignalColor(signal) }}
-                            ></span>
-                            {signal.signalCategory}
-                            <span 
-                              className={styles.tooltipTrigger}
-                              title="This is a probabilistic pattern indicator, not a threat assessment. Probability indicates pattern strength, not risk level."
-                            >
-                              ℹ️
-                            </span>
-                          </div>
-                          <div className={styles.signalMeta}>
-                            <span 
-                              className={styles.signalProbability}
-                              title="Probability indicates pattern detection confidence, not risk severity. Higher probability means stronger pattern match, not higher danger."
-                            >
-                              {(signal.probability * 100).toFixed(0)}%
-                            </span>
-                            <span className={styles.signalTime}>
-                              {new Date(signal.timestamp).toLocaleTimeString()}
-                            </span>
-                          </div>
-                        </div>
-                        </div>
-                        
-                        <div className={styles.signalDescription}>
-                          {signal.explanation.description}
-                        </div>
-                        
-                        <details className={styles.signalDetails}>
-                          <summary className={styles.signalDetailsSummary}>
-                            View Explanation
-                            <span 
-                              className={styles.tooltipTrigger}
-                              title="Explanation shows the raw data and algorithm that generated this signal. This helps verify signal validity but does not indicate risk level."
-                            >
-                              ℹ️
-                            </span>
-                          </summary>
-                          <div className={styles.signalDetailsContent}>
-                            <div className={styles.signalDetailsSection}>
-                              <strong>Origin Data:</strong>
-                              <p className={styles.signalDisclaimer}>
-                                Raw telemetry data that triggered this signal. This is contextual information only, not a threat indicator.
-                              </p>
-                              <pre>{JSON.stringify(signal.explanation.originData, null, 2)}</pre>
-                            </div>
-                            <div className={styles.signalDetailsSection}>
-                              <strong>Traceability:</strong>
-                              <p className={styles.signalDisclaimer}>
-                                Algorithm and parameters used to generate this signal. All signals are explainable and verifiable.
-                              </p>
-                              <pre>{JSON.stringify(signal.explanation.traceability, null, 2)}</pre>
-                            </div>
-                          </div>
-                        </details>
-                        
-                        <button
-                          className={`${styles.flagButton} ${isFlagged ? styles.flagButtonActive : ''}`}
-                          onClick={() => flagSignal(signalId)}
-                          title="Flag this signal for post-shift review. Flagging does not indicate urgency or risk - it's for administrative review only."
-                        >
-                          {isFlagged ? '✓ FLAGGED' : 'FLAG FOR REVIEW'}
-                        </button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </>
-          ) : (
-            <div className={styles.signalsEmpty}>
-              <p>Select a unit to view signals</p>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* SYSTEM TERMINAL FOOTER */}
+      <SystemMessageTerminal />
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import styles from '../styles/TriageGateCountdown.module.css';
 
 interface TriageGateCountdownProps {
   officerName: string;
@@ -47,71 +46,80 @@ export default function TriageGateCountdown({
   const progress = (remaining / 10000) * 100; // 10 seconds total
 
   return (
-    <div className={styles.countdownContainer}>
-      <div className={styles.header}>
-        <h3>Intelligent Triage Gate</h3>
-        <span className={styles.officerName}>{officerName}</span>
-      </div>
+    <div className="vantus-card border-neon-red/50 relative overflow-hidden">
+      {/* Background Pulse Animation for urgency */}
+      <div className="absolute inset-0 bg-red-900/10 animate-pulse pointer-events-none"></div>
 
-      <div className={styles.countdown}>
-        <div className={styles.progressBar}>
-          <div
-            className={styles.progressFill}
-            style={{ width: `${progress}%` }}
-          />
+      <div className="relative z-10 flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-neon-red font-black uppercase text-lg tracking-widest animate-pulse">Intelligent Triage Gate</h3>
+          <span className="text-white font-mono text-sm">Target: {officerName}</span>
         </div>
-        <div className={styles.timeRemaining}>
-          {secondsRemaining} seconds remaining
-        </div>
-      </div>
-
-      <div className={styles.dispatchInfo}>
-        <h4>Proposed Dispatch:</h4>
-        <div className={styles.infoRow}>
-          <span>Type:</span>
-          <span>{dispatchPayload?.type || 'PRIORITY_1_BACKUP'}</span>
-        </div>
-        <div className={styles.infoRow}>
-          <span>Threat:</span>
-          <span>{dispatchPayload?.situation?.threat_type || 'UNKNOWN'}</span>
-        </div>
-        <div className={styles.infoRow}>
-          <span>Confidence:</span>
-          <span>{(dispatchPayload?.situation?.confidence * 100 || 0).toFixed(0)}%</span>
+        <div className="text-right">
+          <div className="text-3xl font-mono font-bold text-white tabular-nums">
+            {secondsRemaining}<span className="text-xs text-gray-500 ml-1">SEC</span>
+          </div>
+          <div className="text-[10px] text-neon-red uppercase tracking-wider">Auto-Dispatch Protocol</div>
         </div>
       </div>
 
-      <div className={styles.actions}>
+      <div className="relative h-2 bg-gray-800 rounded-full mb-6 overflow-hidden">
+        <div
+          className="absolute top-0 left-0 h-full bg-neon-red transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(255,59,48,0.8)]"
+          style={{ width: `${progress}%`, backgroundColor: '#FF3B30' }}
+        />
+      </div>
+
+      <div className="bg-black/40 border border-gray-800 rounded p-4 mb-4">
+        <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Proposed Dispatch Payload</h4>
+        <div className="grid grid-cols-3 gap-4 text-xs font-mono">
+          <div>
+            <span className="block text-gray-600 mb-1">Type</span>
+            <span className="text-white">{dispatchPayload?.type || 'PRIORITY_1_BACKUP'}</span>
+          </div>
+          <div className="border-l border-gray-800 pl-4">
+            <span className="block text-gray-600 mb-1">Threat Assessment</span>
+            <span className="text-neon-red font-bold">{dispatchPayload?.situation?.threat_type || 'UNKNOWN'}</span>
+          </div>
+          <div className="border-l border-gray-800 pl-4">
+            <span className="block text-gray-600 mb-1">AI Confidence</span>
+            <span className="text-white font-bold">{(dispatchPayload?.situation?.confidence * 100 || 0).toFixed(0)}%</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
         <button
-          className={styles.vetoButton}
+          className="px-6 py-3 bg-red-900/20 border border-red-500/50 text-red-500 font-bold uppercase tracking-widest hover:bg-red-900/40 hover:text-white hover:border-red-500 transition-all text-xs disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => setShowVetoModal(true)}
           disabled={remaining === 0}
         >
-          VETO DISPATCH
+          [ VETO DISPATCH ]
         </button>
       </div>
 
       {showVetoModal && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modal}>
-            <h3>Veto Dispatch</h3>
-            <p>Reason for veto:</p>
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="vantus-card max-w-md w-full border-neon-red bg-black">
+            <h3 className="text-neon-red font-bold uppercase mb-4 text-xl">Confirm Veto Override</h3>
+            <p className="text-gray-400 text-sm mb-2">Reason for halting auto-dispatch:</p>
             <textarea
-              className={styles.reasonInput}
+              className="w-full bg-gray-900 border border-gray-700 rounded p-3 text-white text-sm font-mono focus:border-neon-red focus:outline-none mb-6"
               value={vetoReason}
               onChange={(e) => setVetoReason(e.target.value)}
-              placeholder="Enter reason for vetoing this dispatch..."
+              placeholder="Enter operational reason..."
               rows={4}
+              autoFocus
             />
-            <div className={styles.modalActions}>
+            <div className="flex justify-end gap-3">
               <button
-                className={styles.cancelButton}
+                className="px-4 py-2 text-gray-400 hover:text-white text-xs uppercase tracking-wider"
                 onClick={() => setShowVetoModal(false)}
               >
                 Cancel
               </button>
               <button
-                className={styles.confirmVetoButton}
+                className="px-6 py-2 bg-red-600 text-white font-bold text-xs uppercase tracking-widest hover:bg-red-500 rounded-sm shadow-[0_0_15px_rgba(220,38,38,0.5)]"
                 onClick={handleVeto}
                 disabled={!vetoReason.trim()}
               >
@@ -123,8 +131,11 @@ export default function TriageGateCountdown({
       )}
 
       {remaining === 0 && (
-        <div className={styles.expired}>
-          <p>Countdown expired - Dispatch proceeding...</p>
+        <div className="absolute inset-0 bg-black/95 flex items-center justify-center z-20">
+          <div className="text-center">
+            <p className="text-neon-green font-mono text-xl animate-pulse mb-2">DISPATCH AUTHORIZED</p>
+            <p className="text-gray-500 text-xs uppercase tracking-widest">Protocol Executing...</p>
+          </div>
         </div>
       )}
     </div>
