@@ -1,0 +1,53 @@
+# AI Job Finder Bot Configuration Template
+# ==========================================
+# Copy this to config.yaml and fill in your values
+# DO NOT commit config.yaml to git (it contains secrets)
+
+# Your Gemini API Keys (multiple projects = more quota)
+# Each project gets 20 requests/day, so 2 projects = 40 requests/day
+# Get keys at: https://aistudio.google.com/
+gemini_api_keys:
+  - "YOUR_GEMINI_API_KEY_1"
+  - "YOUR_GEMINI_API_KEY_2"
+
+# Email Configuration (using Gmail - enable "App Passwords" in Google Account)
+# https://myaccount.google.com/apppasswords
+email:
+  smtp_server: "smtp.gmail.com"
+  smtp_port: 587
+  sender_email: "your.email@gmail.com"
+  sender_password: "YOUR_GMAIL_APP_PASSWORD"
+  recipient_email: "your.email@gmail.com"
+
+# Your Resume (paste your full resume text below)
+resume: |
+  YOUR RESUME TEXT HERE
+  
+  Work Experience:
+  - Job 1...
+  - Job 2...
+  
+  Technical Skills:
+  - Skill 1, Skill 2, etc.
+
+# Search Preferences
+search_preferences:
+  locations:
+    - "Your City"
+    - "Remote"
+  keywords:
+    - "data analyst"
+    - "software engineer"
+  target_companies:
+    - "Company 1"
+    - "Company 2"
+  min_match_score: 60
+  top_jobs_count: 25
+  permanent_only: true
+  max_applicants: 100
+
+# Schedule
+schedule:
+  enabled: true
+  interval_days: 1
+  time: "07:00"

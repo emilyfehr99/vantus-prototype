@@ -15,6 +15,7 @@ export const DETECTION_TYPES = {
     VOICE_THREAT: 'VOICE_THREAT',
     WELFARE_CHECK: 'WELFARE_CHECK',
     SUBJECT_APPROACH: 'SUBJECT_APPROACH',
+    BEHAVIORAL_CHANGE: 'BEHAVIORAL_CHANGE', // New
 };
 
 // Color codes for overlay display
@@ -29,6 +30,7 @@ export const ALERT_COLORS = {
     VOICE_THREAT: '#d69e2e',     // Yellow
     WELFARE_CHECK: '#3182ce',    // Blue
     SUBJECT_APPROACH: '#dd6b20', // Orange
+    BEHAVIORAL_CHANGE: '#d69e2e', // Yellow-Orange
 };
 
 // Voice advisory messages for each detection type
@@ -43,6 +45,7 @@ export const VOICE_MESSAGES = {
     VOICE_THREAT: 'Threat keywords detected',
     WELFARE_CHECK: 'Status check - are you okay?',
     SUBJECT_APPROACH: 'Subject approaching',
+    BEHAVIORAL_CHANGE: 'Escalating emotional state detected', // New
 };
 
 /**
@@ -152,7 +155,7 @@ export const TRAFFIC_STOP_DEMO = {
 
 /**
  * Domestic Disturbance Demo
- * Multi-subject scenario with verbal threats
+ * Multi-subject scenario with verbal threats - ENHANCED with Behavioral Analysis
  */
 export const DOMESTIC_DISTURBANCE_DEMO = {
     id: 'domestic_disturbance',
@@ -179,6 +182,19 @@ export const DOMESTIC_DISTURBANCE_DEMO = {
             triggerVoice: true,
         },
         {
+            time: 10.0,
+            type: DETECTION_TYPES.BEHAVIORAL_CHANGE,
+            description: 'Subject A: Escalating Agitation',
+            confidence: 0.85,
+            triggerHaptic: false,
+            triggerVoice: true,
+            behavioral: {
+                emotionalState: 'agitated',
+                tone: 'shouting',
+                indicators: ['Rapid speech', 'Increased volume']
+            }
+        },
+        {
             time: 15.0,
             type: DETECTION_TYPES.SUBJECT_APPROACH,
             description: 'Second subject approaching from left',
@@ -193,6 +209,19 @@ export const DOMESTIC_DISTURBANCE_DEMO = {
             confidence: 0.79,
             triggerHaptic: true,
             triggerVoice: true,
+        },
+        {
+            time: 25.0,
+            type: DETECTION_TYPES.BEHAVIORAL_CHANGE,
+            description: 'Subject A: High Anxiety/Aggression',
+            confidence: 0.92,
+            triggerHaptic: true,
+            triggerVoice: true,
+            behavioral: {
+                emotionalState: 'escalating',
+                tone: 'threatening',
+                indicators: ['Invading personal space', 'Clenched fists']
+            }
         },
         {
             time: 28.0,
@@ -217,6 +246,19 @@ export const DOMESTIC_DISTURBANCE_DEMO = {
             confidence: 1.0,
             triggerHaptic: false,
             triggerVoice: true,
+        },
+        {
+            time: 60.0,
+            type: DETECTION_TYPES.BEHAVIORAL_CHANGE,
+            description: 'Subject A: De-escalating',
+            confidence: 0.75,
+            triggerHaptic: false,
+            triggerVoice: false,
+            behavioral: {
+                emotionalState: 'calm',
+                tone: 'neutral',
+                indicators: ['Lowered volume', 'Compliance']
+            }
         },
     ],
     biometricTimeline: [

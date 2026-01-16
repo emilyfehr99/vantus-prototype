@@ -9,6 +9,7 @@
  * - Operational context awareness
  * - Privacy-first (transcripts only)
  * - Self-hosted options (LocalAI, AnythingLLM, Ollama)
+ * - Real-time behavioral and emotional tracking
  */
 
 import logger from '../utils/logger';
@@ -41,8 +42,8 @@ class LLMService {
     this.enabled = !!this.apiUrl && (this.isSelfHosted(provider) || !!apiKey);
 
     if (this.enabled) {
-      logger.info('LLM Service initialized', { 
-        provider, 
+      logger.info('LLM Service initialized', {
+        provider,
         model: this.model,
         apiUrl: this.apiUrl ? 'configured' : 'not set',
         selfHosted: this.isSelfHosted(provider)
@@ -87,7 +88,7 @@ class LLMService {
    */
   getApiUrl(provider, customUrl = null) {
     if (customUrl) return customUrl;
-    
+
     const urls = {
       openrouter: 'https://openrouter.ai/api/v1/chat/completions',
       together: 'https://api.together.xyz/v1/chat/completions',
@@ -134,7 +135,7 @@ class LLMService {
       const response = await this.callLLMWithRetry(prompt);
 
       const analysis = this.parseLLMResponse(response);
-      
+
       // Add RAG metadata if used
       if (ragService.isAvailable() && officerContext.ragKnowledge) {
         analysis.ragEnhanced = true;
@@ -157,18 +158,18 @@ class LLMService {
    */
   buildVantusAnalysisPrompt(transcript, context, officerContext) {
     const { baseline = null, operationalContext = null, sessionDuration = null } = officerContext;
-    
+
     // Build context-aware prompt
     let contextInfo = '';
-    
+
     if (operationalContext) {
       contextInfo += `\nOperational Context: ${operationalContext} (e.g., traffic_stop, checkpoint, routine_patrol)`;
     }
-    
+
     if (sessionDuration) {
       contextInfo += `\nSession Duration: ${Math.round(sessionDuration / 60)} minutes`;
     }
-    
+
     if (baseline && baseline.mean_wpm) {
       contextInfo += `\nOfficer Baseline Speech Rate: ${baseline.mean_wpm.toFixed(1)} words/min (normal range: ${(baseline.mean_wpm - baseline.std_wpm || 0).toFixed(1)}-${(baseline.mean_wpm + baseline.std_wpm || 0).toFixed(1)})`;
     }
@@ -179,33 +180,29 @@ CRITICAL CONSTRAINTS:
 - Return ONLY valid JSON
 - Do NOT diagnose stress, emotions, psychological states, or medical conditions
 - Do NOT assess threat levels or risk
-- Focus ONLY on observable speech pattern characteristics
+- Focus ONLY on observable speech pattern characteristics and behavioral indicators
 - Confidence scores (0.0-1.0) represent pattern detection confidence, NOT risk or threat level
 
 ANALYSIS TASK:
-Analyze the following transcript and identify observable speech patterns:
+Analyze the following transcript and identify observable speech patterns and behavioral cues:
 
 1. Aggressive vocal patterns
    - Shouting or raised voice (volume indicators in transcript)
-   - Aggressive language (commands, warnings)
-   - Intensity indicators
+   - Aggressive language (commands, warnings, threats)
+   - Intensity levels
 
-2. Screaming or high-intensity vocalizations
-   - Extreme volume indicators
-   - High-intensity language patterns
+2. Emotional indicators (Observational ONLY)
+   - Identify apparent emotional state based on word choice and phrasing
+   - Categories: Calm, Agitated, Anxious, Escalating, De-escalating
 
-3. Repetitive speech patterns
-   - Repeated words or phrases
-   - Repetition frequency
+3. Tone and Behavioral Cues
+   - Speech characteristics (e.g., rapid, slurred, stuttering, coherent)
+   - Interaction style (e.g., cooperative, defensive, confrontational)
 
 4. Unusual speech rate
    - Very fast speech (high word density)
    - Very slow speech (low word density)
    - Compare to baseline if provided
-
-5. Normal speech patterns
-   - Standard conversational patterns
-   - Routine communication
 
 ${contextInfo}
 
@@ -217,7 +214,10 @@ Return JSON format (NO other text):
   "confidence": 0.0-1.0,
   "indicators": ["specific", "observable", "indicators", "found"],
   "speech_rate": "fast" | "normal" | "slow" | "unknown",
-  "pattern_strength": "weak" | "moderate" | "strong" | "none"
+  "pattern_strength": "weak" | "moderate" | "strong" | "none",
+  "emotional_state": "calm" | "agitated" | "anxious" | "escalating" | "unknown",
+  "tone_analysis": "neutral" | "sarcastic" | "shouting" | "trembling" | "unknown",
+  "behavioral_cues": ["list", "of", "behaviors"]
 }`;
   }
 
@@ -228,7 +228,7 @@ Return JSON format (NO other text):
    */
   async callLLMWithRetry(prompt) {
     let lastError = null;
-    
+
     for (let attempt = 0; attempt <= this.retryAttempts; attempt++) {
       try {
         return await this.callLLM(prompt);
@@ -241,7 +241,7 @@ Return JSON format (NO other text):
         }
       }
     }
-    
+
     throw lastError;
   }
 
@@ -265,7 +265,7 @@ Return JSON format (NO other text):
       headers['HTTP-Referer'] = 'https://vantus.ai';
       headers['X-Title'] = 'Vantus AI Partner';
     }
-    
+
     // Ollama may not require authorization
     if (this.provider === 'ollama' && !this.apiKey) {
       // Ollama typically doesn't require auth for local instances
@@ -277,7 +277,7 @@ Return JSON format (NO other text):
       messages: [
         {
           role: 'system',
-          content: 'You are a pattern analysis assistant for Vantus. Return only valid JSON, no explanations. Focus on observable speech patterns only.',
+          content: 'You are a pattern analysis assistant for Vantus. Return only valid JSON, no explanations. Focus on observable speech patterns and behavioral indicators only.',
         },
         {
           role: 'user',
@@ -285,7 +285,7 @@ Return JSON format (NO other text):
         },
       ],
       temperature: 0.3, // Lower temperature for more consistent results
-      max_tokens: 300, // Increased for more detailed analysis
+      max_tokens: 350, // Increased for detailed behavioral analysis
     };
 
     // Some providers support JSON response format
@@ -326,15 +326,24 @@ Return JSON format (NO other text):
       const pattern = ['aggressive', 'screaming', 'repetitive', 'unusual_rate', 'normal'].includes(parsed.pattern)
         ? parsed.pattern
         : 'normal';
-      
+
       const confidence = Math.max(0, Math.min(1, parseFloat(parsed.confidence) || 0));
       const speechRate = ['fast', 'normal', 'slow', 'unknown'].includes(parsed.speech_rate)
         ? parsed.speech_rate
         : 'unknown';
-      
+
       const patternStrength = ['weak', 'moderate', 'strong', 'none'].includes(parsed.pattern_strength)
         ? parsed.pattern_strength
         : 'none';
+
+      // New behavioral fields
+      const emotionalState = ['calm', 'agitated', 'anxious', 'escalating', 'unknown'].includes(parsed.emotional_state)
+        ? parsed.emotional_state
+        : 'unknown';
+
+      const toneAnalysis = ['neutral', 'sarcastic', 'shouting', 'trembling', 'unknown'].includes(parsed.tone_analysis)
+        ? parsed.tone_analysis
+        : 'unknown';
 
       return {
         pattern,
@@ -342,6 +351,9 @@ Return JSON format (NO other text):
         indicators: Array.isArray(parsed.indicators) ? parsed.indicators : [],
         speechRate,
         patternStrength,
+        emotionalState,
+        toneAnalysis,
+        behavioralCues: Array.isArray(parsed.behavioral_cues) ? parsed.behavioral_cues : [],
         source: 'llm',
       };
     } catch (error) {
@@ -352,6 +364,9 @@ Return JSON format (NO other text):
         indicators: [],
         speechRate: 'unknown',
         patternStrength: 'none',
+        emotionalState: 'unknown',
+        toneAnalysis: 'unknown',
+        behavioralCues: [],
         source: 'fallback',
       };
     }
@@ -372,6 +387,9 @@ Return JSON format (NO other text):
         indicators: [],
         speechRate: 'unknown',
         patternStrength: 'none',
+        emotionalState: 'unknown',
+        toneAnalysis: 'unknown',
+        behavioralCues: [],
         source: 'fallback',
       };
     }
@@ -382,7 +400,7 @@ Return JSON format (NO other text):
     // Check for aggressive patterns
     const aggressiveWords = ['stop', 'freeze', 'hands', 'weapon', 'gun', 'knife', 'backup', 'down', 'ground'];
     const aggressiveCount = aggressiveWords.filter(word => lowerTranscript.includes(word)).length;
-    
+
     // Check for repetition
     const words = transcript.split(/\s+/);
     const wordCounts = {};
@@ -391,33 +409,40 @@ Return JSON format (NO other text):
       wordCounts[lower] = (wordCounts[lower] || 0) + 1;
     });
     const repeatedWords = Object.entries(wordCounts).filter(([_, count]) => count > 2);
-    
+
     // Check for all caps (shouting indicator)
     const allCapsRatio = (transcript.match(/[A-Z]/g) || []).length / transcript.length;
-    
+
     // Check for exclamation marks (intensity indicator)
     const exclamationCount = (transcript.match(/!/g) || []).length;
     const exclamationRatio = exclamationCount / words.length;
-    
+
     let pattern = 'normal';
     let confidence = 0;
     let patternStrength = 'none';
+    let emotionalState = 'calm';
+    let toneAnalysis = 'neutral';
 
     if (allCapsRatio > 0.3 || exclamationRatio > 0.1) {
       pattern = 'screaming';
       confidence = Math.min(0.8, Math.max(allCapsRatio, exclamationRatio * 2));
       indicators.push('high_caps_ratio', 'exclamation_marks');
       patternStrength = confidence > 0.6 ? 'strong' : 'moderate';
+      emotionalState = 'agitated';
+      toneAnalysis = 'shouting';
     } else if (aggressiveCount >= 2) {
       pattern = 'aggressive';
       confidence = Math.min(0.7, aggressiveCount * 0.2);
       indicators.push('aggressive_keywords');
       patternStrength = aggressiveCount >= 3 ? 'strong' : 'moderate';
+      emotionalState = 'escalating';
+      toneAnalysis = 'shouting';
     } else if (repeatedWords.length > 0) {
       pattern = 'repetitive';
       confidence = Math.min(0.6, repeatedWords.length * 0.15);
       indicators.push('word_repetition');
       patternStrength = repeatedWords.length > 2 ? 'moderate' : 'weak';
+      emotionalState = 'anxious';
     }
 
     // Calculate speech rate (simple heuristic)
@@ -430,6 +455,9 @@ Return JSON format (NO other text):
       indicators,
       speechRate,
       patternStrength,
+      emotionalState,
+      toneAnalysis,
+      behavioralCues: [],
       source: 'fallback',
     };
   }

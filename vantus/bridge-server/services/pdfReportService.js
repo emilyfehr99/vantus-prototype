@@ -10,7 +10,7 @@ const PDFDocument = require('pdfkit');
 const logger = require('../utils/logger');
 
 // Report template
-const REPORT_VERSION = '1.0.0';
+const REPORT_VERSION = '1.1.0';
 const DEPARTMENT_PLACEHOLDER = 'YOUR DEPARTMENT';
 
 // PDF Styling
@@ -94,6 +94,8 @@ class PDFReportService {
             location,
             cadReference,
             callType = 'Unknown',
+            behavioralAnalysis = {}, // New behavioral data
+            environmentalContext = {}, // New environmental data
         } = incidentData;
 
         const reportId = this.generateReportId(officerInfo.badgeNumber);
@@ -123,6 +125,16 @@ class PDFReportService {
             },
             detectionTimeline: this.formatDetectionTimeline(detectionTimeline || []),
             biometricData: this.formatBiometricData(biometricData || {}),
+            behavioralAnalysis: {
+                emotionalState: behavioralAnalysis.emotionalState || [],
+                behavioralIndicators: behavioralAnalysis.indicators || [],
+                suspectDescription: behavioralAnalysis.suspectDescription || 'No description available',
+            },
+            environmentalContext: {
+                weather: environmentalContext.weather || 'Unknown',
+                ambientNoise: environmentalContext.ambientNoise || 'Normal',
+                lighting: environmentalContext.lighting || 'Unknown',
+            },
             evidenceIntegrity: {
                 factLogEntries: factLog?.length || 0,
                 chainVerification: this.verifyFactLogChain(factLog),
@@ -232,8 +244,50 @@ class PDFReportService {
                 }
             });
 
+            // Subject Behavioral Analysis (NEW)
+            this.drawPDFSection(doc, 'SUBJECT BEHAVIORAL ANALYSIS', () => {
+                const behavior = content.behavioralAnalysis;
+
+                doc.fontSize(11).fillColor(COLORS.text).font('Helvetica-Bold');
+                doc.text('Suspect Description:');
+                doc.font('Helvetica').text(behavior.suspectDescription);
+                doc.moveDown(0.5);
+
+                doc.font('Helvetica-Bold').text('Observed Emotional States:');
+                doc.font('Helvetica');
+                if (behavior.emotionalState && behavior.emotionalState.length > 0) {
+                    behavior.emotionalState.forEach(state => {
+                        doc.text(`• ${state.time}: ${state.state} (Confidence: ${state.confidence || 'N/A'})`);
+                    });
+                } else {
+                    doc.text('No emotional state data captured.');
+                }
+                doc.moveDown(0.5);
+
+                doc.font('Helvetica-Bold').text('Behavioral Indicators:');
+                doc.font('Helvetica');
+                if (behavior.behavioralIndicators && behavior.behavioralIndicators.length > 0) {
+                    behavior.behavioralIndicators.forEach(indicator => {
+                        doc.text(`• ${indicator}`);
+                    });
+                } else {
+                    doc.text('No specific behavioral indicators noted.');
+                }
+            });
+
+            // Environmental Context (NEW)
+            this.drawPDFSection(doc, 'ENVIRONMENTAL CONTEXT', () => {
+                const env = content.environmentalContext;
+                doc.fontSize(11).fillColor(COLORS.text);
+                doc.text(`Weather: ${env.weather}`);
+                doc.moveDown(0.3);
+                doc.text(`Lighting Conditions: ${env.lighting}`);
+                doc.moveDown(0.3);
+                doc.text(`Ambient Noise Level: ${env.ambientNoise}`);
+            });
+
             // Biometric Data Section
-            this.drawPDFSection(doc, 'BIOMETRIC DATA', () => {
+            this.drawPDFSection(doc, 'OFFICER BIOMETRIC DATA', () => {
                 const bio = content.biometricData;
                 doc.fontSize(11).fillColor(COLORS.text);
                 doc.text(`Baseline HR: ${bio.baselineHR}`);
@@ -316,6 +370,12 @@ class PDFReportService {
      * Draw a section with title and content
      */
     drawPDFSection(doc, title, contentFn) {
+        // Check for page break needed
+        if (doc.y > 650) {
+            doc.addPage();
+            doc.y = 50;
+        }
+
         // Section title
         doc.fontSize(14).fillColor(COLORS.secondary).font('Helvetica-Bold');
         doc.text(title);
@@ -439,7 +499,29 @@ class PDFReportService {
 
         report += `
 │${''.padEnd(61)}│
-│${'BIOMETRIC DATA'.padEnd(61)}│
+│${'SUBJECT BEHAVIORAL ANALYSIS'.padEnd(61)}│
+│${line}│
+│ Suspect Description: ${content.behavioralAnalysis.suspectDescription.substring(0, 39).padEnd(39)}│
+│${''.padEnd(61)}│
+│ Observed Emotional States:                                  │`;
+
+        if (content.behavioralAnalysis.emotionalState.length > 0) {
+            content.behavioralAnalysis.emotionalState.forEach(state => {
+                report += `\n│ • ${state.time}: ${state.state.padEnd(47)}│`;
+            });
+        } else {
+            report += `\n│ No emotional state data captured.${''.padEnd(28)}│`;
+        }
+
+        report += `
+│${''.padEnd(61)}│
+│${'ENVIRONMENTAL CONTEXT'.padEnd(61)}│
+│${line}│
+│ Weather: ${content.environmentalContext.weather.padEnd(50)}│
+│ Lighting: ${content.environmentalContext.lighting.padEnd(49)}│
+│ Ambient Noise: ${content.environmentalContext.ambientNoise.padEnd(44)}│
+│${''.padEnd(61)}│
+│${'OFFICER BIOMETRIC DATA'.padEnd(61)}│
 │${line}│
 │ Baseline HR: ${content.biometricData.baselineHR.padEnd(46)}│
 │ Peak HR: ${(content.biometricData.peakHR + ' (' + content.biometricData.peakTime + ')').padEnd(50)}│
