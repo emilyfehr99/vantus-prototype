@@ -194,7 +194,6 @@ const styles = {
     position: 'absolute' as const,
     top: '50%',
     left: '50%',
-    transform: 'translate(-50%, -50%)',
     width: '12px',
     height: '12px',
     backgroundColor: '#00FF41',
@@ -372,6 +371,303 @@ export default function Dashboard() {
   const selectedOfficerData = selectedOfficer ? officers.get(selectedOfficer) : null;
   const tabs = ['LIVE OPERATIONS', 'OFFICER STATUS', 'INTELLIGENCE', 'SETTINGS'];
 
+  // Render different content based on active tab
+  const renderTabContent = () => {
+    if (activeTab === 'LIVE OPERATIONS') {
+      return (
+        <main style={styles.main}>
+          {/* LEFT: Active Units */}
+          <aside style={styles.card as React.CSSProperties}>
+            <div style={styles.cardHeader}>
+              <span style={styles.cardTitle}>
+                <span style={{ color: '#00FF41' }}>●</span> ACTIVE UNITS
+              </span>
+              <span style={{ fontSize: '14px', fontWeight: 700, color: '#00FF41' }}>{officers.size}</span>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {Array.from(officers.values()).map((officer) => (
+                <div
+                  key={officer.officerName}
+                  onClick={() => setSelectedOfficer(officer.officerName)}
+                  style={styles.officerCard(selectedOfficer === officer.officerName)}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontWeight: 700, fontSize: '12px' }}>{officer.officerName}</span>
+                    {officer.sessionId && (
+                      <span style={{
+                        fontSize: '8px',
+                        padding: '2px 6px',
+                        backgroundColor: 'rgba(0,255,65,0.2)',
+                        color: '#00FF41',
+                        borderRadius: '3px',
+                        fontWeight: 700,
+                      }}>ACTIVE</span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#555' }}>
+                    <span>Last: {getTimeSinceLastContact(officer.lastContact)}</span>
+                    <span style={{ color: '#888' }}>{officer.signals.length} signals</span>
+                  </div>
+                  {officer.triageCountdown && (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '6px 8px',
+                      backgroundColor: 'rgba(255,59,48,0.1)',
+                      border: '1px solid rgba(255,59,48,0.3)',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}>
+                      <span style={{ width: '6px', height: '6px', backgroundColor: '#FF3B30', borderRadius: '50%' }} />
+                      <span style={{ fontSize: '8px', color: '#FF3B30', fontWeight: 700 }}>
+                        10-33 PENDING: {officer.triageCountdown.remaining}s
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {officers.size === 0 && (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '200px',
+                  color: '#333',
+                  fontSize: '10px',
+                }}>
+                  <span style={{ fontSize: '24px', marginBottom: '8px', opacity: 0.3 }}>◎</span>
+                  NO ACTIVE UNITS
+                </div>
+              )}
+            </div>
+          </aside>
+
+          {/* CENTER: Tactical Map */}
+          <section style={styles.mapContainer}>
+            <div style={styles.mapGrid} />
+
+            <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 10 }}>
+              <span style={{ fontSize: '9px', color: '#666', fontWeight: 700, letterSpacing: '0.1em' }}>
+                ◉ TACTICAL GEOMETRY
+              </span>
+            </div>
+            <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 10 }}>
+              <span style={{ fontSize: '9px', color: '#444' }}>CORDON: ALPHA-1</span>
+            </div>
+
+            <div style={styles.ring(100, 0.3)} />
+            <div style={styles.ring(180, 0.2)} />
+            <div style={styles.ring(260, 0.1)} />
+
+            <div style={styles.mapCenter} />
+
+            {Array.from(officers.values()).filter(o => o.location).map(officer => {
+              const pos = getMapPosition(officer.location!.lat, officer.location!.lng);
+              return (
+                <div
+                  key={officer.officerName}
+                  onClick={() => setSelectedOfficer(officer.officerName)}
+                  style={{
+                    position: 'absolute',
+                    left: `${pos.x}%`,
+                    top: `${pos.y}%`,
+                    transform: 'translate(-50%, -50%)',
+                    cursor: 'pointer',
+                    zIndex: 20,
+                  }}
+                >
+                  <div style={{
+                    width: '10px',
+                    height: '10px',
+                    transform: 'rotate(45deg)',
+                    border: '2px solid #00FF41',
+                    backgroundColor: selectedOfficer === officer.officerName ? '#00FF41' : '#000',
+                    boxShadow: '0 0 15px rgba(0,255,65,0.5)',
+                  }} />
+                  <div style={{
+                    position: 'absolute',
+                    top: '16px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    whiteSpace: 'nowrap',
+                    backgroundColor: 'rgba(0,0,0,0.9)',
+                    padding: '2px 6px',
+                    fontSize: '7px',
+                    color: '#00FF41',
+                    border: '1px solid rgba(0,255,65,0.3)',
+                    borderRadius: '3px',
+                  }}>
+                    {officer.officerName}
+                  </div>
+                </div>
+              );
+            })}
+
+            <div style={{ position: 'absolute', bottom: '16px', left: '16px', display: 'flex', gap: '8px' }}>
+              {['ROUTE', 'HISTORY'].map(btn => (
+                <button key={btn} style={{
+                  padding: '6px 12px',
+                  fontSize: '8px',
+                  fontWeight: 700,
+                  backgroundColor: '#111',
+                  border: '1px solid #222',
+                  color: '#888',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}>{btn}</button>
+              ))}
+            </div>
+          </section>
+
+          {/* RIGHT: Intelligence Panel */}
+          <aside style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto' }}>
+            {selectedOfficerData ? (
+              <>
+                <div style={{ ...styles.card as React.CSSProperties, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      backgroundColor: 'rgba(0,255,65,0.1)',
+                      border: '1px solid rgba(0,255,65,0.3)',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#00FF41',
+                      fontSize: '14px',
+                    }}>◉</div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '13px' }}>{selectedOfficerData.officerName}</div>
+                      <div style={{ fontSize: '9px', color: '#555' }}>SESSION: {selectedOfficerData.sessionId || 'N/A'}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: '6px', height: '6px', backgroundColor: '#00FF41', borderRadius: '50%' }} />
+                    <span style={{ fontSize: '9px', color: '#00FF41', fontWeight: 700 }}>STREAMING</span>
+                  </div>
+                </div>
+
+                {selectedOfficerData.triageCountdown && (
+                  <TriageGateCountdown
+                    officerName={selectedOfficerData.officerName}
+                    countdownId={selectedOfficerData.triageCountdown.id}
+                    remaining={selectedOfficerData.triageCountdown.remaining}
+                    dispatchPayload={selectedOfficerData.triageCountdown.dispatchPayload}
+                    onVeto={handleTriageVeto}
+                    supervisorId={supervisorId}
+                  />
+                )}
+
+                {selectedOfficerData.liveStream?.active && (
+                  <LiveFeedViewer
+                    officerName={selectedOfficerData.officerName}
+                    streamUrl={selectedOfficerData.liveStream.streamUrl}
+                    tacticalIntent={selectedOfficerData.liveStream.tacticalIntent}
+                    onClose={() => { }}
+                  />
+                )}
+
+                {selectedOfficerData.signals.length > 0 && (
+                  <PatternTimeline signals={selectedOfficerData.signals} officerName={selectedOfficerData.officerName} />
+                )}
+
+                {selectedOfficerData.kinematicPrediction && (
+                  <KinematicPredictionAlert prediction={selectedOfficerData.kinematicPrediction} officerName={selectedOfficerData.officerName} />
+                )}
+              </>
+            ) : (
+              <div style={{
+                ...styles.card as React.CSSProperties,
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#333',
+              }}>
+                <span style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.3 }}>◎</span>
+                <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em' }}>SELECT UNIT TO VIEW INTELLIGENCE</span>
+              </div>
+            )}
+          </aside>
+        </main>
+      );
+    }
+
+    // Placeholder screens for other tabs
+    const placeholderLabels: Record<string, string> = {
+      'OFFICER STATUS': 'OFFICER ROSTER MODULE',
+      'INTELLIGENCE': 'INTELLIGENCE REPORTS',
+      'SETTINGS': 'SYSTEM CONFIGURATION',
+    };
+
+    return (
+      <main style={{ padding: '24px', height: 'calc(100vh - 140px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{
+          ...styles.card as React.CSSProperties,
+          width: '600px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '64px 48px',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            backgroundColor: 'rgba(0,255,65,0.05)',
+            border: '2px solid rgba(0,255,65,0.2)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '24px',
+            fontSize: '28px',
+            color: '#00FF41',
+          }}>
+            ◎
+          </div>
+          <h2 style={{
+            fontSize: '16px',
+            fontWeight: 700,
+            letterSpacing: '0.1em',
+            color: '#00FF41',
+            marginBottom: '12px',
+            textTransform: 'uppercase',
+          }}>
+            {placeholderLabels[activeTab]}
+          </h2>
+          <p style={{
+            fontSize: '11px',
+            color: '#555',
+            letterSpacing: '0.05em',
+            maxWidth: '400px',
+            lineHeight: '1.6',
+          }}>
+            {activeTab === 'OFFICER STATUS' && 'View comprehensive officer roster with real-time status, shift schedules, and deployment assignments.'}
+            {activeTab === 'INTELLIGENCE' && 'Access aggregated intelligence reports, pattern analysis, and historical incident data across all active units.'}
+            {activeTab === 'SETTINGS' && 'Configure supervisor dashboard preferences, notification thresholds, and department-wide operational parameters.'}
+          </p>
+          <div style={{
+            marginTop: '32px',
+            padding: '12px 24px',
+            backgroundColor: 'rgba(0,255,65,0.05)',
+            border: '1px solid rgba(0,255,65,0.2)',
+            borderRadius: '6px',
+          }}>
+            <span style={{ fontSize: '9px', color: '#00FF41', fontWeight: 700, letterSpacing: '0.1em' }}>
+              MODULE IN DEVELOPMENT
+            </span>
+          </div>
+        </div>
+      </main>
+    );
+  };
+
   if (!mounted) return <div style={{ backgroundColor: '#000', height: '100vh', width: '100vw' }} />;
 
   return (
@@ -426,236 +722,9 @@ export default function Dashboard() {
         ))}
       </nav>
 
-      {/* MAIN 3-COLUMN LAYOUT */}
-      <main style={styles.main}>
-        {/* LEFT: Active Units */}
-        <aside style={styles.card as React.CSSProperties}>
-          <div style={styles.cardHeader}>
-            <span style={styles.cardTitle}>
-              <span style={{ color: '#00FF41' }}>●</span> ACTIVE UNITS
-            </span>
-            <span style={{ fontSize: '14px', fontWeight: 700, color: '#00FF41' }}>{officers.size}</span>
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {Array.from(officers.values()).map((officer) => (
-              <div
-                key={officer.officerName}
-                onClick={() => setSelectedOfficer(officer.officerName)}
-                style={styles.officerCard(selectedOfficer === officer.officerName)}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span style={{ fontWeight: 700, fontSize: '12px' }}>{officer.officerName}</span>
-                  {officer.sessionId && (
-                    <span style={{
-                      fontSize: '8px',
-                      padding: '2px 6px',
-                      backgroundColor: 'rgba(0,255,65,0.2)',
-                      color: '#00FF41',
-                      borderRadius: '3px',
-                      fontWeight: 700,
-                    }}>ACTIVE</span>
-                  )}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#555' }}>
-                  <span>Last: {getTimeSinceLastContact(officer.lastContact)}</span>
-                  <span style={{ color: '#888' }}>{officer.signals.length} signals</span>
-                </div>
-                {officer.triageCountdown && (
-                  <div style={{
-                    marginTop: '8px',
-                    padding: '6px 8px',
-                    backgroundColor: 'rgba(255,59,48,0.1)',
-                    border: '1px solid rgba(255,59,48,0.3)',
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}>
-                    <span style={{ width: '6px', height: '6px', backgroundColor: '#FF3B30', borderRadius: '50%' }} />
-                    <span style={{ fontSize: '8px', color: '#FF3B30', fontWeight: 700 }}>
-                      10-33 PENDING: {officer.triageCountdown.remaining}s
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
-            {officers.size === 0 && (
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '200px',
-                color: '#333',
-                fontSize: '10px',
-              }}>
-                <span style={{ fontSize: '24px', marginBottom: '8px', opacity: 0.3 }}>◎</span>
-                NO ACTIVE UNITS
-              </div>
-            )}
-          </div>
-        </aside>
 
-        {/* CENTER: Tactical Map */}
-        <section style={styles.mapContainer}>
-          <div style={styles.mapGrid} />
-
-          {/* Header */}
-          <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 10 }}>
-            <span style={{ fontSize: '9px', color: '#666', fontWeight: 700, letterSpacing: '0.1em' }}>
-              ◉ TACTICAL GEOMETRY
-            </span>
-          </div>
-          <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 10 }}>
-            <span style={{ fontSize: '9px', color: '#444' }}>CORDON: ALPHA-1</span>
-          </div>
-
-          {/* Rings */}
-          <div style={styles.ring(100, 0.3)} />
-          <div style={styles.ring(180, 0.2)} />
-          <div style={styles.ring(260, 0.1)} />
-
-          {/* Center marker */}
-          <div style={styles.mapCenter} />
-
-          {/* Officer markers */}
-          {Array.from(officers.values()).filter(o => o.location).map(officer => {
-            const pos = getMapPosition(officer.location!.lat, officer.location!.lng);
-            return (
-              <div
-                key={officer.officerName}
-                onClick={() => setSelectedOfficer(officer.officerName)}
-                style={{
-                  position: 'absolute',
-                  left: `${pos.x}%`,
-                  top: `${pos.y}%`,
-                  transform: 'translate(-50%, -50%)',
-                  cursor: 'pointer',
-                  zIndex: 20,
-                }}
-              >
-                <div style={{
-                  width: '10px',
-                  height: '10px',
-                  transform: 'rotate(45deg)',
-                  border: '2px solid #00FF41',
-                  backgroundColor: selectedOfficer === officer.officerName ? '#00FF41' : '#000',
-                  boxShadow: '0 0 15px rgba(0,255,65,0.5)',
-                }} />
-                <div style={{
-                  position: 'absolute',
-                  top: '16px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  whiteSpace: 'nowrap',
-                  backgroundColor: 'rgba(0,0,0,0.9)',
-                  padding: '2px 6px',
-                  fontSize: '7px',
-                  color: '#00FF41',
-                  border: '1px solid rgba(0,255,65,0.3)',
-                  borderRadius: '3px',
-                }}>
-                  {officer.officerName}
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Map controls */}
-          <div style={{ position: 'absolute', bottom: '16px', left: '16px', display: 'flex', gap: '8px' }}>
-            {['ROUTE', 'HISTORY'].map(btn => (
-              <button key={btn} style={{
-                padding: '6px 12px',
-                fontSize: '8px',
-                fontWeight: 700,
-                backgroundColor: '#111',
-                border: '1px solid #222',
-                color: '#888',
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}>{btn}</button>
-            ))}
-          </div>
-        </section>
-
-        {/* RIGHT: Intelligence Panel */}
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto' }}>
-          {selectedOfficerData ? (
-            <>
-              {/* Unit Header Card */}
-              <div style={{ ...styles.card as React.CSSProperties, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    backgroundColor: 'rgba(0,255,65,0.1)',
-                    border: '1px solid rgba(0,255,65,0.3)',
-                    borderRadius: '6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#00FF41',
-                    fontSize: '14px',
-                  }}>◉</div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '13px' }}>{selectedOfficerData.officerName}</div>
-                    <div style={{ fontSize: '9px', color: '#555' }}>SESSION: {selectedOfficerData.sessionId || 'N/A'}</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ width: '6px', height: '6px', backgroundColor: '#00FF41', borderRadius: '50%' }} />
-                  <span style={{ fontSize: '9px', color: '#00FF41', fontWeight: 700 }}>STREAMING</span>
-                </div>
-              </div>
-
-              {/* Triage Gate */}
-              {selectedOfficerData.triageCountdown && (
-                <TriageGateCountdown
-                  officerName={selectedOfficerData.officerName}
-                  countdownId={selectedOfficerData.triageCountdown.id}
-                  remaining={selectedOfficerData.triageCountdown.remaining}
-                  dispatchPayload={selectedOfficerData.triageCountdown.dispatchPayload}
-                  onVeto={handleTriageVeto}
-                  supervisorId={supervisorId}
-                />
-              )}
-
-              {/* Live Feed */}
-              {selectedOfficerData.liveStream?.active && (
-                <LiveFeedViewer
-                  officerName={selectedOfficerData.officerName}
-                  streamUrl={selectedOfficerData.liveStream.streamUrl}
-                  tacticalIntent={selectedOfficerData.liveStream.tacticalIntent}
-                  onClose={() => { }}
-                />
-              )}
-
-              {/* Timeline */}
-              {selectedOfficerData.signals.length > 0 && (
-                <PatternTimeline signals={selectedOfficerData.signals} officerName={selectedOfficerData.officerName} />
-              )}
-
-              {/* Kinematic Prediction */}
-              {selectedOfficerData.kinematicPrediction && (
-                <KinematicPredictionAlert prediction={selectedOfficerData.kinematicPrediction} officerName={selectedOfficerData.officerName} />
-              )}
-            </>
-          ) : (
-            <div style={{
-              ...styles.card as React.CSSProperties,
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#333',
-            }}>
-              <span style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.3 }}>◎</span>
-              <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em' }}>SELECT UNIT TO VIEW INTELLIGENCE</span>
-            </div>
-          )}
-        </aside>
-      </main>
+      {/* MAIN CONTENT - TAB BASED */}
+      {renderTabContent()}
 
       {/* Footer Terminal */}
       <SystemMessageTerminal />
