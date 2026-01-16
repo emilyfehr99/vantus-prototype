@@ -31,105 +31,74 @@ export default function PolicyControl() {
   };
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Privacy & Policy Control</h2>
-      
-      <div className="space-y-6">
-        {/* Data Retention Policy */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Data Retention Period (days)
-          </label>
-          <input
-            type="number"
-            value={dataRetentionDays}
-            onChange={(e) => setDataRetentionDays(parseInt(e.target.value) || 90)}
-            min="1"
-            max="365"
-            className="w-full border border-gray-300 rounded px-3 py-2"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Data older than this period will be automatically deleted
-          </p>
-        </div>
+    <div className="space-y-6">
+      <div className="border border-green-900/30 bg-black/50 p-8">
+        <h3 className="text-[10px] font-bold tracking-widest text-green-500 uppercase mb-8">PRIVACY & POLICY CONTROL</h3>
 
-        {/* Auto Delete Toggle */}
-        <div className="flex items-center justify-between">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Automatic Data Deletion
+        <div className="space-y-12">
+          {/* Data Retention Policy */}
+          <div className="border-b border-gray-800 pb-8">
+            <label className="block text-[10px] font-bold text-gray-500 tracking-widest uppercase mb-4">
+              DATA RETENTION PERIOD (DAYS)
             </label>
-            <p className="text-xs text-gray-500">
-              Automatically delete data after retention period
-            </p>
+            <div className="flex items-center gap-4">
+              <input
+                type="number"
+                value={dataRetentionDays}
+                onChange={(e) => setDataRetentionDays(parseInt(e.target.value) || 90)}
+                min="1"
+                max="365"
+                className="w-32 bg-black border border-gray-800 text-white font-mono text-2xl font-bold px-4 py-2 focus:border-green-500 focus:outline-none"
+              />
+              <p className="text-[9px] text-gray-600 uppercase tracking-wider">
+                Records older than {dataRetentionDays} days will be purged
+              </p>
+            </div>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={autoDeleteEnabled}
-              onChange={(e) => setAutoDeleteEnabled(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-          </label>
-        </div>
 
-        {/* Role-Based Access Control */}
-        <div className="flex items-center justify-between">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Role-Based Access Control
-            </label>
-            <p className="text-xs text-gray-500">
-              Restrict access based on user roles
-            </p>
+          {/* Toggles */}
+          <div className="space-y-6">
+            {[
+              { label: 'AUTOMATIC DATA DELETION', desc: 'Securely wipe data after retention period', checked: autoDeleteEnabled, set: setAutoDeleteEnabled },
+              { label: 'ROLE-BASED ACCESS CONTROL', desc: 'Enforce strict officer/supervisor/admin hierarchies', checked: roleBasedAccess, set: setRoleBasedAccess },
+              { label: 'PRIVACY MODE', desc: 'Process biometric data locally without raw cloud storage', checked: privacyMode, set: setPrivacyMode },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center justify-between group">
+                <div>
+                  <label className="block text-sm font-bold text-white tracking-widest uppercase mb-1 group-hover:text-green-500 transition-colors">
+                    {item.label}
+                  </label>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                    {item.desc}
+                  </p>
+                </div>
+                <button
+                  onClick={() => item.set(!item.checked)}
+                  className={`w-12 h-6 rounded-none border transition-all relative ${item.checked ? 'border-green-500 bg-green-900/20' : 'border-gray-800 bg-black'
+                    }`}
+                >
+                  <div className={`absolute top-0.5 bottom-0.5 w-5 bg-current transition-all ${item.checked ? 'right-0.5 bg-green-500' : 'left-0.5 bg-gray-700'
+                    }`} />
+                </button>
+              </div>
+            ))}
           </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={roleBasedAccess}
-              onChange={(e) => setRoleBasedAccess(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-          </label>
-        </div>
 
-        {/* Privacy Mode */}
-        <div className="flex items-center justify-between">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Privacy Mode
-            </label>
-            <p className="text-xs text-gray-500">
-              Enable privacy-first features (audio transcripts only, no raw data)
-            </p>
+          {/* Action Buttons */}
+          <div className="flex gap-4 pt-4 border-t border-gray-800">
+            <button
+              onClick={handleSavePolicies}
+              className="flex-1 px-4 py-4 bg-green-600/10 border border-green-500 text-green-500 text-xs font-bold tracking-[0.2em] uppercase hover:bg-green-500 hover:text-black transition-colors"
+            >
+              SAVE POLICIES
+            </button>
+            <button
+              onClick={handleDeleteData}
+              className="px-8 py-4 bg-red-900/10 border border-red-900 text-red-700 text-xs font-bold tracking-[0.2em] uppercase hover:bg-red-600 hover:text-black hover:border-red-600 transition-colors"
+            >
+              PURGE DATA
+            </button>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={privacyMode}
-              onChange={(e) => setPrivacyMode(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-          </label>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2 pt-4 border-t">
-          <button
-            onClick={handleSavePolicies}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Save Policies
-          </button>
-          <button
-            onClick={handleDeleteData}
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-          >
-            Delete Old Data
-          </button>
         </div>
       </div>
     </div>

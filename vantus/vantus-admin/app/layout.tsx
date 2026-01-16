@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import SystemMessageTerminal from '../components/SystemMessageTerminal'
 
 export const metadata: Metadata = {
   title: 'Vantus Admin',
@@ -13,7 +14,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="bg-black text-white min-h-screen relative overflow-hidden">
+        {children}
+        <SystemMessageTerminal />
+      </body>
     </html>
   )
 }
