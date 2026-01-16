@@ -597,75 +597,232 @@ export default function Dashboard() {
       );
     }
 
-    // Placeholder screens for other tabs
-    const placeholderLabels: Record<string, string> = {
-      'OFFICER STATUS': 'OFFICER ROSTER MODULE',
-      'INTELLIGENCE': 'INTELLIGENCE REPORTS',
-      'SETTINGS': 'SYSTEM CONFIGURATION',
-    };
+    // === OFFICER STATUS TAB ===
+    if (activeTab === 'OFFICER STATUS') {
+      return (
+        <main style={{ padding: '24px', height: 'calc(100vh - 140px)', overflowY: 'auto' }}>
+          <div style={styles.card as React.CSSProperties}>
+            <div style={styles.cardHeader}>
+              <span style={styles.cardTitle}>OFFICER ROSTER</span>
+              <span style={{ fontSize: '12px', color: '#00FF41', fontWeight: 700 }}>{officers.size} UNITS</span>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
+                  <th style={{ textAlign: 'left', padding: '12px', fontSize: '10px', fontWeight: 700, color: '#666', letterSpacing: '0.1em' }}>OFFICER</th>
+                  <th style={{ textAlign: 'left', padding: '12px', fontSize: '10px', fontWeight: 700, color: '#666', letterSpacing: '0.1em' }}>STATUS</th>
+                  <th style={{ textAlign: 'left', padding: '12px', fontSize: '10px', fontWeight: 700, color: '#666', letterSpacing: '0.1em' }}>SESSION</th>
+                  <th style={{ textAlign: 'left', padding: '12px', fontSize: '10px', fontWeight: 700, color: '#666', letterSpacing: '0.1em' }}>LAST CONTACT</th>
+                  <th style={{ textAlign: 'left', padding: '12px', fontSize: '10px', fontWeight: 700, color: '#666', letterSpacing: '0.1em' }}>SIGNALS</th>
+                  <th style={{ textAlign: 'left', padding: '12px', fontSize: '10px', fontWeight: 700, color: '#666', letterSpacing: '0.1em' }}>LOCATION</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from(officers.values()).map((officer, idx) => (
+                  <tr key={officer.officerName} style={{ borderBottom: '1px solid #0a0a0a', cursor: 'pointer' }} onClick={() => setSelectedOfficer(officer.officerName)}>
+                    <td style={{ padding: '14px 12px', fontSize: '12px', fontWeight: 700, color: '#fff' }}>{officer.officerName}</td>
+                    <td style={{ padding: '14px 12px' }}>
+                      {officer.sessionId ? (
+                        <span style={{ fontSize: '9px', padding: '4px 8px', backgroundColor: 'rgba(0,255,65,0.2)', color: '#00FF41', borderRadius: '4px', fontWeight: 700 }}>ACTIVE</span>
+                      ) : (
+                        <span style={{ fontSize: '9px', padding: '4px 8px', backgroundColor: 'rgba(85,85,85,0.2)', color: '#555', borderRadius: '4px', fontWeight: 700 }}>OFFLINE</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 12px', fontSize: '11px', color: '#888', fontFamily: 'monospace' }}>{officer.sessionId?.substring(0, 8) || 'N/A'}</td>
+                    <td style={{ padding: '14px 12px', fontSize: '11px', color: '#888' }}>{getTimeSinceLastContact(officer.lastContact)}</td>
+                    <td style={{ padding: '14px 12px', fontSize: '11px', color: officer.signals.length > 10 ? '#FFD700' : '#888', fontWeight: officer.signals.length > 10 ? 700 : 400 }}>{officer.signals.length}</td>
+                    <td style={{ padding: '14px 12px', fontSize: '10px', color: '#555' }}>
+                      {officer.location ? `${officer.location.lat.toFixed(4)}, ${officer.location.lng.toFixed(4)}` : '—'}
+                    </td>
+                  </tr>
+                ))}
+                {officers.size === 0 && (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '48px', textAlign: 'center', color: '#333', fontSize: '10px' }}>
+                      NO OFFICERS ON DUTY
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </main>
+      );
+    }
 
-    return (
-      <main style={{ padding: '24px', height: 'calc(100vh - 140px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{
-          ...styles.card as React.CSSProperties,
-          width: '600px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '64px 48px',
-          textAlign: 'center',
-        }}>
-          <div style={{
-            width: '64px',
-            height: '64px',
-            backgroundColor: 'rgba(0,255,65,0.05)',
-            border: '2px solid rgba(0,255,65,0.2)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '24px',
-            fontSize: '28px',
-            color: '#00FF41',
-          }}>
-            ◎
+    // === INTELLIGENCE TAB ===
+    if (activeTab === 'INTELLIGENCE') {
+      const totalSignals = Array.from(officers.values()).reduce((sum, o) => sum + o.signals.length, 0);
+      const avgSignalsPerOfficer = officers.size > 0 ? (totalSignals / officers.size).toFixed(1) : '0';
+      const activeOfficers = Array.from(officers.values()).filter(o => o.sessionId).length;
+
+      return (
+        <main style={{ padding: '24px', height: 'calc(100vh - 140px)', overflowY: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+            <div style={styles.card as React.CSSProperties}>
+              <div style={{ fontSize: '10px', color: '#666', marginBottom: '8px', letterSpacing: '0.1em', fontWeight: 700 }}>TOTAL SIGNALS</div>
+              <div style={{ fontSize: '32px', fontWeight: 700, color: '#00FF41' }}>{totalSignals}</div>
+              <div style={{ fontSize: '9px', color: '#555', marginTop: '4px' }}>Across all units</div>
+            </div>
+            <div style={styles.card as React.CSSProperties}>
+              <div style={{ fontSize: '10px', color: '#666', marginBottom: '8px', letterSpacing: '0.1em', fontWeight: 700 }}>AVG PER OFFICER</div>
+              <div style={{ fontSize: '32px', fontWeight: 700, color: '#FFD700' }}>{avgSignalsPerOfficer}</div>
+              <div style={{ fontSize: '9px', color: '#555', marginTop: '4px' }}>Signals per active unit</div>
+            </div>
+            <div style={styles.card as React.CSSProperties}>
+              <div style={{ fontSize: '10px', color: '#666', marginBottom: '8px', letterSpacing: '0.1em', fontWeight: 700 }}>ACTIVE UNITS</div>
+              <div style={{ fontSize: '32px', fontWeight: 700, color: '#00FF41' }}>{activeOfficers}/{officers.size}</div>
+              <div style={{ fontSize: '9px', color: '#555', marginTop: '4px' }}>Current deployment</div>
+            </div>
           </div>
-          <h2 style={{
-            fontSize: '16px',
-            fontWeight: 700,
-            letterSpacing: '0.1em',
-            color: '#00FF41',
-            marginBottom: '12px',
-            textTransform: 'uppercase',
-          }}>
-            {placeholderLabels[activeTab]}
-          </h2>
-          <p style={{
-            fontSize: '11px',
-            color: '#555',
-            letterSpacing: '0.05em',
-            maxWidth: '400px',
-            lineHeight: '1.6',
-          }}>
-            {activeTab === 'OFFICER STATUS' && 'View comprehensive officer roster with real-time status, shift schedules, and deployment assignments.'}
-            {activeTab === 'INTELLIGENCE' && 'Access aggregated intelligence reports, pattern analysis, and historical incident data across all active units.'}
-            {activeTab === 'SETTINGS' && 'Configure supervisor dashboard preferences, notification thresholds, and department-wide operational parameters.'}
-          </p>
-          <div style={{
-            marginTop: '32px',
-            padding: '12px 24px',
-            backgroundColor: 'rgba(0,255,65,0.05)',
-            border: '1px solid rgba(0,255,65,0.2)',
-            borderRadius: '6px',
-          }}>
-            <span style={{ fontSize: '9px', color: '#00FF41', fontWeight: 700, letterSpacing: '0.1em' }}>
-              MODULE IN DEVELOPMENT
-            </span>
+
+          <div style={styles.card as React.CSSProperties}>
+            <div style={styles.cardHeader}>
+              <span style={styles.cardTitle}>RECENT SIGNAL ACTIVITY</span>
+            </div>
+            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              {Array.from(officers.values())
+                .flatMap(officer => officer.signals.map(signal => ({ ...signal, officerName: officer.officerName })))
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                .slice(0, 20)
+                .map((signal, idx) => (
+                  <div key={idx} style={{
+                    padding: '12px',
+                    borderBottom: '1px solid #0a0a0a',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                        {signal.signalType} <span style={{ color: '#555', fontWeight: 400 }}>from {signal.officerName}</span>
+                      </div>
+                      <div style={{ fontSize: '9px', color: '#666' }}>{signal.explanation.description.substring(0, 80)}...</div>
+                    </div>
+                    <div style={{ textAlign: 'right', marginLeft: '16px' }}>
+                      <div style={{
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        color: signal.probability > 0.7 ? '#FFAA00' : signal.probability > 0.5 ? '#FFD700' : '#00FF41',
+                      }}>
+                        {(signal.probability * 100).toFixed(0)}%
+                      </div>
+                      <div style={{ fontSize: '9px', color: '#444', marginTop: '2px' }}>
+                        {new Date(signal.timestamp).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              {totalSignals === 0 && (
+                <div style={{ padding: '48px', textAlign: 'center', color: '#333', fontSize: '10px' }}>
+                  NO SIGNAL DATA AVAILABLE
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </main>
-    );
+        </main>
+      );
+    }
+
+    // === SETTINGS TAB ===
+    if (activeTab === 'SETTINGS') {
+      return (
+        <main style={{ padding: '24px', height: 'calc(100vh - 140px)', overflowY: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div style={styles.card as React.CSSProperties}>
+              <div style={styles.cardHeader}>
+                <span style={styles.cardTitle}>NOTIFICATION PREFERENCES</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {[
+                  { label: 'High Priority Alerts', desc: 'Immediate notifications for critical threats' },
+                  { label: 'Triage Gate Triggers', desc: 'Alert when 10-33 countdown initiated' },
+                  { label: 'Officer Disconnect', desc: 'Notify when unit loses connection' },
+                  { label: 'Signal Threshold', desc: 'Alert at >20 signals per officer' },
+                ].map((setting, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: idx < 3 ? '1px solid #1a1a1a' : 'none' }}>
+                    <div>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>{setting.label}</div>
+                      <div style={{ fontSize: '9px', color: '#666' }}>{setting.desc}</div>
+                    </div>
+                    <div style={{
+                      width: '40px',
+                      height: '22px',
+                      backgroundColor: '#00FF41',
+                      borderRadius: '12px',
+                      position: 'relative',
+                      cursor: 'pointer',
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        right: '2px',
+                        top: '2px',
+                        width: '18px',
+                        height: '18px',
+                        backgroundColor: '#000',
+                        borderRadius: '50%',
+                      }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={styles.card as React.CSSProperties}>
+              <div style={styles.cardHeader}>
+                <span style={styles.cardTitle}>DASHBOARD DISPLAY</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {[
+                  { label: 'Auto-refresh Interval', value: '5s' },
+                  { label: 'Map Zoom Level', value: 'Auto' },
+                  { label: 'Signal Retention', value: '50 events' },
+                  { label: 'Time Format', value: '24-hour' },
+                ].map((setting, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: idx < 3 ? '1px solid #1a1a1a' : 'none' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#fff' }}>{setting.label}</div>
+                    <div style={{
+                      fontSize: '11px',
+                      color: '#00FF41',
+                      padding: '4px 12px',
+                      backgroundColor: 'rgba(0,255,65,0.1)',
+                      border: '1px solid rgba(0,255,65,0.3)',
+                      borderRadius: '4px',
+                      fontWeight: 700,
+                    }}>
+                      {setting.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ ...styles.card as React.CSSProperties, gridColumn: '1 / -1' }}>
+              <div style={styles.cardHeader}>
+                <span style={styles.cardTitle}>DEPARTMENT CONFIGURATION</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px', marginTop: '8px' }}>
+                <div>
+                  <div style={{ fontSize: '9px', color: '#666', marginBottom: '6px', letterSpacing: '0.1em', fontWeight: 700 }}>DEPARTMENT ID</div>
+                  <div style={{ fontSize: '12px', color: '#fff', fontFamily: 'monospace' }}>DEPT_001</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '9px', color: '#666', marginBottom: '6px', letterSpacing: '0.1em', fontWeight: 700 }}>SECTOR</div>
+                  <div style={{ fontSize: '12px', color: '#00FF41', fontWeight: 700 }}>CENTRAL</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '9px', color: '#666', marginBottom: '6px', letterSpacing: '0.1em', fontWeight: 700 }}>BRIDGE VERSION</div>
+                  <div style={{ fontSize: '12px', color: '#888', fontFamily: 'monospace' }}>v2.1.4</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      );
+    }
+
+    // Fallback (shouldn't reach here)
+    return null;
   };
 
   if (!mounted) return <div style={{ backgroundColor: '#000', height: '100vh', width: '100vw' }} />;
