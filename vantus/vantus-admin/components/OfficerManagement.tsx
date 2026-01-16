@@ -37,6 +37,10 @@ export default function OfficerManagement() {
     );
   };
 
+  const handleViewOfficer = (officer: Officer) => {
+    alert(`Officer Details:\n\nName: ${officer.name}\nBadge: ${officer.badgeNumber}\nStatus: ${officer.status.toUpperCase()}\nHeart Rate: ${officer.heartRate}\nBattery: ${officer.battery}\nLast Update: ${officer.lastUpdate}`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="border border-gray-800 bg-black/50 overflow-hidden">
@@ -62,7 +66,10 @@ export default function OfficerManagement() {
                 <td className={`py-6 px-6 font-mono font-bold ${parseInt(officer.battery) > 50 ? 'text-green-500' : 'text-yellow-500'}`}>{officer.battery}</td>
                 <td className="py-6 px-6 font-mono text-gray-500 text-xs tracking-wider">{officer.lastUpdate}</td>
                 <td className="py-6 px-6">
-                  <button className="border border-green-500 text-green-500 px-4 py-1 text-[10px] font-bold tracking-widest uppercase hover:bg-green-500 hover:text-black transition-colors">
+                  <button
+                    onClick={() => handleViewOfficer(officer)}
+                    className="border border-green-500 text-green-500 px-4 py-1 text-[10px] font-bold tracking-widest uppercase hover:bg-green-500 hover:text-black transition-colors cursor-pointer"
+                  >
                     VIEW
                   </button>
                 </td>
