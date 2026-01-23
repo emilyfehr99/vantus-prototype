@@ -1,0 +1,169 @@
+:root {
+    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+
+    color-scheme: light;
+    /* Forced light */
+    color: #242424;
+    background-color: #ffffff;
+
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    margin: 0;
+    display: flex;
+    place-items: center;
+    min-width: 320px;
+    min-height: 100vh;
+}
+
+#root {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* AIRLOCK */
+.airlock-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    padding: 4rem 2rem;
+    text-align: center;
+    background-color: #ffffff;
+    /* Enforce white */
+    color: #242424;
+    position: relative;
+}
+
+/* Removed Theme Toggle - Clean UI */
+
+.logo-img {
+    max-width: 90%;
+    height: auto;
+    max-height: 220px;
+}
+
+/* [NEW] Badge Input Styling */
+.input-group {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.badge-input {
+    padding: 12px 20px;
+    font-size: 1.2rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    outline: none;
+    text-align: center;
+    width: 200px;
+    background-color: #f9fafb;
+    color: #1f2937;
+    transition: border-color 0.2s;
+}
+
+.badge-input:focus {
+    border-color: #3b82f6;
+    background-color: #fff;
+}
+
+/* Updated Button Colors */
+.patrol-btn {
+    position: relative;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.1);
+    border: 4px solid rgba(59, 130, 246, 0.5);
+    color: #3b82f6;
+    font-size: 1.25rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.patrol-btn:hover {
+    background: rgba(59, 130, 246, 0.2);
+    transform: scale(1.05);
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.4);
+}
+
+.patrol-btn:active {
+    transform: scale(0.98);
+}
+
+.footer-status p {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    letter-spacing: 0.05em;
+}
+
+/* Stealth Mode - Always Dark */
+.stealth-container {
+    background-color: #000;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    padding-bottom: 4rem;
+    cursor: none;
+}
+
+.stealth-container:hover {
+    cursor: default;
+}
+
+.slider-track {
+    position: relative;
+    width: 280px;
+    height: 60px;
+    background: rgba(80, 80, 80, 0.2);
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    user-select: none;
+}
+
+.slider-text {
+    color: rgba(255, 255, 255, 0.2);
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+}
+
+.slider-handle {
+    position: absolute;
+    left: 5px;
+    width: 50px;
+    height: 50px;
+    background-color: #ef4444;
+    border-radius: 50%;
+    cursor: grab;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+    transition: transform 0.1s linear;
+}
+
+.slider-handle:active {
+    cursor: grabbing;
+    transform: scale(1.1);
+}
