@@ -1,8 +1,8 @@
 {
     "framework": "vite",
-    "buildCommand": "npm run build",
-    "outputDirectory": "dist",
-    "installCommand": "npm install",
+    "buildCommand": "cd vantus-partner-site && npm install && npm run build",
+    "outputDirectory": "vantus-partner-site/dist",
+    "installCommand": "echo 'Install handled in buildCommand'",
     "rewrites": [
         {
             "source": "/(.*)",
