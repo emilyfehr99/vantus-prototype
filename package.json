@@ -1,0 +1,9 @@
+{
+    "name": "vantus-prototype-root",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "install": "echo 'Root install skipped'",
+        "build": "cd vantus-partner-site && npm install && npm run build"
+    }
+}

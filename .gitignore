@@ -1,74 +1,68 @@
-# Dependencies
+# Ignore everything by default
+*
+
+# Unignore directories so we can traverse
+!*/
+
+# Unignore Vantus-specific project directories (recursively)
+!vantus/**
+!vantus-app/**
+!vantus-dashboard/**
+!bridge-server/**
+!vantus-partner-site/**
+!vantus-pilot-ios/**
+!vantus-pilot-web/**
+
+# Unignore system/config files
+!.gitignore
+!README.md
+!README_VANTUS.md
+!package.json
+!vercel.json
+!.github/**
+
+# Explicitly ignore nested git repos/submodules that shouldn't be here
+team-reports/
+
+# Explicitly re-ignore common junk (even if inside allowed folders)
 node_modules/
-# package-lock.json - Keep these for reproducible builds
-yarn.lock
-
-# Build outputs
-.next/
-out/
-dist/
-build/
-.expo/
-.expo-shared/
-web-build/
-
-# Environment variables
+.DS_Store
 .env
 .env.local
-.env*.local
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Testing
-coverage/
-.nyc_output/
-
-# Temporary files
-*.tmp
-*.temp
-.cache/
-
-# TypeScript
-*.tsbuildinfo
-next-env.d.ts
-
-# Expo
+dist/
+build/
+.next/
 .expo/
-.expo-shared/
+coverage/
 
-# Vercel
-.vercel
-
-# Python (if any)
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-
-# Audio/Media (if large)
-*.mp3
-*.wav
-*.mp4
-
-# Model files (if large)
-*.pt
-*.pth
-*.h5
-*.pb
-
+# Explicitly ignore known non-vantus projects (redundant with *, but safe)
+automated-post-game-reports/
+velocity-logic/
+velocity-logic-agent/
+velocity-logic-dashboard/
+VelocityLogic_Staging/
+nhl-analytics/
+nhl-analytics-premium/
+nhl-tool/
+structural-entropy-web/
+structural_entropy_analysis/
+technical-analysis/
+f1-telemetry-app/
+job-finder-bot/
+scopeguard/
+scopeguard_original/
+podwrapped/
+summit-lawns-redesigned/
+bp-lawn-and-snow/
+cvat-audit-extension-v1.4.0/
+cvat-qa-assistant/
+Stathletes-Audit-Extension/
+tacready/
+biomechanical_dashboard/
+defensive-elasticity-dashboard/
+tradesight-ai/
+ai agent test/
+_legacy_vantus/
+weapon_detection_mvp/
+hockey-analytics/
