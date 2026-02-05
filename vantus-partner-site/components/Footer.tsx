@@ -2,12 +2,21 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Logo } from './Logo';
 
-const FooterLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
+const FooterLink: React.FC<{ href?: string; onClick?: () => void; children: React.ReactNode }> = ({ href, onClick, children }) => {
   const MotionDiv = motion.div as any;
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (onClick) {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <motion.li className="relative inline-block overflow-hidden py-1 group">
-      <a 
-        href={href} 
+      <a
+        href={href || '#'}
+        onClick={handleClick}
         className="text-neutral-600 transition-colors duration-300 group-hover:text-white flex items-center gap-2"
       >
         {children}
@@ -22,11 +31,20 @@ const FooterLink: React.FC<{ href: string; children: React.ReactNode }> = ({ hre
   );
 };
 
-const LegalLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
+const LegalLink: React.FC<{ href?: string; onClick?: () => void; children: React.ReactNode }> = ({ href, onClick, children }) => {
   const MotionDiv = motion.div as any;
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (onClick) {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
-    <a 
-      href={href} 
+    <a
+      href={href || '#'}
+      onClick={handleClick}
       className="relative group text-neutral-700 hover:text-white transition-colors duration-300 py-1"
     >
       {children}
@@ -37,7 +55,27 @@ const LegalLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href
   );
 };
 
-export const Footer: React.FC = () => {
+export const Footer: React.FC<{
+  onOpenProcurement: () => void;
+  onOpenOpioid: () => void;
+  onOpenCareers: () => void;
+  onOpenFAQ: () => void;
+  onOpenWhitepaper: () => void;
+  onOpenContact: () => void;
+}> = ({ onOpenProcurement, onOpenOpioid, onOpenCareers, onOpenFAQ, onOpenWhitepaper, onOpenContact }) => {
+
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      const offset = 80;
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+      window.scrollTo({
+        top: elementPosition - offset,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
     <footer className="bg-[#000000] border-t border-neutral-900 py-20 px-6 relative overflow-hidden">
       {/* Decorative Grid Accent */}
@@ -63,17 +101,18 @@ export const Footer: React.FC = () => {
           <div className="space-y-4">
             <h4 className="font-mono text-xs uppercase text-neutral-400 tracking-widest border-l border-[#00FF41]/40 pl-3">Resources</h4>
             <ul className="flex flex-col space-y-1 text-sm font-medium">
-              <FooterLink href="#">Government Procurement</FooterLink>
-              <FooterLink href="#">Opioid Settlement Guide</FooterLink>
-              <FooterLink href="#">Technical Whitepaper</FooterLink>
+              <FooterLink onClick={onOpenProcurement}>Government Procurement</FooterLink>
+              <FooterLink onClick={onOpenOpioid}>Opioid Settlement Guide</FooterLink>
+              <FooterLink onClick={onOpenFAQ}>FAQ</FooterLink>
+              <FooterLink onClick={onOpenWhitepaper}>Technical Whitepaper</FooterLink>
             </ul>
           </div>
           <div className="space-y-4">
             <h4 className="font-mono text-xs uppercase text-neutral-400 tracking-widest border-l border-[#00FF41]/40 pl-3">Company</h4>
             <ul className="flex flex-col space-y-1 text-sm font-medium">
-              <FooterLink href="#">Our Mission</FooterLink>
-              <FooterLink href="#">Careers</FooterLink>
-              <FooterLink href="#">Contact</FooterLink>
+              <FooterLink onClick={() => scrollToSection('mission')}>Our Mission</FooterLink>
+              <FooterLink onClick={onOpenCareers}>Careers</FooterLink>
+              <FooterLink onClick={onOpenContact}>Contact</FooterLink>
             </ul>
           </div>
         </div>

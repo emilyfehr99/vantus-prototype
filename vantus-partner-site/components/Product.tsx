@@ -93,9 +93,9 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, desc, color = "g
 
 const guardianFeatures = [
   { icon: <Shield />, title: "Guardian Overwatch", desc: "Computer Vision scans BWC feeds for weapons, 'bladed' stances, and sudden suspect movements." },
-  { icon: <Activity />, title: "Stress Biometric Sync", desc: "Pairs with Apple Watch/Garmin. Auto-increases sampling rate if HR spikes to 140+ BPM while on a call." },
+  { icon: <Activity />, title: "Physiological Overwatch", desc: "Pairs with Apple Watch/Garmin. Auto-increases sampling rate if HR spikes to 140+ BPM while on a call." },
   { icon: <MessageSquare />, title: "Voice-Stress Trigger", desc: "NLP monitors for high-arousal vocal tones and safety keywords like '10-33' or 'Gun!'" },
-  { icon: <Radio />, title: "Silent 10-33", desc: "Autonomous dispatch of Priority 1 backup directly into CAD if a struggle or weapon is detected." },
+  { icon: <Radio />, title: "Autonomous Lifeline", desc: "Autonomous dispatch of Priority 1 backup directly into CAD if a struggle or weapon is detected." },
   { icon: <ArrowUpRight />, title: "Kinematic Intent", desc: "AI analyzes velocity and weight distribution to detect attack 'load' signatures 500ms before initiation." },
   { icon: <Terminal />, title: "Tactical Whisperer", desc: "Relays critical data directly into the officer’s Bluetooth earpiece in short, tactical bursts." }
 ];
@@ -115,16 +115,16 @@ interface LogEntry {
 }
 
 const DYNAMIC_MESSAGES = [
-  { type: 'SYS', text: 'Computer Vision polling synchronized at 120Hz.' },
-  { type: 'LOG', text: 'Voice stress anomaly detected: Pattern matching "Aggression".' },
-  { type: 'SYS', text: 'GPS lock confirmed: Sector 4-Baker.' },
-  { type: 'ALERT', text: 'WEAPON SIGNATURE DETECTED: 84% PROBABILITY.' },
-  { type: 'LOG', text: 'Biometric update: HR increased to 132 BPM.' },
-  { type: 'SYS', text: 'Peripheral motion detected at 8 o\'clock position.' },
-  { type: 'LOG', text: 'Object classification: Handheld device, non-lethal.' },
-  { type: 'ALERT', text: 'CAD PROTOCOL 10-33 PRE-STAGED.' },
-  { type: 'SYS', text: 'Neural net inference latency: 2.4ms.' },
-  { type: 'LOG', text: 'Verbal command logged: "Show me your hands".' },
+  { type: 'SYS', text: 'Scanning env... Sector 4 clear.' },
+  { type: 'SYS', text: 'Peripheral motion: 6 o\'clock position.' },
+  { type: 'LOG', text: 'Biometric Alert: HR spike > 145 BPM.' },
+  { type: 'SYS', text: 'Analyzing subject kinematics...' },
+  { type: 'ALERT', text: 'THREAT DETECTED: BLADED STANCE.' },
+  { type: 'LOG', text: 'Voice Stress: High Arousal Detected.' },
+  { type: 'ALERT', text: 'WEAPON SIGNATURE: KNIFE (98%).' },
+  { type: 'SYS', text: 'Autonomous Lifeline Triggered.' },
+  { type: 'LOG', text: 'Dispatch Notified: Priority 1 Backup.' },
+  { type: 'SYS', text: 'GPS Coordinates Sent to CAD.' },
 ];
 
 const LiveTacticalFeed = () => {
@@ -204,13 +204,13 @@ const LiveTacticalFeed = () => {
               >
                 <span className="text-neutral-700 w-16 shrink-0 font-bold">{log.time}</span>
                 <span className={`font-black w-12 shrink-0 tracking-tighter ${log.type === 'ALERT' ? 'text-[#FF3B30] animate-pulse' :
-                    log.type === 'SYS' ? 'text-[#00FF41]' :
-                      'text-neutral-500'
+                  log.type === 'SYS' ? 'text-[#00FF41]' :
+                    'text-neutral-500'
                   }`}>
                   [{log.type}]
                 </span>
                 <span className={`flex-1 transition-colors duration-300 ${log.type === 'ALERT' ? 'text-white font-black uppercase' :
-                    'text-neutral-400 group-hover:text-white'
+                  'text-neutral-400 group-hover:text-white'
                   }`}>
                   {log.message}
                 </span>
@@ -270,9 +270,19 @@ export const Product: React.FC = () => {
 
   return (
     <section className="py-40 px-6 bg-[#000000] border-t border-neutral-900 overflow-hidden relative">
+      {/* Background Image Layer */}
+      <div className="absolute inset-0 z-0">
+        <img
+          src="/assets/product-bg.jpg"
+          className="w-full h-full object-cover opacity-40 grayscale brightness-75"
+          alt=""
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-black/30" />
+      </div>
+
       {/* Decorative Blur Backgrounds */}
-      <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-[#00FF41]/5 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-[#00FF41]/3 blur-[100px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-[#00FF41]/5 blur-[120px] rounded-full pointer-events-none z-0" />
+      <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-[#00FF41]/3 blur-[100px] rounded-full pointer-events-none z-0" />
 
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="mb-24 flex flex-col md:flex-row md:items-end justify-between gap-8">
@@ -306,7 +316,7 @@ export const Product: React.FC = () => {
           >
             <span className="px-4 py-1.5 bg-[#00FF41] text-black not-italic text-sm font-black">A</span> The Guardian Layer
           </MotionDiv>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {guardianFeatures.map((f, i) => (
               <FeatureCard
                 key={i}

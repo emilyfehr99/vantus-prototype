@@ -11,18 +11,33 @@ export const Hero: React.FC = () => {
     offset: ["start start", "end start"]
   });
 
-  const opacity = useTransform(scrollYProgress, [0, 0.4], [1, 0]);
-  const textY = useTransform(scrollYProgress, [0, 1], ["0%", "10%"]);
+  const opacity = useTransform(scrollYProgress, [0.6, 1], [1, 0]);
+  const textY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
 
   return (
     <section ref={containerRef} className="relative min-h-screen flex flex-col items-center justify-center pt-32 pb-20 px-6 bg-black overflow-hidden select-none">
+      {/* Video Background */}
+      <div className="absolute inset-0 z-0">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover opacity-30"
+        >
+          <source src="/assets/hero-bg.mp4" type="video/mp4" />
+        </video>
+        {/* Gradient Overlay for Text Readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+        <div className="absolute inset-0 bg-black/20" />
+      </div>
+
       {/* Corner Accents */}
-      <div className="absolute top-40 left-10 w-12 h-12 border-t border-l border-[#00FF41]/30 pointer-events-none" />
-      <div className="absolute top-40 right-10 w-12 h-12 border-t border-r border-[#00FF41]/30 pointer-events-none" />
+      <div className="absolute top-40 left-10 w-12 h-12 border-t border-l border-[#00FF41]/30 pointer-events-none z-10" />
+      <div className="absolute top-40 right-10 w-12 h-12 border-t border-r border-[#00FF41]/30 pointer-events-none z-10" />
 
       {/* Main Tactical Content */}
       <MotionDiv
-        style={{ y: textY, opacity } as any}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
@@ -38,15 +53,15 @@ export const Hero: React.FC = () => {
 
         {/* Massive Stacked Headline */}
         <div className="flex flex-col items-center leading-[0.82] tracking-[-0.05em] uppercase font-black">
-          <h1 className="text-[clamp(4rem,15vw,12.5rem)] text-white">Digital.</h1>
-          <h1 className="text-[clamp(4rem,15vw,12.5rem)] text-neutral-700">Neural.</h1>
-          <h1 className="text-[clamp(4rem,15vw,12.5rem)] text-white">Partner.</h1>
+          <h1 className="text-[clamp(3rem,12vw,10rem)] text-white">Every Officer.</h1>
+          <h1 className="text-[clamp(3rem,12vw,10rem)] text-neutral-700">Every Call.</h1>
+          <h1 className="text-[clamp(3rem,12vw,10rem)] text-white">Never Alone.</h1>
         </div>
 
         {/* Description grounded in specific features */}
         <div className="max-w-3xl">
           <p className="text-xl md:text-2xl text-neutral-400 font-medium leading-relaxed">
-            The fundamental intelligent operating system for every solo first responder. <span className="text-white">Active threat detection, biometric stress sync, and autonomous backup coordination.</span>
+            The fundamental intelligent operating system for every solo first responder. <span className="text-white">The partner that never blinks, never sleeps, and never misses a threat.</span>
           </p>
           <p className="pt-6 font-mono text-[10px] text-neutral-500 uppercase tracking-widest leading-relaxed max-w-lg mx-auto">
             Mission: Bridge the 100,000-officer staffing gap with an agentic force multiplier that ensures backup is never more than a heartbeat away.
@@ -60,7 +75,7 @@ export const Hero: React.FC = () => {
             whileTap={{ scale: 0.98 }}
             className="w-full sm:w-[320px] py-6 bg-white text-black font-black uppercase tracking-widest text-[11px] rounded-sm transition-all"
           >
-            Request Pilot Access
+            Join Pilot Waitlist
           </MotionButton>
           <MotionButton
             whileHover={{ scale: 1.02, borderColor: 'white', color: 'white', boxShadow: '0 0 20px rgba(255,255,255,0.05)' }}
