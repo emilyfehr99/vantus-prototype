@@ -1,0 +1,100 @@
+{
+    "confirmed": {
+        "houstonpolice.org": {
+            "city": "Houston",
+            "pattern": "first.last",
+            "confidence": "1/1",
+            "examples": [
+                {
+                    "name": "Larry Satterwhite",
+                    "email": "larry.satterwhite@houstonpolice.org"
+                },
+                {
+                    "name": "Michael Cox",
+                    "email": "michael.cox@pd.boston.gov"
+                },
+                {
+                    "name": "Scott Wahl",
+                    "email": "swahl@pd.sandiego.gov"
+                }
+            ]
+        },
+        "pd.sandiego.gov": {
+            "city": "San Diego",
+            "pattern": "flast",
+            "confidence": "1/1",
+            "examples": [
+                {
+                    "name": "Larry Satterwhite",
+                    "email": "larry.satterwhite@houstonpolice.org"
+                },
+                {
+                    "name": "Michael Cox",
+                    "email": "michael.cox@pd.boston.gov"
+                },
+                {
+                    "name": "Scott Wahl",
+                    "email": "swahl@pd.sandiego.gov"
+                }
+            ]
+        },
+        "ci.newark.nj.us": {
+            "city": "Newark",
+            "pattern": "flast",
+            "confidence": "1/1",
+            "examples": [
+                {
+                    "name": "Larry Satterwhite",
+                    "email": "larry.satterwhite@houstonpolice.org"
+                },
+                {
+                    "name": "Michael Cox",
+                    "email": "michael.cox@pd.boston.gov"
+                },
+                {
+                    "name": "Scott Wahl",
+                    "email": "swahl@pd.sandiego.gov"
+                }
+            ]
+        },
+        "pd.boston.gov": {
+            "city": "Boston",
+            "pattern": "first.last",
+            "confidence": "1/1",
+            "examples": [
+                {
+                    "name": "Larry Satterwhite",
+                    "email": "larry.satterwhite@houstonpolice.org"
+                },
+                {
+                    "name": "Michael Cox",
+                    "email": "michael.cox@pd.boston.gov"
+                },
+                {
+                    "name": "Scott Wahl",
+                    "email": "swahl@pd.sandiego.gov"
+                }
+            ]
+        },
+        "phila.gov": {
+            "city": "Philly",
+            "pattern": "first.last",
+            "confidence": "1/1",
+            "examples": [
+                {
+                    "name": "Larry Satterwhite",
+                    "email": "larry.satterwhite@houstonpolice.org"
+                },
+                {
+                    "name": "Michael Cox",
+                    "email": "michael.cox@pd.boston.gov"
+                },
+                {
+                    "name": "Scott Wahl",
+                    "email": "swahl@pd.sandiego.gov"
+                }
+            ]
+        }
+    },
+    "uncategorized": {}
+}
