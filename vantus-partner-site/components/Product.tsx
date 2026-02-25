@@ -198,12 +198,12 @@ const LiveTacticalFeed = () => {
         <div className="flex items-center justify-between mb-10 pb-6 border-b border-neutral-900">
           <div className="flex items-center gap-4">
             <div className="w-2 h-2 rounded-full bg-[#00FF41] animate-pulse shadow-[0_0_8px_#00FF41]" />
-            <span className="font-mono text-[10px] text-[#00FF41] uppercase tracking-[0.4em] font-bold">Situational Overwatch v4.2</span>
+            <span className="font-mono text-[10px] text-[#00FF41] uppercase tracking-[0.4em] font-bold">Active Overwatch — Simulated Demo</span>
           </div>
           <div className="font-mono text-[8px] text-neutral-700 uppercase flex items-center gap-4 tracking-widest">
-            <span className="animate-pulse">Buffer: Synchronized</span>
-            <span>Uptime: 142.04.11</span>
-            <span className="text-white">Enc: AES-XTS</span>
+            <span className="animate-pulse">Status: Monitoring</span>
+            <span>Latency: 1.2ms</span>
+            <span className="text-white">Encryption: Active</span>
           </div>
         </div>
 
@@ -260,8 +260,8 @@ const LiveTacticalFeed = () => {
         <div className="mt-12 flex items-center justify-between pt-6 border-t border-neutral-900">
           <div className="flex gap-8">
             <div className="flex flex-col gap-1">
-              <span className="text-neutral-700 text-[7px] uppercase font-black tracking-widest">NPU Engine</span>
-              <span className="text-[#00FF41] text-[10px] font-bold">OPT_LOAD_98%</span>
+              <span className="text-neutral-700 text-[7px] uppercase font-black tracking-widest">Processing</span>
+              <span className="text-[#00FF41] text-[10px] font-bold">98% Efficiency</span>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-neutral-700 text-[7px] uppercase font-black tracking-widest">Sync Latency</span>
@@ -281,7 +281,7 @@ const LiveTacticalFeed = () => {
             </div>
             <div className="flex items-center gap-2 px-5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-sm">
               <Terminal size={12} className="text-[#00FF41]" />
-              <span className="text-neutral-500 text-[9px] uppercase tracking-widest font-black">Ready for Command_</span>
+              <span className="text-neutral-500 text-[9px] uppercase tracking-widest font-black">System Ready</span>
             </div>
           </div>
         </div>

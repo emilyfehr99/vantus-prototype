@@ -22,7 +22,7 @@ export const Problem: React.FC = () => {
           <div className="space-y-6">
             <span className="font-mono text-[#FF3B30] text-[10px] tracking-[0.5em] uppercase flex items-center gap-3">
               <span className="w-2 h-2 rounded-full bg-[#FF3B30] animate-pulse" />
-              Tactical Gap Report
+              The Reality
             </span>
             <h2 className="text-6xl md:text-8xl font-black tracking-tighter uppercase leading-[0.9]">
               The Crisis of<br />
@@ -73,7 +73,7 @@ export const Problem: React.FC = () => {
           initial={{ opacity: 0, scale: 0.98 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          className="relative group cursor-crosshair"
+          className="relative group cursor-default"
         >
           <div className="aspect-[4/5] bg-neutral-950 border border-neutral-800 p-1 flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 bg-[#FF3B30]/5 mix-blend-overlay z-10 group-hover:bg-[#FF3B30]/10 transition-colors" />
@@ -92,8 +92,8 @@ export const Problem: React.FC = () => {
 
             <div className="absolute inset-0 z-20 p-10 flex flex-col justify-between">
               <div className="bg-black/80 backdrop-blur-md p-4 border-l-2 border-[#FF3B30] self-start font-mono text-[10px] group-hover:bg-black transition-colors">
-                <span className="text-neutral-500 block">THREAT_VECTOR</span>
-                <span className="text-white font-bold">SOLO_PATROL_VULNERABILITY</span>
+                <span className="text-neutral-500 block">RISK FACTOR</span>
+                <span className="text-white font-bold">SOLO PATROL EXPOSURE</span>
               </div>
 
               <div className="bg-black/90 p-8 border border-neutral-800 group-hover:border-[#FF3B30]/20 transition-all">

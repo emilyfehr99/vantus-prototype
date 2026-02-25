@@ -39,7 +39,7 @@ export const Physics: React.FC = () => {
           <div className="grid lg:grid-cols-2 gap-24 items-center relative z-10">
             <div className="space-y-16">
               <div className="space-y-6">
-                <span className="font-mono text-[#00FF41] text-[10px] tracking-[0.5em] uppercase font-black">Architecture Blueprint</span>
+                <span className="font-mono text-[#00FF41] text-[10px] tracking-[0.5em] uppercase font-black">How It Works</span>
                 <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-[0.9]">Proactive<br />Detection.</h2>
               </div>
 
@@ -147,7 +147,7 @@ export const Physics: React.FC = () => {
                   transition={{ delay: 0.8 }}
                   className="absolute -top-4 -left-4 p-5 border-l-2 border-t-2 border-[#00FF41] font-mono text-[9px] text-[#00FF41] bg-black shadow-[0_0_20px_rgba(0,255,65,0.1)] group-hover:translate-x-2 group-hover:translate-y-2 transition-transform"
                 >
-                  SYNC_INGEST_OK: 120FPS
+                  Data Ingestion: 120 FPS
                 </MotionDiv>
                 <MotionDiv
                   initial={{ opacity: 0 }}
@@ -155,7 +155,7 @@ export const Physics: React.FC = () => {
                   transition={{ delay: 1.0 }}
                   className="absolute -bottom-4 -right-4 p-5 border-r-2 border-b-2 border-neutral-700 font-mono text-[9px] text-neutral-500 bg-black group-hover:-translate-x-2 group-hover:-translate-y-2 transition-transform"
                 >
-                  THREAT_THRESHOLD: HIGH
+                  Threat Sensitivity: High
                 </MotionDiv>
               </div>
             </MotionDiv>

@@ -74,6 +74,7 @@ const Header = ({
         <div className="hidden lg:flex items-center gap-12 font-mono text-[10px] uppercase tracking-[0.3em] text-neutral-500">
           <NavLink onClick={() => scrollToSection('mission')}>The Problem</NavLink>
           <NavLink onClick={() => scrollToSection('features')}>Our Solution</NavLink>
+          <NavLink onClick={() => scrollToSection('blueprint')}>How It Works</NavLink>
           <NavLink onClick={onOpenFAQ}>FAQ</NavLink>
         </div>
 
@@ -137,7 +138,7 @@ const Header = ({
               <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#00FF41_1px,transparent_1px)] bg-[size:32px_32px]" />
 
               <ul className="space-y-10 text-center">
-                {['The Problem', 'Our Solution', 'FAQ'].map((item, idx) => {
+                {['The Problem', 'Our Solution', 'How It Works', 'FAQ'].map((item, idx) => {
                   const sectionId = item.toLowerCase().replace(' ', '-');
                   return (
                     <motion.li
@@ -147,7 +148,7 @@ const Header = ({
                       transition={{ delay: idx * 0.1 }}
                     >
                       <button
-                        onClick={() => item === 'FAQ' ? onOpenFAQ() : scrollToSection(sectionId === 'the-problem' ? 'mission' : sectionId === 'our-solution' ? 'features' : '')}
+                        onClick={() => item === 'FAQ' ? onOpenFAQ() : scrollToSection(sectionId === 'the-problem' ? 'mission' : sectionId === 'our-solution' ? 'features' : sectionId === 'how-it-works' ? 'blueprint' : '')}
                         className="text-3xl font-black uppercase tracking-tighter hover:text-[#00FF41] transition-colors"
                       >
                         {item}
