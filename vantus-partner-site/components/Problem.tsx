@@ -31,14 +31,25 @@ export const Problem: React.FC = () => {
           </div>
 
           <p className="text-neutral-400 font-mono text-sm leading-relaxed max-w-lg">
-            <strong className="text-white">You</strong> are operating in increasingly volatile environments without a physical second officer. When every second is a matter of life and death, radio lag is a lethal vulnerability.
+            Solo-patrol units are operating in increasingly volatile environments without a physical second officer. When every second is a matter of life and death, radio lag is unacceptable.
           </p>
 
-          <div className="grid gap-10">
+          <div className="flex gap-12 pb-6 border-b border-neutral-900 w-full max-w-lg">
+            <div>
+              <div className="text-5xl font-black text-[#FF3B30] tracking-tighter">100k</div>
+              <div className="font-mono text-[9px] text-neutral-500 uppercase tracking-widest mt-2">Officer Staffing Gap</div>
+            </div>
+            <div>
+              <div className="text-5xl font-black text-[#FF3B30] tracking-tighter">82%</div>
+              <div className="font-mono text-[9px] text-neutral-500 uppercase tracking-widest mt-2">Solo Patrol Units</div>
+            </div>
+          </div>
+
+          <div className="grid gap-10 pt-2">
             {[
-              { icon: <Users size={20} />, title: "82% Solo Operations", desc: "The majority of patrol hours are conducted without backup presence." },
-              { icon: <ShieldAlert size={20} />, title: "Cognitive Overload", desc: "Managing suspects while coordinating dispatch causes dangerous tactical oversight." },
-              { icon: <Clock size={20} />, title: "30s vs 0.8s", desc: "Vantus triggers backup 30x faster. Life-saving speed when it matters most." }
+              { icon: <ShieldAlert size={20} />, title: "Cognitive Overload", desc: "Fight, communicate, remember details simultaneously." },
+              { icon: <Clock size={20} />, title: "Response Lag", desc: "Backup only after radio reach—lethal in struggles." }
+
             ].map((item, i) => (
               <MotionDiv
                 key={i}
@@ -67,8 +78,8 @@ export const Problem: React.FC = () => {
           <div className="aspect-[4/5] bg-neutral-950 border border-neutral-800 p-1 flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 bg-[#FF3B30]/5 mix-blend-overlay z-10 group-hover:bg-[#FF3B30]/10 transition-colors" />
             <img
-              src="/assets/patrol-reality.jpg"
-              className="w-full h-full object-cover opacity-40 grayscale contrast-125 brightness-50 group-hover:scale-105 group-hover:opacity-60 transition-all duration-[4s]"
+              src="https://images.unsplash.com/photo-1541818165030-9b646c103289?auto=format&fit=crop&q=80&w=1200"
+              className="w-full h-full object-cover opacity-60 grayscale group-hover:scale-110 group-hover:grayscale-0 transition-all duration-[4s]"
               alt="Patrol Reality"
             />
 
@@ -88,7 +99,7 @@ export const Problem: React.FC = () => {
               <div className="bg-black/90 p-8 border border-neutral-800 group-hover:border-[#FF3B30]/20 transition-all">
                 <span className="text-6xl font-black text-[#FF3B30] block mb-2 tracking-tighter group-hover:scale-110 transition-transform origin-left">82%</span>
                 <p className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest leading-relaxed">
-                  Percentage of officers involved in struggles who had zero backup present at initiation.
+                  of U.S. patrol units operate solo.
                 </p>
               </div>
             </div>

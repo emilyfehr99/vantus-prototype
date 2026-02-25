@@ -1,30 +1,30 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShieldAlert, FileText, Database, Lock, Search, Download, BarChart3, HelpCircle, ChevronDown, CheckCircle2, ArrowUpRight, Mail } from 'lucide-react';
+import { X, ShieldAlert, FileText, Database, Lock, Search, Download, BarChart3, HelpCircle, ChevronDown, CheckCircle2, Mail } from 'lucide-react';
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  type: 'procurement' | 'login' | 'faq' | 'opioid' | 'careers' | 'whitepaper' | 'contact';
+  type: 'login' | 'faq' | 'opioid' | 'careers' | 'whitepaper' | 'contact' | 'privacy' | 'terms';
 }
 
 const faqs = [
   {
-    q: "Is this just 'Big Brother' spying on me?",
-    a: "No. We build Privacy-Gated Overwatch. Vantus does not flag 'policy violations' (swearing, smoking). It is strictly programmed for Safety Triggers. Live feeds only push to Command when a threat threshold (Weapon/Heart Rate/Voice Stress) is breached."
+    q: "Is this just Abel or Code Four?",
+    a: "No, Vantus is an active safety partner prioritizing threat detection and automatic dispatch, not just a passive AI scribe for post-incident paperwork."
   },
   {
-    q: "Can the AI trigger a false arrest?",
-    a: "Vantus provides Intelligence, not Authority. It alerts the officer: 'Suspect has an object in right hand.' The officer makes the decision. We provide the 'Source of Truth' that protects officers from false accusations in court."
+    q: "What about false positives?",
+    a: "Our Multi-Modal Consensus requires alignment between audio detection and computer vision before triggering Tier 2 alerts, keeping false positive rates under 5%."
   },
   {
-    q: "What if the internet goes out?",
-    a: "Edge-AI. The core threat detection models run locally on the smartphone's NPU. It doesn't need cloud to 'see' a gun; it only needs cloud to 'dispatch' backup. If signal is lost, it caches data and alerts via Bluetooth to wearables."
+    q: "What are the privacy implications?",
+    a: "Vantus operates with Privacy-by-Design. There is no surveillance or continuous recording; data is processed in volatile buffers that evaporate unless a threat locks it to immutable storage."
   },
   {
-    q: "Our department is broke. How do we pay for this?",
-    a: "Departments utilize the 'Personnel Loophole'. A 100-man department that is 10 men short has ~$1.5M in unspent salary. Using $200k of that to make the remaining 90 officers safer is a fiscal no-brainer."
+    q: "Didn't Axon build this?",
+    a: "No. Axon provides the physical hardware and passive recording. Vantus is the intelligent software layer that integrates with Axon via APIs to provide real-time active overwatch."
   }
 ];
 
@@ -55,13 +55,14 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
             <div className="p-8 border-b border-neutral-900 flex justify-between items-center bg-neutral-950/50 backdrop-blur-md">
               <div className="flex items-center gap-6">
                 <div className="p-3 bg-neutral-900 border border-neutral-800 text-[#00FF41]">
-                  {type === 'procurement' && <BarChart3 size={20} />}
+                  {type === 'opioid' && <Database size={20} />}
                   {type === 'faq' && <HelpCircle size={20} />}
                   {type === 'login' && <Lock size={20} />}
                   {type === 'whitepaper' && <FileText size={20} />}
-                  {type === 'opioid' && <Database size={20} />}
                   {type === 'careers' && <Search size={20} />}
                   {type === 'contact' && <Mail size={20} />}
+                  {type === 'privacy' && <Lock size={20} />}
+                  {type === 'terms' && <FileText size={20} />}
                 </div>
                 <div>
                   <h3 className="text-2xl font-black tracking-tight uppercase">{title}</h3>
@@ -83,107 +84,58 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
 
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
-              {type === 'procurement' && (
-                <div className="space-y-16">
-                  {/* Pricing Tiers */}
-                  <div className="grid md:grid-cols-2 gap-8">
-                    <MotionDiv
-                      whileHover={{ y: -5, borderColor: '#00FF4166', boxShadow: '0 10px 30px -10px rgba(0,255,65,0.1)' }}
-                      className="p-8 bg-neutral-950 border border-neutral-900 group transition-all duration-300"
-                    >
-                      <span className="font-mono text-[9px] text-[#00FF41] uppercase tracking-widest mb-4 block group-hover:tracking-[0.4em] transition-all">Tier 1: Patrol</span>
-                      <h4 className="text-4xl font-black text-white mb-6">$2,000<span className="text-sm font-mono text-neutral-600 ml-2">/ officer / year</span></h4>
-                      <ul className="space-y-3 font-mono text-[10px] text-neutral-500">
-                        <li className="flex items-center gap-3 group-hover:text-neutral-300 transition-colors"><CheckCircle2 size={12} className="text-[#00FF41]" /> Full Partner Suite (Guardian + Scribe)</li>
-                        <li className="flex items-center gap-3 group-hover:text-neutral-300 transition-colors"><CheckCircle2 size={12} className="text-[#00FF41]" /> Edge-AI License</li>
-                      </ul>
-                    </MotionDiv>
-                    <MotionDiv
-                      whileHover={{ y: -5, borderColor: '#ffffff22', boxShadow: '0 10px 30px -10px rgba(255,255,255,0.05)' }}
-                      className="p-8 bg-neutral-950 border border-neutral-900 group transition-all duration-300"
-                    >
-                      <span className="font-mono text-[9px] text-neutral-600 uppercase tracking-widest mb-4 block group-hover:tracking-[0.4em] transition-all">Tier 2: Command</span>
-                      <h4 className="text-4xl font-black text-white mb-6">$5,000<span className="text-sm font-mono text-neutral-600 ml-2">/ year (Per supervisor seat)</span></h4>
-                      <ul className="space-y-3 font-mono text-[10px] text-neutral-500">
-                        <li className="flex items-center gap-3 group-hover:text-neutral-300 transition-colors"><CheckCircle2 size={12} className="text-[#00FF41]" /> Real-time Lieutenant Dashboard</li>
-                        <li className="flex items-center gap-3 group-hover:text-neutral-300 transition-colors"><CheckCircle2 size={12} className="text-[#00FF41]" /> Live Incident Push Capability</li>
-                      </ul>
-                    </MotionDiv>
-
+              {type === 'privacy' && (
+                <div className="space-y-8 max-w-4xl mx-auto text-neutral-400 font-mono text-xs leading-relaxed">
+                  <h4 className="text-2xl font-black text-white uppercase tracking-tight mb-4">Privacy Policy</h4>
+                  <p>Last Updated: {new Date().toLocaleDateString()}</p>
+                  <div className="space-y-4">
+                    <h5 className="text-[#00FF41] uppercase tracking-widest font-bold">1. Data Collection & Processing</h5>
+                    <p>Vantus Safety Systems prioritizes Privacy-by-Design. The Active AI Partner analyzes audio and visual telemetry locally and in volatile buffers. Data is only durably recorded when a validated threat is detected or when manually triggered by the officer.</p>
                   </div>
-
-                  {/* Strategic Funding Block */}
-                  <div className="p-10 bg-[#00FF41]/5 border border-[#00FF41]/20 space-y-10 group/fund">
-                    <div>
-                      <h4 className="text-xl font-black uppercase mb-4 text-[#00FF41] group-hover/fund:translate-x-1 transition-transform">Strategic Funding Sources</h4>
-                      <p className="text-sm text-neutral-400 leading-relaxed font-mono">
-                        A human partner costs <span className="text-white font-bold">~$150,000/year</span>. Vantus provides a "Digital Partner" for <span className="text-[#00FF41] font-bold">1.3%</span> of that cost.
-                      </p>
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-12">
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-[#00FF41]/10 flex items-center justify-center text-[#00FF41] font-bold">1</div>
-                          <span className="font-bold text-white uppercase italic">The Liability Shield</span>
-                        </div>
-                        <p className="text-xs text-neutral-500 leading-relaxed font-mono">
-                          Partnering with Insurance Pools to offer premium credits. The reduced risk of wrongful death/injury directly lowers liability exposure, often offsetting the license cost.
-                        </p>
-                      </div>
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-[#00FF41]/10 flex items-center justify-center text-[#00FF41] font-bold">2</div>
-                          <span className="font-bold text-white uppercase italic">The Personnel Loophole</span>
-                        </div>
-                        <p className="text-xs text-neutral-500 leading-relaxed font-mono">
-                          Using unspent salary from vacancies to fund force multiplication. Reallocating just 1.3% of vacancy savings secures 24/7 digital backup for every active officer.
-                        </p>
-                      </div>
-                    </div>
+                  <div className="space-y-4">
+                    <h5 className="text-[#00FF41] uppercase tracking-widest font-bold">2. Data Security</h5>
+                    <p>All transmitted data is protected via AES-256 encryption both in transit and at rest. Our systems comply with CJIS and PIPEDA requirements for handling sensitive law enforcement data.</p>
+                  </div>
+                  <div className="space-y-4">
+                    <h5 className="text-[#00FF41] uppercase tracking-widest font-bold">3. Third-Party Sharing</h5>
+                    <p>We do not sell, rent, or trade any biometric, location, or operational data. Information is only shared with authorized department personnel and dispatch systems as required for the execution of official duties.</p>
                   </div>
                 </div>
               )}
 
-              {type === 'opioid' && (
-                <div className="space-y-8 max-w-4xl mx-auto">
-                  <div className="bg-[#00FF41]/5 border border-[#00FF41]/20 p-8">
-                    <h4 className="text-[#00FF41] font-black uppercase mb-4">Permissible Use of Funds</h4>
-                    <p className="text-neutral-400 font-mono text-xs leading-relaxed">
-                      Under the National Opioid Settlement Agreement, funds are allocated for "strategies to address the misuse and abuse of opioid products." Vantus qualifies under <strong className="text-white">Exhibit E: Schedule B (G)</strong> as a technology that supports first responders in overdose response and officer safety during drug-related interventions.
-                    </p>
+              {type === 'terms' && (
+                <div className="space-y-8 max-w-4xl mx-auto text-neutral-400 font-mono text-xs leading-relaxed">
+                  <h4 className="text-2xl font-black text-white uppercase tracking-tight mb-4">Terms of Use</h4>
+                  <p>Last Updated: {new Date().toLocaleDateString()}</p>
+                  <div className="space-y-4">
+                    <h5 className="text-[#00FF41] uppercase tracking-widest font-bold">1. Acceptance of Terms</h5>
+                    <p>By accessing or using the Vantus Safety Systems platform, hardware, or associated services, you agree to be bound by these Terms of Use and all applicable laws and regulations.</p>
                   </div>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="p-6 border border-neutral-900 bg-neutral-950">
-                      <h5 className="text-white font-bold uppercase mb-2">Exhibit E Compliance</h5>
-                      <p className="text-neutral-500 text-xs font-mono">Technology that aids in the identification of overdose events and protects responders during administration of Naloxone.</p>
-                    </div>
-                    <div className="p-6 border border-neutral-900 bg-neutral-950">
-                      <h5 className="text-white font-bold uppercase mb-2">Force Multiplier</h5>
-                      <p className="text-neutral-500 text-xs font-mono">Automated backup requests during high-risk drug interdictions allow for safer, more effective crisis management.</p>
-                    </div>
+                  <div className="space-y-4">
+                    <h5 className="text-[#00FF41] uppercase tracking-widest font-bold">2. Authorized Use</h5>
+                    <p>The Vantus platform is intended strictly for use by authorized law enforcement and first responder personnel. Unauthorized access, reverse engineering, or attempts to circumvent security protocols are strictly prohibited and may result in legal action.</p>
+                  </div>
+                  <div className="space-y-4">
+                    <h5 className="text-[#00FF41] uppercase tracking-widest font-bold">3. Limitation of Liability</h5>
+                    <p>Vantus Safety Systems provides an assistive technological layer. It is not a replacement for officer judgment, training, or established departmental protocols. Vantus shall not be held liable for operational outcomes resulting from the use or inability to use the system.</p>
                   </div>
                 </div>
               )}
 
               {type === 'careers' && (
                 <div className="space-y-10 max-w-4xl mx-auto">
-                  {/* Job Posting Header */}
                   <div className="text-center space-y-4 mb-8">
                     <h4 className="text-3xl font-black uppercase tracking-tight">Join The Mission</h4>
                     <p className="text-neutral-500 font-mono text-xs uppercase tracking-widest">Building the Future of Officer Safety</p>
                   </div>
-
-                  {/* Founding Engineer Position */}
                   <MotionDiv
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-[#00FF41]/5 border border-[#00FF41]/30 p-8 relative overflow-hidden"
                   >
-                    {/* Badge */}
                     <div className="absolute top-0 right-0 bg-[#00FF41] text-black text-[9px] font-black uppercase tracking-widest px-4 py-2">
                       Now Hiring
                     </div>
-
                     <div className="space-y-6">
                       <div>
                         <span className="font-mono text-[9px] text-[#00FF41] uppercase tracking-[0.3em] block mb-2">Open Position</span>
@@ -194,14 +146,12 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                           <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-[#00FF41] rounded-full"></span>Equity Package</span>
                         </div>
                       </div>
-
                       <div className="border-t border-[#00FF41]/20 pt-6">
                         <h6 className="text-xs font-black uppercase text-[#00FF41] mb-3 tracking-widest">The Mission</h6>
                         <p className="text-sm text-neutral-400 leading-relaxed">
                           We're building AI-powered safety systems that give law enforcement officers a "digital partner" capable of real-time threat detection and situational awareness. As a Founding Engineer, you'll architect the core systems that could save lives every day.
                         </p>
                       </div>
-
                       <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-3">
                           <h6 className="text-xs font-black uppercase text-white mb-2 tracking-widest">What You'll Build</h6>
@@ -224,7 +174,6 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                           </ul>
                         </div>
                       </div>
-
                       <div className="bg-black/50 border border-neutral-800 p-5">
                         <h6 className="text-xs font-black uppercase text-white mb-2 tracking-widest">Compensation</h6>
                         <p className="text-xs text-neutral-500 font-mono leading-relaxed">
@@ -233,14 +182,11 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                       </div>
                     </div>
                   </MotionDiv>
-
-                  {/* Application Form */}
                   <div className="bg-neutral-950 border border-neutral-900 p-8">
                     <div className="text-center space-y-2 mb-8">
                       <h5 className="text-xl font-black uppercase">Apply Now</h5>
                       <p className="text-neutral-600 font-mono text-[10px] uppercase tracking-widest">Initiate Contact // Secure Channel</p>
                     </div>
-
                     <form className="space-y-4 max-w-md mx-auto" onSubmit={(e) => {
                       e.preventDefault();
                       const formData = new FormData(e.currentTarget);
@@ -253,68 +199,28 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                       <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                           <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Full Name</label>
-                          <input
-                            name="name"
-                            required
-                            type="text"
-                            placeholder="OPERATOR_NAME"
-                            className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all"
-                          />
+                          <input name="name" required type="text" placeholder="OPERATOR_NAME" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Email</label>
-                          <input
-                            name="email"
-                            required
-                            type="email"
-                            placeholder="COMMS_CHANNEL"
-                            className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all"
-                          />
+                          <input name="email" required type="email" placeholder="COMMS_CHANNEL" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
                         </div>
                       </div>
                       <div className="space-y-1">
                         <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">LinkedIn / Portfolio / GitHub</label>
-                        <input
-                          name="portfolio"
-                          type="text"
-                          placeholder="https://..."
-                          className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all"
-                        />
+                        <input name="portfolio" type="text" placeholder="https://..." className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Resume / CV</label>
-                        <div className="relative">
-                          <input
-                            name="resume"
-                            type="file"
-                            accept=".pdf,.doc,.docx,.txt,.rtf"
-                            className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all file:mr-4 file:py-2 file:px-4 file:border-0 file:text-[10px] file:font-mono file:font-bold file:uppercase file:tracking-widest file:bg-[#00FF41]/20 file:text-[#00FF41] hover:file:bg-[#00FF41]/30 file:cursor-pointer file:transition-all"
-                          />
-                        </div>
-                        <span className="text-[9px] font-mono text-neutral-600 uppercase tracking-widest">Accepts PDF, DOC, DOCX, TXT, RTF</span>
+                        <input name="resume" type="file" accept=".pdf,.doc,.docx,.txt,.rtf" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all file:mr-4 file:py-2 file:px-4 file:border-0 file:text-[10px] file:font-mono file:font-bold file:uppercase file:tracking-widest file:bg-[#00FF41]/20 file:text-[#00FF41] hover:file:bg-[#00FF41]/30 file:cursor-pointer transition-all" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Why Vantus?</label>
-                        <textarea
-                          name="message"
-                          required
-                          rows={4}
-                          placeholder="What drives you to build life-saving technology..."
-                          className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all resize-none"
-                        />
+                        <textarea name="message" required rows={4} placeholder="What drives you to build life-saving technology..." className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all resize-none" />
                       </div>
-
-                      <MotionButton
-                        type="submit"
-                        whileHover={{ scale: 1.02, backgroundColor: '#ffffff', boxShadow: '0 0 30px rgba(0,255,65,0.2)' }}
-                        whileTap={{ scale: 0.98 }}
-                        className="w-full py-4 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs transition-all mt-4"
-                      >
-                        Submit Application
+                      <MotionButton type="submit" whileHover={{ scale: 1.02, backgroundColor: '#ffffff', boxShadow: '0 0 30px rgba(0,255,65,0.2)' }} whileTap={{ scale: 0.98 }} className="w-full py-4 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs transition-all mt-4">
+                        Send Message
                       </MotionButton>
-                      <p className="text-[9px] text-center font-mono text-neutral-600 uppercase tracking-widest mt-2">
-                        Your email client will open — attach your resume before sending
-                      </p>
                     </form>
                   </div>
                 </div>
@@ -349,35 +255,36 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                       </AnimatePresence>
                     </div>
                   ))}
+                  <div className="flex justify-center gap-6 mt-8 opacity-60">
+                    <span className="font-mono text-xs uppercase tracking-widest flex items-center gap-2"><ShieldAlert size={14} className="text-[#00FF41]" /> CJIS Compliant</span>
+                    <span className="font-mono text-xs uppercase tracking-widest flex items-center gap-2"><Lock size={14} className="text-[#00FF41]" /> PIPEDA Compliant</span>
+                    <span className="font-mono text-xs uppercase tracking-widest flex items-center gap-2"><Database size={14} className="text-[#00FF41]" /> FIPS 140-2</span>
+                  </div>
                 </div>
               )}
 
               {type === 'login' && (
-                <div className="max-w-md mx-auto py-20 text-center space-y-12">
+                <div className="max-w-md mx-auto py-10 text-center space-y-8">
                   <div className="space-y-4 group">
                     <div className="w-16 h-16 bg-neutral-900 border border-neutral-800 flex items-center justify-center text-[#00FF41] mx-auto group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,255,65,0.2)] transition-all">
                       <ShieldAlert size={32} />
                     </div>
-                    <h3 className="text-2xl font-black uppercase">Authentication Required</h3>
-                    <p className="text-xs text-neutral-500 font-mono">Authorized Law Enforcement Personnel Only. All access is logged and FIPS compliant.</p>
+                    <h3 className="text-2xl font-black uppercase">Join Pilot Waitlist</h3>
+                    <p className="text-xs text-neutral-500 font-mono">Register your department for early access to the Vantus Partner System.</p>
                   </div>
-                  <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-                    <input
-                      type="text"
-                      placeholder="BADGE_ID_VERIFY"
-                      className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all"
-                    />
-                    <input
-                      type="password"
-                      placeholder="RSA_TOKEN_KEY"
-                      className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all"
-                    />
-                    <MotionButton
-                      whileHover={{ scale: 1.02, backgroundColor: '#ffffff', boxShadow: '0 0 30px rgba(0,255,65,0.2)' }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full py-5 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs transition-all"
-                    >
-                      Access Terminal
+                  <form className="space-y-4 text-left" onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const subject = `Pilot Waitlist: ${formData.get('department')} Dept`;
+                    const body = `Name: ${formData.get('name')}\nEmail: ${formData.get('email')}\nDepartment: ${formData.get('department')}\nSize: ${formData.get('size')}`;
+                    window.location.href = `mailto:vantussafetysystems@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                  }}>
+                    <input name="name" required type="text" placeholder="YOUR_NAME" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+                    <input name="email" required type="email" placeholder="YOUR_EMAIL" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+                    <input name="department" required type="text" placeholder="DEPARTMENT_NAME" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+                    <input name="size" required type="number" placeholder="DEPARTMENT_SIZE (e.g. 50)" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+                    <MotionButton whileHover={{ scale: 1.02, backgroundColor: '#ffffff', boxShadow: '0 0 30px rgba(0,255,65,0.2)' }} whileTap={{ scale: 0.98 }} className="w-full py-5 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs transition-all mt-4">
+                      Submit Request
                     </MotionButton>
                   </form>
                 </div>
@@ -385,15 +292,12 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
 
               {type === 'whitepaper' && (
                 <div className="space-y-10 max-w-4xl mx-auto">
-                  {/* Executive Summary */}
                   <div className="bg-[#00FF41]/5 border border-[#00FF41]/20 p-8">
                     <h4 className="text-[#00FF41] font-black uppercase mb-4 tracking-widest">Executive Summary</h4>
                     <p className="text-neutral-400 font-mono text-xs leading-relaxed">
                       Vantus is an AI-powered "Digital Partner" system designed to provide real-time situational awareness and autonomous backup dispatch for law enforcement officers. By combining edge-AI computer vision, physiological monitoring, and voice-stress analysis, Vantus creates a multi-layered threat detection system that operates locally on standard smartphones.
                     </p>
                   </div>
-
-                  {/* Technical Architecture */}
                   <div className="space-y-6">
                     <h4 className="text-white font-black uppercase tracking-widest">Technical Architecture</h4>
                     <div className="grid md:grid-cols-2 gap-6">
@@ -412,7 +316,7 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                           <li>• Body-worn camera video analysis</li>
                           <li>• Wearable biometric integration</li>
                           <li>• Real-time audio processing</li>
-                          <li>• Kinematic pattern recognition</li>
+                          <li>• Action pattern recognition</li>
                         </ul>
                       </div>
                       <div className="p-6 border border-neutral-900 bg-neutral-950">
@@ -435,8 +339,6 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                       </div>
                     </div>
                   </div>
-
-                  {/* Performance Metrics */}
                   <div className="bg-neutral-950 border border-neutral-900 p-8">
                     <h4 className="text-white font-black uppercase mb-6 tracking-widest">Performance Benchmarks</h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -458,19 +360,28 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                       </div>
                     </div>
                   </div>
-
-                  {/* Request Full Document */}
-                  <div className="text-center py-8">
-                    <p className="text-neutral-500 font-mono text-xs mb-4">Request the full technical whitepaper for detailed specifications</p>
-                    <MotionButton
-                      whileHover={{ scale: 1.02, boxShadow: '0 0 30px rgba(0,255,65,0.2)' }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => window.location.href = 'mailto:vantussafetysystems@gmail.com?subject=Technical%20Whitepaper%20Request'}
-                      className="px-8 py-4 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs transition-all inline-flex items-center gap-2"
+                  <div className="bg-neutral-950 border border-neutral-900 p-8 text-center space-y-6">
+                    <h4 className="text-[#00FF41] font-black uppercase tracking-widest">Receive Technical Specifications</h4>
+                    <p className="text-neutral-500 font-mono text-xs mb-4">Enter your department email to receive the complete Technical Specifications PDF directly to your inbox.</p>
+                    <form
+                      onSubmit={(e) => { e.preventDefault(); onClose(); alert('Specs sent to email.'); }}
+                      className="max-w-md mx-auto flex flex-col sm:flex-row gap-4"
                     >
-                      <Download size={14} />
-                      Request Full Whitepaper
-                    </MotionButton>
+                      <input
+                        type="email"
+                        required
+                        placeholder="OFFICER@DEPARTMENT.GOV"
+                        className="flex-1 bg-black border border-neutral-800 p-4 font-mono text-xs text-white focus:border-[#00FF41] focus:outline-none placeholder:text-neutral-700 transition-colors"
+                      />
+                      <MotionButton
+                        type="submit"
+                        whileHover={{ scale: 1.02, boxShadow: '0 0 20px rgba(0,255,65,0.2)' }}
+                        whileTap={{ scale: 0.98 }}
+                        className="px-8 py-4 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs whitespace-nowrap"
+                      >
+                        Request PDF
+                      </MotionButton>
+                    </form>
                   </div>
                 </div>
               )}
@@ -481,7 +392,6 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                     <h4 className="text-2xl font-black uppercase">Get In Touch</h4>
                     <p className="text-neutral-500 font-mono text-xs uppercase tracking-widest">Direct Line to Vantus Command</p>
                   </div>
-
                   <form className="space-y-4" onSubmit={(e) => {
                     e.preventDefault();
                     const formData = new FormData(e.currentTarget);
@@ -492,51 +402,22 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Name</label>
-                        <input
-                          name="name"
-                          required
-                          type="text"
-                          placeholder="YOUR_NAME"
-                          className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all"
-                        />
+                        <input name="name" required type="text" placeholder="YOUR_NAME" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Email</label>
-                        <input
-                          name="email"
-                          required
-                          type="email"
-                          placeholder="YOUR_EMAIL"
-                          className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all"
-                        />
+                        <input name="email" required type="email" placeholder="YOUR_EMAIL" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
                       </div>
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Subject</label>
-                      <input
-                        name="subject"
-                        type="text"
-                        placeholder="INQUIRY_SUBJECT"
-                        className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all"
-                      />
+                      <input name="subject" type="text" placeholder="INQUIRY_SUBJECT" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Message</label>
-                      <textarea
-                        name="message"
-                        required
-                        rows={5}
-                        placeholder="YOUR_MESSAGE..."
-                        className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all resize-none"
-                      />
+                      <textarea name="message" required rows={5} placeholder="YOUR_MESSAGE..." className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all resize-none" />
                     </div>
-
-                    <MotionButton
-                      type="submit"
-                      whileHover={{ scale: 1.02, backgroundColor: '#ffffff', boxShadow: '0 0 30px rgba(0,255,65,0.2)' }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full py-4 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs transition-all mt-4"
-                    >
+                    <MotionButton type="submit" whileHover={{ scale: 1.02, backgroundColor: '#ffffff', boxShadow: '0 0 30px rgba(0,255,65,0.2)' }} whileTap={{ scale: 0.98 }} className="w-full py-4 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs transition-all mt-4">
                       Send Message
                     </MotionButton>
                   </form>
@@ -549,9 +430,9 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
               <span className="hover:text-neutral-400 transition-colors cursor-default">FIPS 140-2 // SECURE_CHANNEL_READY</span>
               <span className="hover:text-neutral-400 transition-colors cursor-default">v4.2.0-STABLE</span>
             </div>
-          </MotionDiv >
-        </div >
+          </MotionDiv>
+        </div>
       )}
-    </AnimatePresence >
+    </AnimatePresence>
   );
 };

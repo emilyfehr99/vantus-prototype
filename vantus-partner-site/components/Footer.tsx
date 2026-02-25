@@ -2,21 +2,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Logo } from './Logo';
 
-const FooterLink: React.FC<{ href?: string; onClick?: () => void; children: React.ReactNode }> = ({ href, onClick, children }) => {
+const FooterLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
   const MotionDiv = motion.div as any;
-
-  const handleClick = (e: React.MouseEvent) => {
-    if (onClick) {
-      e.preventDefault();
-      onClick();
-    }
-  };
-
   return (
     <motion.li className="relative inline-block overflow-hidden py-1 group">
       <a
-        href={href || '#'}
-        onClick={handleClick}
+        href={href}
         className="text-neutral-600 transition-colors duration-300 group-hover:text-white flex items-center gap-2"
       >
         {children}
@@ -31,20 +22,11 @@ const FooterLink: React.FC<{ href?: string; onClick?: () => void; children: Reac
   );
 };
 
-const LegalLink: React.FC<{ href?: string; onClick?: () => void; children: React.ReactNode }> = ({ href, onClick, children }) => {
+const LegalLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
   const MotionDiv = motion.div as any;
-
-  const handleClick = (e: React.MouseEvent) => {
-    if (onClick) {
-      e.preventDefault();
-      onClick();
-    }
-  };
-
   return (
     <a
-      href={href || '#'}
-      onClick={handleClick}
+      href={href}
       className="relative group text-neutral-700 hover:text-white transition-colors duration-300 py-1"
     >
       {children}
@@ -56,13 +38,14 @@ const LegalLink: React.FC<{ href?: string; onClick?: () => void; children: React
 };
 
 export const Footer: React.FC<{
-  onOpenProcurement: () => void;
-  onOpenOpioid: () => void;
+  onOpenWaitlist: () => void;
   onOpenCareers: () => void;
   onOpenFAQ: () => void;
   onOpenWhitepaper: () => void;
   onOpenContact: () => void;
-}> = ({ onOpenProcurement, onOpenOpioid, onOpenCareers, onOpenFAQ, onOpenWhitepaper, onOpenContact }) => {
+  onOpenPrivacy: () => void;
+  onOpenTerms: () => void;
+}> = ({ onOpenWaitlist, onOpenCareers, onOpenFAQ, onOpenWhitepaper, onOpenContact, onOpenPrivacy, onOpenTerms }) => {
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -75,6 +58,7 @@ export const Footer: React.FC<{
       });
     }
   };
+
 
   return (
     <footer className="bg-[#000000] border-t border-neutral-900 py-20 px-6 relative overflow-hidden">
@@ -101,21 +85,28 @@ export const Footer: React.FC<{
           <div className="space-y-4">
             <h4 className="font-mono text-xs uppercase text-neutral-400 tracking-widest border-l border-[#00FF41]/40 pl-3">Resources</h4>
             <ul className="flex flex-col space-y-1 text-sm font-medium">
-              <FooterLink onClick={onOpenProcurement}>Government Procurement</FooterLink>
-              <FooterLink onClick={onOpenOpioid}>Opioid Settlement Guide</FooterLink>
+              <FooterLink onClick={onOpenWaitlist}>Join Pilot Waitlist</FooterLink>
               <FooterLink onClick={onOpenFAQ}>FAQ</FooterLink>
               <FooterLink onClick={onOpenWhitepaper}>Technical Whitepaper</FooterLink>
-            </ul>
-          </div>
+
+            </ul >
+          </div >
           <div className="space-y-4">
             <h4 className="font-mono text-xs uppercase text-neutral-400 tracking-widest border-l border-[#00FF41]/40 pl-3">Company</h4>
             <ul className="flex flex-col space-y-1 text-sm font-medium">
-              <FooterLink onClick={() => scrollToSection('mission')}>Our Mission</FooterLink>
-              <FooterLink onClick={onOpenCareers}>Careers</FooterLink>
-              <FooterLink onClick={onOpenContact}>Contact</FooterLink>
+              <FooterLink href="#">Our Mission</FooterLink>
+              <FooterLink href="#">Careers</FooterLink>
+              <FooterLink href="#">Contact</FooterLink>
             </ul>
           </div>
-        </div>
+        </div >
+      </div >
+
+      <div className="max-w-6xl mx-auto mt-20 text-center relative z-10 border border-neutral-800 bg-neutral-950 p-8">
+        <h4 className="text-xl font-black uppercase text-white mb-2 tracking-tight">Ready to enhance officer safety?</h4>
+        <button onClick={onOpenWaitlist} className="mt-4 px-6 py-3 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs hover:bg-white transition-colors duration-300">
+          Join the Waitlist
+        </button>
       </div>
 
       <div className="max-w-6xl mx-auto mt-20 pt-8 border-t border-neutral-900 flex flex-col md:flex-row justify-between items-center gap-6 relative z-10">
@@ -123,10 +114,10 @@ export const Footer: React.FC<{
           © {new Date().getFullYear()} Vantus Safety Systems Inc. // Defense Technology for the Home Front.
         </div>
         <div className="flex gap-8 text-[10px] font-mono uppercase tracking-widest">
-          <LegalLink href="#">Privacy Policy</LegalLink>
-          <LegalLink href="#">Terms of Use</LegalLink>
+          <LegalLink onClick={onOpenPrivacy}>Privacy Policy</LegalLink>
+          <LegalLink onClick={onOpenTerms}>Terms of Use</LegalLink>
         </div>
       </div>
-    </footer>
+    </footer >
   );
 };

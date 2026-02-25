@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
-import { Cpu, Zap, Radio, Boxes } from 'lucide-react';
+import { Eye, Cloud, Zap, Radio, Shield, Boxes } from 'lucide-react';
 
 export const Physics: React.FC = () => {
   const MotionDiv = motion.div as any;
@@ -50,14 +50,30 @@ export const Physics: React.FC = () => {
                 <div className="grid gap-8">
                   {[
                     {
-                      icon: <Cpu className="text-[#00FF41] flex-shrink-0" />,
-                      title: "Zero-Latency Edge AI",
-                      desc: "Works offline. No dead zones. No cloud dependency. Weapon detection runs locally on the NPU."
+                      icon: <Eye className="text-[#00FF41] flex-shrink-0" />,
+                      title: "Passive Eye",
+                      desc: "Uses existing body cams (e.g., Axon Body 3/4) via APIs."
+                    },
+                    {
+                      icon: <Cloud className="text-[#00FF41] flex-shrink-0" />,
+                      title: "Remote Brain",
+                      desc: "Cloud compute on AWS Canada for PIPEDA compliance."
+                    },
+                    {
+                      icon: <Zap className="text-[#00FF41] flex-shrink-0" />,
+                      title: "Core Intelligence",
+                      desc: "Advanced audio and video models working together with multi-modal consensus logic."
                     },
                     {
                       icon: <Radio className="text-[#00FF41] flex-shrink-0" />,
-                      title: "FIPS 140-2 / CJIS Compliant",
-                      desc: "Encrypted data tunnels directly to Command. Low-latency dispatch bypasses verbal radio delays."
+                      title: "Tactical Output",
+                      desc: "RoIP injection, dashboard with live map/alerts, and rapid feedback system."
+                    },
+                    {
+                      icon: <Shield className="text-[#00FF41] flex-shrink-0" />,
+                      title: "Privacy by Design",
+                      desc: "Volatile RAM processing, no continuous recording, department-owned keys, AES-256 encryption."
+
                     }
                   ].map((item, i) => (
                     <MotionDiv
@@ -65,14 +81,14 @@ export const Physics: React.FC = () => {
                       initial={{ opacity: 0, x: -30 }}
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}
-                      transition={{ delay: i * 0.2, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                      className="p-8 bg-black border border-neutral-800 flex gap-8 items-start hover:border-[#00FF41]/40 hover:bg-[#00FF41]/[0.02] transition-all duration-500 group relative overflow-hidden cursor-default"
+                      transition={{ delay: i * 0.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                      className="p-6 bg-black border border-neutral-800 flex gap-6 items-start hover:border-[#00FF41]/40 hover:bg-[#00FF41]/[0.02] transition-all duration-500 group relative overflow-hidden cursor-default"
                     >
                       <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-neutral-800 group-hover:border-[#00FF41] transition-colors" />
                       <div className="group-hover:scale-110 group-hover:text-[#00FF41] group-hover:drop-shadow-[0_0_8px_#00FF41] transition-all duration-500">
                         {item.icon}
                       </div>
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <h4 className="text-white font-black text-sm uppercase tracking-tight group-hover:text-[#00FF41] transition-colors">{item.title}</h4>
                         <p className="text-xs text-neutral-500 font-mono leading-relaxed tracking-tight group-hover:text-neutral-300 transition-colors">{item.desc}</p>
                       </div>

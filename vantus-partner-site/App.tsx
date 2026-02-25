@@ -4,6 +4,7 @@ import { Hero } from './components/Hero';
 import { Problem } from './components/Problem';
 import { Product } from './components/Product';
 import { Physics } from './components/Physics';
+import { Dashboard } from './components/Dashboard';
 import { Footer } from './components/Footer';
 import { Logo } from './components/Logo';
 import { TacticalOverlay } from './components/Modals';
@@ -29,14 +30,12 @@ const NavLink: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({
 
 const Header = ({
   onOpenFAQ,
-  onOpenProcurement,
-  onOpenLogin,
+  onOpenWaitlist,
   mobileMenuOpen,
   setMobileMenuOpen
 }: {
   onOpenFAQ: () => void,
-  onOpenProcurement: () => void,
-  onOpenLogin: () => void,
+  onOpenWaitlist: () => void,
   mobileMenuOpen: boolean,
   setMobileMenuOpen: (open: boolean) => void
 }) => {
@@ -73,20 +72,21 @@ const Header = ({
 
         {/* Navigation Links */}
         <div className="hidden lg:flex items-center gap-12 font-mono text-[10px] uppercase tracking-[0.3em] text-neutral-500">
-          <NavLink onClick={() => scrollToSection('mission')}>The Problem</NavLink>
-          <NavLink onClick={() => scrollToSection('features')}>Our Solution</NavLink>
-          <NavLink onClick={() => scrollToSection('blueprint')}>How It Works</NavLink>
+          <NavLink onClick={() => scrollToSection('mission')}>Interdiction Tech</NavLink>
+          <NavLink onClick={() => scrollToSection('features')}>Field Results</NavLink>
+          <NavLink onClick={onOpenFAQ}>Threat Library</NavLink>
         </div>
 
         {/* CTA Button & Mobile Toggle */}
         <div className="flex items-center gap-8 relative z-[110]">
           <MotionButton
-            onClick={onOpenLogin}
+            onClick={onOpenWaitlist}
+
             whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(255,255,255,0.2)' }}
             whileTap={{ scale: 0.95 }}
             className="hidden md:flex items-center px-10 py-3 bg-white text-black font-black uppercase text-[10px] tracking-[0.2em] transition-all rounded-sm"
           >
-            Agent Access
+            Join Waitlist
           </MotionButton>
 
           <MotionButton
@@ -120,67 +120,70 @@ const Header = ({
               )}
             </AnimatePresence>
           </MotionButton>
-        </div>
-      </div>
+        </div >
+      </div >
 
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
-        {mobileMenuOpen && (
-          <MotionDiv
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[105] flex flex-col items-center justify-center p-10 lg:hidden"
-          >
-            <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#00FF41_1px,transparent_1px)] bg-[size:32px_32px]" />
+        {
+          mobileMenuOpen && (
+            <MotionDiv
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[105] flex flex-col items-center justify-center p-10 lg:hidden"
+            >
+              <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#00FF41_1px,transparent_1px)] bg-[size:32px_32px]" />
 
-            <ul className="space-y-10 text-center">
-              {[
-                { label: 'The Problem', section: 'mission' },
-                { label: 'Our Solution', section: 'features' },
-                { label: 'How It Works', section: 'blueprint' }
-              ].map((item, idx) => (
+              <ul className="space-y-10 text-center">
+                {['Interdiction Tech', 'Field Results', 'Threat Library'].map((item, idx) => {
+                  const sectionId = item.toLowerCase().replace(' ', '-');
+                  return (
+                    <motion.li
+                      key={item}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                    >
+                      <button
+                        onClick={() => item === 'Threat Library' ? onOpenFAQ() : scrollToSection(sectionId === 'interdiction-tech' ? 'mission' : sectionId === 'field-results' ? 'features' : '')}
+                        className="text-3xl font-black uppercase tracking-tighter hover:text-[#00FF41] transition-colors"
+                      >
+                        {item}
+                      </button>
+                    </motion.li>
+                  );
+                })}
                 <motion.li
-                  key={item.label}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.1 }}
+                  transition={{ delay: 0.4 }}
                 >
                   <button
-                    onClick={() => scrollToSection(item.section)}
-                    className="text-3xl font-black uppercase tracking-tighter hover:text-[#00FF41] transition-colors"
+                    onClick={onOpenWaitlist}
+                    className="mt-8 px-12 py-5 bg-white text-black font-black uppercase text-sm tracking-widest"
                   >
-                    {item.label}
+                    Join Waitlist
                   </button>
                 </motion.li>
-              ))}
-              <motion.li
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 }}
-              >
-                <button
-                  onClick={onOpenLogin}
-                  className="mt-8 px-12 py-5 bg-white text-black font-black uppercase text-sm tracking-widest"
-                >
-                  Agent Access
-                </button>
-              </motion.li>
-            </ul>
+              </ul>
 
-            <div className="absolute bottom-12 font-mono text-[8px] text-neutral-600 uppercase tracking-[0.5em]">
-              Vantus Safety Systems // Mobile Terminal
-            </div>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
-    </nav>
+              <div className="absolute bottom-12 font-mono text-[8px] text-neutral-600 uppercase tracking-[0.5em]">
+                Vantus Safety Systems // Mobile Terminal
+              </div>
+
+            </MotionDiv >
+          )
+        }
+      </AnimatePresence >
+    </nav >
   );
 };
 
 const App: React.FC = () => {
-  const [modalType, setModalType] = useState<'faq' | 'procurement' | 'login' | 'opioid' | 'careers' | 'whitepaper' | 'contact' | null>(null);
+  const [modalType, setModalType] = useState<'faq' | 'login' | 'careers' | 'whitepaper' | 'contact' | 'privacy' | 'terms' | null>(null);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
@@ -191,8 +194,7 @@ const App: React.FC = () => {
     <main className="bg-black text-white selection:bg-[#00FF41] selection:text-black min-h-screen relative overflow-x-hidden">
       <Header
         onOpenFAQ={() => setModalType('faq')}
-        onOpenProcurement={() => setModalType('procurement')}
-        onOpenLogin={() => setModalType('login')}
+        onOpenWaitlist={() => setModalType('login')}
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
       />
@@ -208,28 +210,31 @@ const App: React.FC = () => {
         transition={{ type: 'spring', damping: 30, stiffness: 200 }}
         className="relative z-10 origin-top"
       >
-        <Hero />
-        <div id="mission"><Problem /></div>
-        <div id="features"><Product /></div>
-        <div id="blueprint"><Physics /></div>
+        <Hero
+          onOpenWaitlist={() => setModalType('login')}
+          onOpenWhitepaper={() => setModalType('whitepaper')}
+        />
+        <div id="dashboard"><Dashboard /></div>
         <Footer
-          onOpenProcurement={() => setModalType('procurement')}
-          onOpenOpioid={() => setModalType('opioid')}
+          onOpenWaitlist={() => setModalType('login')}
           onOpenCareers={() => setModalType('careers')}
           onOpenFAQ={() => setModalType('faq')}
           onOpenWhitepaper={() => setModalType('whitepaper')}
           onOpenContact={() => setModalType('contact')}
+          onOpenPrivacy={() => setModalType('privacy')}
+          onOpenTerms={() => setModalType('terms')}
         />
       </MotionDiv>
 
       <TacticalOverlay isOpen={modalType === 'faq'} onClose={() => setModalType(null)} title="Tactical Protocol FAQ" type="faq" />
-      <TacticalOverlay isOpen={modalType === 'procurement'} onClose={() => setModalType(null)} title="Economics & Funding" type="procurement" />
-      <TacticalOverlay isOpen={modalType === 'login'} onClose={() => setModalType(null)} title="Secure Portal" type="login" />
-      <TacticalOverlay isOpen={modalType === 'opioid'} onClose={() => setModalType(null)} title="Settlement Funding Guide" type="opioid" />
+      <TacticalOverlay isOpen={modalType === 'login'} onClose={() => setModalType(null)} title="Pilot Waitlist" type="login" />
       <TacticalOverlay isOpen={modalType === 'careers'} onClose={() => setModalType(null)} title="Join The Mission" type="careers" />
       <TacticalOverlay isOpen={modalType === 'whitepaper'} onClose={() => setModalType(null)} title="Technical Whitepaper" type="whitepaper" />
       <TacticalOverlay isOpen={modalType === 'contact'} onClose={() => setModalType(null)} title="Contact Us" type="contact" />
-    </main>
+      <TacticalOverlay isOpen={modalType === 'privacy'} onClose={() => setModalType(null)} title="Privacy Policy" type="privacy" />
+      <TacticalOverlay isOpen={modalType === 'terms'} onClose={() => setModalType(null)} title="Terms of Use" type="terms" />
+
+    </main >
   );
 };
 

@@ -6,7 +6,7 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  type: 'procurement' | 'login' | 'faq' | 'opioid' | 'careers' | 'whitepaper' | 'contact' | 'privacy' | 'terms';
+  type: 'login' | 'faq' | 'opioid' | 'careers' | 'whitepaper' | 'contact' | 'privacy' | 'terms';
 }
 
 const faqs = [
@@ -55,7 +55,7 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
             <div className="p-8 border-b border-neutral-900 flex justify-between items-center bg-neutral-950/50 backdrop-blur-md">
               <div className="flex items-center gap-6">
                 <div className="p-3 bg-neutral-900 border border-neutral-800 text-[#00FF41]">
-                  {(type === 'procurement' || type === 'opioid') && <Database size={20} />}
+                  {type === 'opioid' && <Database size={20} />}
                   {type === 'faq' && <HelpCircle size={20} />}
                   {type === 'login' && <Lock size={20} />}
                   {type === 'whitepaper' && <FileText size={20} />}
