@@ -68,7 +68,7 @@ export const Hero: React.FC<{
         {/* Description grounded in specific features */}
         <div className="max-w-4xl text-center">
           <p className="text-xl md:text-3xl text-neutral-300 font-medium leading-relaxed">
-            Vantus bridges the 100,000-officer staffing gap by providing an <span className="text-white font-bold">autonomous, agentic partner</span> that predicts violence, automates documentation, and ensures backup is never more than a heartbeat away.
+            Vantus bridges the 100,000-officer staffing gap with an <span className="text-white font-bold">AI partner that automatically calls for backup within 20 seconds</span> when your officer is in danger — no radio needed. Plus, it handles documentation so officers can focus on the scene.
           </p>
         </div>
 
@@ -88,7 +88,7 @@ export const Hero: React.FC<{
             onClick={onOpenWhitepaper}
             className="w-full sm:w-[320px] py-6 border border-neutral-800 font-mono text-[11px] uppercase tracking-[0.3em] text-neutral-500 transition-all"
           >
-            Technical Specs // PDF
+            Technical Specs
           </MotionButton>
         </div>
       </MotionDiv>

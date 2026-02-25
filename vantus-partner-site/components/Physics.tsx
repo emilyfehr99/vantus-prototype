@@ -45,7 +45,7 @@ export const Physics: React.FC = () => {
 
               <div className="space-y-10 text-neutral-400 text-lg font-light leading-relaxed">
                 <p className="max-w-lg">
-                  Traditional BWC data is reactive—passive evidence collected for post-incident review. <span className="text-white font-bold italic">Vantus is active intelligence.</span>
+                  Traditional body camera footage is reactive — passive evidence collected for post-incident review. <span className="text-white font-bold italic">Vantus is active intelligence.</span>
                 </p>
                 <div className="grid gap-8">
                   {[
@@ -56,23 +56,23 @@ export const Physics: React.FC = () => {
                     },
                     {
                       icon: <Cloud className="text-[#00FF41] flex-shrink-0" />,
-                      title: "Remote Brain",
-                      desc: "Cloud compute on AWS Canada for PIPEDA compliance."
+                      title: "Cloud Processing",
+                      desc: "Secure cloud compute with full privacy compliance."
                     },
                     {
                       icon: <Zap className="text-[#00FF41] flex-shrink-0" />,
                       title: "Core Intelligence",
-                      desc: "Advanced audio and video models working together with multi-modal consensus logic."
+                      desc: "Audio and video AI models that cross-check each other before triggering alerts."
                     },
                     {
                       icon: <Radio className="text-[#00FF41] flex-shrink-0" />,
                       title: "Tactical Output",
-                      desc: "RoIP injection, dashboard with live map/alerts, and rapid feedback system."
+                      desc: "Automatic radio dispatch, live dashboard with alerts, and rapid feedback system."
                     },
                     {
                       icon: <Shield className="text-[#00FF41] flex-shrink-0" />,
                       title: "Privacy by Design",
-                      desc: "Volatile RAM processing, no continuous recording, department-owned keys, AES-256 encryption."
+                      desc: "Temporary processing only — nothing stored permanently. Department-owned encryption keys, AES-256 security."
 
                     }
                   ].map((item, i) => (

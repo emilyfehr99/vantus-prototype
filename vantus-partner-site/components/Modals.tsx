@@ -68,7 +68,7 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                   <h3 className="text-2xl font-black tracking-tight uppercase">{title}</h3>
                   <div className="flex items-center gap-4 mt-1">
                     <span className="font-mono text-[9px] text-neutral-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                      <Lock size={10} className="text-[#00FF41]" /> ACCESS_LEVEL_04 // SECURED
+                      <Lock size={10} className="text-[#00FF41]" /> Secure Connection
                     </span>
                   </div>
                 </div>
@@ -185,7 +185,7 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                   <div className="bg-neutral-950 border border-neutral-900 p-8">
                     <div className="text-center space-y-2 mb-8">
                       <h5 className="text-xl font-black uppercase">Apply Now</h5>
-                      <p className="text-neutral-600 font-mono text-[10px] uppercase tracking-widest">Initiate Contact // Secure Channel</p>
+                      <p className="text-neutral-600 font-mono text-[10px] uppercase tracking-widest">Submit Your Application</p>
                     </div>
                     <form className="space-y-4 max-w-md mx-auto" onSubmit={(e) => {
                       e.preventDefault();
@@ -199,11 +199,11 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                       <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                           <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Full Name</label>
-                          <input name="name" required type="text" placeholder="OPERATOR_NAME" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+                          <input name="name" required type="text" placeholder="Full name" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Email</label>
-                          <input name="email" required type="email" placeholder="COMMS_CHANNEL" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+                          <input name="email" required type="email" placeholder="Email address" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
                         </div>
                       </div>
                       <div className="space-y-1">
@@ -279,10 +279,10 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                     const body = `Name: ${formData.get('name')}\nEmail: ${formData.get('email')}\nDepartment: ${formData.get('department')}\nSize: ${formData.get('size')}`;
                     window.location.href = `mailto:vantussafetysystems@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
                   }}>
-                    <input name="name" required type="text" placeholder="YOUR_NAME" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
-                    <input name="email" required type="email" placeholder="YOUR_EMAIL" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
-                    <input name="department" required type="text" placeholder="DEPARTMENT_NAME" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
-                    <input name="size" required type="number" placeholder="DEPARTMENT_SIZE (e.g. 50)" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+                    <input name="name" required type="text" placeholder="Your name" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+                    <input name="email" required type="email" placeholder="Email address" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+                    <input name="department" required type="text" placeholder="Department name" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+                    <input name="size" required type="number" placeholder="Department size (e.g. 50)" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
                     <MotionButton whileHover={{ scale: 1.02, backgroundColor: '#ffffff', boxShadow: '0 0 30px rgba(0,255,65,0.2)' }} whileTap={{ scale: 0.98 }} className="w-full py-5 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs transition-all mt-4">
                       Submit Request
                     </MotionButton>
@@ -390,7 +390,7 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                 <div className="space-y-8 max-w-md mx-auto py-10">
                   <div className="text-center space-y-4 mb-8">
                     <h4 className="text-2xl font-black uppercase">Get In Touch</h4>
-                    <p className="text-neutral-500 font-mono text-xs uppercase tracking-widest">Direct Line to Vantus Command</p>
+                    <p className="text-neutral-500 font-mono text-xs uppercase tracking-widest">Contact Vantus</p>
                   </div>
                   <form className="space-y-4" onSubmit={(e) => {
                     e.preventDefault();
@@ -402,20 +402,20 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Name</label>
-                        <input name="name" required type="text" placeholder="YOUR_NAME" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+                        <input name="name" required type="text" placeholder="Your name" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Email</label>
-                        <input name="email" required type="email" placeholder="YOUR_EMAIL" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+                        <input name="email" required type="email" placeholder="Email address" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
                       </div>
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Subject</label>
-                      <input name="subject" type="text" placeholder="INQUIRY_SUBJECT" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+                      <input name="subject" type="text" placeholder="Subject" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Message</label>
-                      <textarea name="message" required rows={5} placeholder="YOUR_MESSAGE..." className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all resize-none" />
+                      <textarea name="message" required rows={5} placeholder="Your message..." className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all resize-none" />
                     </div>
                     <MotionButton type="submit" whileHover={{ scale: 1.02, backgroundColor: '#ffffff', boxShadow: '0 0 30px rgba(0,255,65,0.2)' }} whileTap={{ scale: 0.98 }} className="w-full py-4 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs transition-all mt-4">
                       Send Message
@@ -427,8 +427,8 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
 
             {/* Footer */}
             <div className="px-8 py-4 bg-black border-t border-neutral-900 flex justify-between items-center text-neutral-700 font-mono text-[8px]">
-              <span className="hover:text-neutral-400 transition-colors cursor-default">FIPS 140-2 // SECURE_CHANNEL_READY</span>
-              <span className="hover:text-neutral-400 transition-colors cursor-default">v4.2.0-STABLE</span>
+              <span className="hover:text-neutral-400 transition-colors cursor-default">FIPS 140-2 Certified</span>
+              <span className="hover:text-neutral-400 transition-colors cursor-default">Vantus Safety Systems</span>
             </div>
           </MotionDiv>
         </div>
