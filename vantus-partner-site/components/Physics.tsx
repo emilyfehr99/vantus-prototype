@@ -98,67 +98,84 @@ export const Physics: React.FC = () => {
               </div>
             </div>
 
-            {/* 3D Visualizer Core */}
+            {/* Data Flow Diagram */}
             <MotionDiv
-              initial={{ scale: 0.9, opacity: 0, rotate: -5 }}
-              whileInView={{ scale: 1, opacity: 1, rotate: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
+              whileInView={{ scale: 1, opacity: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-              className="aspect-square bg-neutral-950 border border-neutral-900 p-16 flex flex-col items-center justify-center relative shadow-inner group"
+              transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-neutral-950 border border-neutral-900 p-8 md:p-12 relative shadow-inner"
             >
-              <div className="w-full h-full relative">
-                {/* Outer Rings */}
-                <MotionDiv
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 border border-dashed border-neutral-800 rounded-full opacity-50 group-hover:opacity-100 group-hover:border-[#00FF41]/20 transition-all duration-700"
-                />
-                <MotionDiv
-                  animate={{ rotate: -360 }}
-                  transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-10 border border-[#00FF41]/20 rounded-full group-hover:border-[#00FF41]/50 transition-all duration-700"
-                />
-                <MotionDiv
-                  animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.5, 0.2] }}
-                  transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute inset-20 border border-neutral-800 rounded-full group-hover:border-[#00FF41]/30 transition-all duration-700"
-                />
-
-                {/* Central Power Core */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <MotionDiv
-                    animate={{
-                      boxShadow: ['0 0 0px #00FF4100', '0 0 50px #00FF4144', '0 0 0px #00FF4100'],
-                      scale: [1, 1.1, 1]
-                    }}
-                    whileHover={{ scale: 1.2, boxShadow: '0 0 80px rgba(0,255,65,0.4)' }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                    className="w-32 h-32 bg-[#00FF41]/5 rounded-sm flex items-center justify-center border border-[#00FF41]/40 relative overflow-hidden group-hover:border-[#00FF41] group-hover:bg-[#00FF41]/10 transition-all"
-                  >
-                    <Zap className="text-[#00FF41] relative z-10 w-12 h-12" />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#00FF4144,transparent)] opacity-50" />
-                  </MotionDiv>
+              <div className="space-y-3">
+                {/* Diagram Title */}
+                <div className="flex items-center gap-3 mb-8 pb-4 border-b border-neutral-900">
+                  <div className="w-2 h-2 rounded-full bg-[#00FF41] animate-pulse shadow-[0_0_8px_#00FF41]" />
+                  <span className="font-mono text-[10px] text-[#00FF41] uppercase tracking-[0.3em] font-bold">System Pipeline</span>
                 </div>
 
-                {/* HUD Elements */}
+                {/* Flow Steps */}
+                {[
+                  { step: '01', label: 'Input', title: 'Body Camera', desc: 'Existing Axon / Motorola hardware', color: 'border-neutral-700', textColor: 'text-neutral-400' },
+                  { step: '02', label: 'Process', title: 'Audio Stream', desc: 'Continuous low-bandwidth analysis', color: 'border-[#00FF41]/40', textColor: 'text-[#00FF41]' },
+                  { step: '03', label: 'Detect', title: 'Threat Consensus', desc: 'Multi-model audio + on-demand video', color: 'border-[#00FF41]/60', textColor: 'text-[#00FF41]' },
+                  { step: '04', label: 'Act', title: 'Auto-Dispatch', desc: 'RoIP backup injection in <20 sec', color: 'border-[#FF3B30]/60', textColor: 'text-[#FF3B30]' },
+                ].map((item, i) => (
+                  <MotionDiv
+                    key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.15, duration: 0.5 }}
+                    className="relative"
+                  >
+                    {/* Connector Line */}
+                    {i > 0 && (
+                      <div className="absolute -top-1.5 left-6 w-[2px] h-3 bg-gradient-to-b from-neutral-800 to-neutral-900" />
+                    )}
+
+                    <div className={`flex items-stretch gap-4 p-4 border-l-2 ${item.color} hover:bg-white/[0.02] transition-all duration-300 group cursor-default`}>
+                      {/* Step Number */}
+                      <div className="flex flex-col items-center justify-center min-w-[40px]">
+                        <span className={`font-black text-2xl tracking-tighter ${item.textColor}`}>{item.step}</span>
+                        <span className="font-mono text-[7px] text-neutral-600 uppercase tracking-widest mt-1">{item.label}</span>
+                      </div>
+
+                      {/* Divider */}
+                      <div className="w-px bg-neutral-800 group-hover:bg-neutral-700 transition-colors" />
+
+                      {/* Content */}
+                      <div className="flex-1 py-1">
+                        <h4 className="font-black text-white text-sm uppercase tracking-tight group-hover:text-[#00FF41] transition-colors">{item.title}</h4>
+                        <p className="font-mono text-[11px] text-neutral-500 mt-1 group-hover:text-neutral-400 transition-colors">{item.desc}</p>
+                      </div>
+
+                      {/* Arrow indicator */}
+                      {i < 3 && (
+                        <div className="flex items-center text-neutral-700 group-hover:text-neutral-500 transition-colors">
+                          <span className="font-mono text-[10px]">↓</span>
+                        </div>
+                      )}
+                    </div>
+                  </MotionDiv>
+                ))}
+
+                {/* Result Bar */}
                 <MotionDiv
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  transition={{ delay: 0.8 }}
-                  className="absolute -top-4 -left-4 p-5 border-l-2 border-t-2 border-[#00FF41] font-mono text-[9px] text-[#00FF41] bg-black shadow-[0_0_20px_rgba(0,255,65,0.1)] group-hover:translate-x-2 group-hover:translate-y-2 transition-transform"
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.7 }}
+                  className="mt-6 p-4 bg-[#00FF41]/5 border border-[#00FF41]/20 flex items-center justify-between"
                 >
-                  Data Ingestion: 120 FPS
-                </MotionDiv>
-                <MotionDiv
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  transition={{ delay: 1.0 }}
-                  className="absolute -bottom-4 -right-4 p-5 border-r-2 border-b-2 border-neutral-700 font-mono text-[9px] text-neutral-500 bg-black group-hover:-translate-x-2 group-hover:-translate-y-2 transition-transform"
-                >
-                  Threat Sensitivity: High
+                  <div className="flex items-center gap-3">
+                    <Zap size={16} className="text-[#00FF41]" />
+                    <span className="font-mono text-[10px] text-[#00FF41] uppercase tracking-widest font-bold">End-to-end: Under 20 seconds</span>
+                  </div>
+                  <span className="font-mono text-[9px] text-neutral-500 uppercase tracking-widest">Zero hardware required</span>
                 </MotionDiv>
               </div>
             </MotionDiv>
+
           </div>
         </MotionDiv>
       </div>
