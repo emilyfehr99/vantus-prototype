@@ -118,7 +118,7 @@ export const Physics: React.FC = () => {
                   { step: '01', label: 'Input', title: 'Body Camera', desc: 'Existing Axon / Motorola hardware', color: 'border-neutral-700', textColor: 'text-neutral-400' },
                   { step: '02', label: 'Process', title: 'Audio Stream', desc: 'Continuous low-bandwidth analysis', color: 'border-[#00FF41]/40', textColor: 'text-[#00FF41]' },
                   { step: '03', label: 'Detect', title: 'Threat Consensus', desc: 'Multi-model audio + on-demand video', color: 'border-[#00FF41]/60', textColor: 'text-[#00FF41]' },
-                  { step: '04', label: 'Act', title: 'Auto-Dispatch', desc: 'RoIP backup injection in <20 sec', color: 'border-[#FF3B30]/60', textColor: 'text-[#FF3B30]' },
+                  { step: '04', label: 'Act', title: 'Auto-Dispatch', desc: 'Automatic backup request in <20 sec', color: 'border-[#FF3B30]/60', textColor: 'text-[#FF3B30]' },
                 ].map((item, i) => (
                   <MotionDiv
                     key={i}
