@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion';
-import { Shield, PenTool, Radio, Fingerprint, Activity, MessageSquare, Database, Cpu, Terminal, ArrowUpRight } from 'lucide-react';
+import { Shield, PenTool, Radio, Fingerprint, Activity, MessageSquare, Database, Cpu, Terminal, ArrowUpRight, ChevronDown, CheckCircle2, Lock, Eye, Zap, Volume2, Video } from 'lucide-react';
 
 // Define FeatureCardProps to properly handle React props including 'key'
 interface FeatureCardProps {
@@ -91,20 +91,48 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, desc, color = "g
   );
 };
 
-const guardianFeatures = [
-  { icon: <Shield />, title: "Guardian Overwatch", desc: "Computer Vision scans BWC feeds for weapons, 'bladed' stances, and sudden suspect movements." },
-  { icon: <Activity />, title: "Stress Biometric Sync", desc: "Pairs with Apple Watch/Garmin. Auto-increases sampling rate if HR spikes to 140+ BPM while on a call." },
-  { icon: <MessageSquare />, title: "Voice-Stress Trigger", desc: "NLP monitors for high-arousal vocal tones and safety keywords like '10-33' or 'Gun!'" },
-  { icon: <Radio />, title: "Silent 10-33", desc: "Autonomous dispatch of Priority 1 backup directly into CAD if a struggle or weapon is detected." },
-  { icon: <ArrowUpRight />, title: "Kinematic Intent", desc: "AI analyzes velocity and weight distribution to detect attack 'load' signatures 500ms before initiation." },
-  { icon: <Terminal />, title: "Tactical Whisperer", desc: "Relays critical data directly into the officer’s Bluetooth earpiece in short, tactical bursts." }
+const AccordionItem: React.FC<{ title: string, badge?: string, defaultOpen?: boolean, children: React.ReactNode }> = ({ title, badge, defaultOpen = false, children }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  return (
+    <div className="border border-neutral-800 bg-neutral-950 mb-4 overflow-hidden rounded-sm transition-all duration-300">
+      <button
+        className="w-full flex items-center justify-between p-6 text-left hover:bg-neutral-900 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center gap-4">
+          <span className="font-black text-lg text-white uppercase">{title}</span>
+          {badge && <span className="px-3 py-1 bg-neutral-800 text-[10px] font-mono text-neutral-400 rounded-sm">{badge}</span>}
+        </div>
+        <div className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`}>
+          <ChevronDown className="text-neutral-500" />
+        </div>
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <div className="p-6 pt-0 border-t border-neutral-900 text-neutral-400 font-mono text-sm leading-relaxed">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const additionalSafetyFeatures = [
+  { icon: <Activity />, title: "Stress Biometric Sync", desc: "(Optional) Syncs via Bluetooth wearables like Apple Watch." },
+  { icon: <Eye />, title: "Peripheral Overwatch", desc: "CV for secondary suspects in the officer's periphery." },
+  { icon: <Zap />, title: "Pre-Arrival Intel", desc: "Live stream + AI assessment broadcasted to responding units." }
+
 ];
 
 const scribeFeatures = [
-  { icon: <Database />, title: "Fact Anchoring", desc: "Creates a timestamped 'Fact Log' in real-time so officers never rely on memory for report writing." },
-  { icon: <PenTool />, title: "Dictation Overlay", desc: "Officers can 'talk' to the partner during the scene: 'Vantus, mark that blue Toyota as a witness vehicle.'" },
-  { icon: <Fingerprint />, title: "Forensic Audit Trail", desc: "Every observation is millisecond-timestamped to the video for SB 524 compliance." },
-  { icon: <Cpu />, title: "Edge-AI Processing", desc: "Threat models run locally on the smartphone's NPU. Detection works without cellular connection." }
+  { icon: <Database />, title: "Real-Time Fact Anchoring", desc: "Timestamped \"Fact Log\" (e.g., \"14:02:11 - Audio: Gunshot detected\")." },
+  { icon: <PenTool />, title: "Auto-Documentation", desc: "Generates report draft within 15 minutes; officer reviews/edits." },
+  { icon: <MessageSquare />, title: "Dictation Overlay", desc: "Voice commands (e.g., \"Vantus, mark blue Toyota as witness vehicle\")." },
+  { icon: <CheckCircle2 />, title: "Forensic Audit Trail", desc: "Timestamped AI observations for compliance (e.g., CA SB 524)." },
+  { icon: <Lock />, title: "Volatile Evidence Locking", desc: "Write-only buffer; data evaporates unless trigger locks it to immutable storage." }
 ];
 
 interface LogEntry {
@@ -115,16 +143,17 @@ interface LogEntry {
 }
 
 const DYNAMIC_MESSAGES = [
-  { type: 'SYS', text: 'Computer Vision polling synchronized at 120Hz.' },
-  { type: 'LOG', text: 'Voice stress anomaly detected: Pattern matching "Aggression".' },
-  { type: 'SYS', text: 'GPS lock confirmed: Sector 4-Baker.' },
-  { type: 'ALERT', text: 'WEAPON SIGNATURE DETECTED: 84% PROBABILITY.' },
-  { type: 'LOG', text: 'Biometric update: HR increased to 132 BPM.' },
-  { type: 'SYS', text: 'Peripheral motion detected at 8 o\'clock position.' },
-  { type: 'LOG', text: 'Object classification: Handheld device, non-lethal.' },
-  { type: 'ALERT', text: 'CAD PROTOCOL 10-33 PRE-STAGED.' },
-  { type: 'SYS', text: 'Neural net inference latency: 2.4ms.' },
-  { type: 'LOG', text: 'Verbal command logged: "Show me your hands".' },
+  { type: 'SYS', text: 'Scanning env... Sector 4 clear.' },
+  { type: 'SYS', text: 'Peripheral motion: 6 o\'clock position.' },
+  { type: 'LOG', text: 'Biometric Alert: HR spike > 145 BPM.' },
+  { type: 'SYS', text: 'Analyzing subject behavioral audio...' },
+  { type: 'ALERT', text: 'THREAT DETECTED: BLADED STANCE.' },
+  { type: 'LOG', text: 'Voice Stress: High Arousal Detected.' },
+  { type: 'ALERT', text: 'WEAPON SIGNATURE: KNIFE (98%).' },
+  { type: 'SYS', text: 'Autonomous Lifeline Triggered.' },
+  { type: 'LOG', text: 'Dispatch Notified: Priority 1 Backup.' },
+  { type: 'SYS', text: 'GPS Coordinates Sent to CAD.' },
+
 ];
 
 const LiveTacticalFeed = () => {
@@ -204,13 +233,13 @@ const LiveTacticalFeed = () => {
               >
                 <span className="text-neutral-700 w-16 shrink-0 font-bold">{log.time}</span>
                 <span className={`font-black w-12 shrink-0 tracking-tighter ${log.type === 'ALERT' ? 'text-[#FF3B30] animate-pulse' :
-                    log.type === 'SYS' ? 'text-[#00FF41]' :
-                      'text-neutral-500'
+                  log.type === 'SYS' ? 'text-[#00FF41]' :
+                    'text-neutral-500'
                   }`}>
                   [{log.type}]
                 </span>
                 <span className={`flex-1 transition-colors duration-300 ${log.type === 'ALERT' ? 'text-white font-black uppercase' :
-                    'text-neutral-400 group-hover:text-white'
+                  'text-neutral-400 group-hover:text-white'
                   }`}>
                   {log.message}
                 </span>
@@ -284,16 +313,17 @@ export const Product: React.FC = () => {
             className="space-y-4"
           >
             <span className="font-mono text-[#00FF41] text-[10px] tracking-[0.5em] uppercase font-black">Core Intelligence Suite</span>
-            <h2 className="text-5xl md:text-8xl font-black tracking-tighter uppercase leading-tight">Superior<br />Capabilities.</h2>
+            <h2 className="text-5xl md:text-8xl font-black tracking-tighter uppercase leading-tight">Active AI<br />Partner.</h2>
           </MotionDiv>
           <MotionP
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 1, delay: 0.2 }}
-            className="text-neutral-500 font-mono text-[10px] uppercase tracking-[0.3em] border-l-2 border-[#00FF41] pl-8 py-4 max-w-sm leading-relaxed"
+            className="text-neutral-400 font-mono text-[10px] uppercase tracking-[0.2em] border-l-2 border-[#00FF41] pl-8 py-4 max-w-lg leading-relaxed space-y-4"
           >
-            Tactical oversight engineered from first principles. High-performance partner logic for volatile field operations.
+            <span className="block text-white">Unlike passive AI scribes built for post-incident paperwork, Vantus is an active safety mechanism.</span>
+            <span className="block">Integrates seamlessly with existing Axon and Motorola body cams via secure APIs. Audio streams continuously for zero-latency threat detection, selectively pulling on-demand video only when a threat is confirmed—ensuring real-time overwatch without continuous streaming overhead.</span>
           </MotionP>
         </div>
 
@@ -304,10 +334,49 @@ export const Product: React.FC = () => {
             viewport={{ once: true }}
             className="text-xl font-black uppercase italic text-[#00FF41] mb-12 flex items-center gap-6"
           >
-            <span className="px-4 py-1.5 bg-[#00FF41] text-black not-italic text-sm font-black">A</span> The Guardian Layer
+            <span className="px-4 py-1.5 bg-[#00FF41] text-black not-italic text-sm font-black">A</span> Safety Features (The "Partner" Layer)
           </MotionDiv>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {guardianFeatures.map((f, i) => (
+
+          <div className="mb-12">
+            <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-6">Three-Tier Threat Detection System</h3>
+
+            <AccordionItem title="Tier 1 (Audio-Only Alerts)" badge="Low Latency" defaultOpen={true}>
+              <div className="space-y-4">
+                <p><strong className="text-white">Voice-Stress Trigger:</strong> Natural Language Processing (NLP) monitors for "High-Arousal" vocal tones and specific "Code 3" keywords ("Drop it!", "10-33", "Gun!").</p>
+                <p><strong className="text-white">Acoustic Sentinel:</strong> Spectral analysis detects gunshots (&gt;140dB impulse), glass breaking, impact sounds, struggle audio.</p>
+                <div className="mt-4 p-4 bg-[#FF3B30]/10 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs">
+                  Action: SMS alert to dispatcher (human decides whether to send backup).
+                </div>
+              </div>
+            </AccordionItem>
+
+            <AccordionItem title="Tier 2 (Audio + Video Confirmed - Auto-Dispatch)" badge="Multi-Modal Consensus">
+              <div className="space-y-4">
+                <p><strong className="text-white">The "Guardian" Overwatch:</strong> When 2+ audio models agree, system pulls 30-second video clip on-demand (not continuous streaming).</p>
+                <p><strong className="text-white">Computer Vision:</strong> Analyzes video for weapons (holstered or brandished), officer down/prone position, multiple attackers.</p>
+                <p><strong className="text-white">Multi-Modal Consensus:</strong> Audio + Video confirmation required before triggering.</p>
+                <p><strong className="text-white">Autonomous Dispatch (The "Silent 10-33"):</strong> If weapon detected + audio distress, Vantus auto-injects Priority 1 Backup Request via RoIP (Radio over IP) to officer's talkgroup.</p>
+                <div className="mt-4 p-4 bg-[#FF3B30]/20 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs animate-pulse">
+                  Action: Backup is rolling in &lt;20 seconds from incident start.
+                </div>
+              </div>
+            </AccordionItem>
+
+            <AccordionItem title="Tier 3 (Officer Down - Emergency Protocol)" badge="Critical">
+              <div className="space-y-4">
+                <p><strong className="text-white">Silence Analysis:</strong> Impact sound + no radio activity for 10+ seconds.</p>
+                <p><strong className="text-white">Video Confirmation:</strong> Pulls video to confirm officer on ground, not moving.</p>
+                <div className="mt-4 p-4 bg-[#FF3B30] text-white font-black uppercase text-xs">
+                  Action: Emergency RoIP broadcast to ALL units + automatic EMS notification + alerts nearest 5 units.
+                </div>
+              </div>
+            </AccordionItem>
+          </div>
+
+          <h3 className="text-sm font-mono text-neutral-500 uppercase tracking-widest mb-6">Additional Safety Capabilities</h3>
+          <div className="grid md:grid-cols-3 gap-4">
+            {additionalSafetyFeatures.map((f, i) => (
+
               <FeatureCard
                 key={i}
                 icon={f.icon}
@@ -327,9 +396,9 @@ export const Product: React.FC = () => {
             viewport={{ once: true }}
             className="text-xl font-black uppercase italic text-neutral-400 mb-12 flex items-center gap-6"
           >
-            <span className="px-4 py-1.5 bg-neutral-800 text-white not-italic text-sm font-black">B</span> The Scribe Layer
+            <span className="px-4 py-1.5 bg-neutral-800 text-white not-italic text-sm font-black">B</span> Documentation Features (The "Scribe" Layer)
           </MotionDiv>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {scribeFeatures.map((f, i) => (
               <FeatureCard
                 key={i}

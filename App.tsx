@@ -4,6 +4,7 @@ import { Hero } from './components/Hero';
 import { Problem } from './components/Problem';
 import { Product } from './components/Product';
 import { Physics } from './components/Physics';
+import { Dashboard } from './components/Dashboard';
 import { Footer } from './components/Footer';
 import { Logo } from './components/Logo';
 import { TacticalOverlay } from './components/Modals';
@@ -13,8 +14,8 @@ import { Radio, Menu, X, Signal, Target } from 'lucide-react';
 const NavLink: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({ onClick, children }) => {
   const MotionDiv = motion.div as any;
   return (
-    <button 
-      onClick={onClick} 
+    <button
+      onClick={onClick}
       className="relative group hover:text-white transition-colors py-2"
     >
       {children}
@@ -27,16 +28,14 @@ const NavLink: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({
   );
 };
 
-const Header = ({ 
-  onOpenFAQ, 
-  onOpenProcurement, 
-  onOpenLogin,
+const Header = ({
+  onOpenFAQ,
+  onOpenWaitlist,
   mobileMenuOpen,
   setMobileMenuOpen
-}: { 
-  onOpenFAQ: () => void, 
-  onOpenProcurement: () => void,
-  onOpenLogin: () => void,
+}: {
+  onOpenFAQ: () => void,
+  onOpenWaitlist: () => void,
   mobileMenuOpen: boolean,
   setMobileMenuOpen: (open: boolean) => void
 }) => {
@@ -60,7 +59,7 @@ const Header = ({
     <nav className="fixed top-0 left-0 w-full z-[100] transition-all duration-700 py-10 bg-transparent">
       <div className="max-w-[1600px] mx-auto px-10 flex items-center justify-between">
         {/* Brand */}
-        <div 
+        <div
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           className="flex items-center gap-4 group cursor-pointer relative z-[110]"
         >
@@ -70,28 +69,28 @@ const Header = ({
             <span className="font-mono text-[7px] text-neutral-500 tracking-[0.3em] uppercase mt-1 font-bold group-hover:text-neutral-300 transition-colors duration-500">Safety Systems</span>
           </div>
         </div>
-        
+
         {/* Navigation Links */}
         <div className="hidden lg:flex items-center gap-12 font-mono text-[10px] uppercase tracking-[0.3em] text-neutral-500">
           <NavLink onClick={() => scrollToSection('mission')}>Interdiction Tech</NavLink>
-          <NavLink onClick={onOpenProcurement}>Procurement</NavLink>
           <NavLink onClick={() => scrollToSection('features')}>Field Results</NavLink>
           <NavLink onClick={onOpenFAQ}>Threat Library</NavLink>
         </div>
 
         {/* CTA Button & Mobile Toggle */}
         <div className="flex items-center gap-8 relative z-[110]">
-          <MotionButton 
-            onClick={onOpenLogin}
+          <MotionButton
+            onClick={onOpenWaitlist}
+
             whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(255,255,255,0.2)' }}
             whileTap={{ scale: 0.95 }}
             className="hidden md:flex items-center px-10 py-3 bg-white text-black font-black uppercase text-[10px] tracking-[0.2em] transition-all rounded-sm"
           >
-            Agent Access
+            Join Waitlist
           </MotionButton>
-          
-          <MotionButton 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
+
+          <MotionButton
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="lg:hidden p-2 text-white relative flex items-center justify-center"
             whileHover={{ scale: 1.1, color: '#00FF41' }}
             whileTap={{ scale: 0.9 }}
@@ -121,33 +120,34 @@ const Header = ({
               )}
             </AnimatePresence>
           </MotionButton>
-        </div>
-      </div>
+        </div >
+      </div >
 
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
-        {mobileMenuOpen && (
-          <MotionDiv
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[105] flex flex-col items-center justify-center p-10 lg:hidden"
-          >
-             <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#00FF41_1px,transparent_1px)] bg-[size:32px_32px]" />
-             
-             <ul className="space-y-10 text-center">
-                {['Interdiction Tech', 'Procurement', 'Field Results', 'Threat Library'].map((item, idx) => {
+        {
+          mobileMenuOpen && (
+            <MotionDiv
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[105] flex flex-col items-center justify-center p-10 lg:hidden"
+            >
+              <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#00FF41_1px,transparent_1px)] bg-[size:32px_32px]" />
+
+              <ul className="space-y-10 text-center">
+                {['Interdiction Tech', 'Field Results', 'Threat Library'].map((item, idx) => {
                   const sectionId = item.toLowerCase().replace(' ', '-');
                   return (
-                    <motion.li 
+                    <motion.li
                       key={item}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.1 }}
                     >
-                      <button 
-                        onClick={() => item === 'Procurement' ? onOpenProcurement() : item === 'Threat Library' ? onOpenFAQ() : scrollToSection(sectionId === 'interdiction-tech' ? 'mission' : sectionId === 'field-results' ? 'features' : '')}
+                      <button
+                        onClick={() => item === 'Threat Library' ? onOpenFAQ() : scrollToSection(sectionId === 'interdiction-tech' ? 'mission' : sectionId === 'field-results' ? 'features' : '')}
                         className="text-3xl font-black uppercase tracking-tighter hover:text-[#00FF41] transition-colors"
                       >
                         {item}
@@ -155,51 +155,53 @@ const Header = ({
                     </motion.li>
                   );
                 })}
-                <motion.li 
+                <motion.li
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 }}
                 >
-                   <button 
-                    onClick={onOpenLogin}
+                  <button
+                    onClick={onOpenWaitlist}
                     className="mt-8 px-12 py-5 bg-white text-black font-black uppercase text-sm tracking-widest"
                   >
-                    Agent Access
+                    Join Waitlist
                   </button>
                 </motion.li>
-             </ul>
-             
-             <div className="absolute bottom-12 font-mono text-[8px] text-neutral-600 uppercase tracking-[0.5em]">
+              </ul>
+
+              <div className="absolute bottom-12 font-mono text-[8px] text-neutral-600 uppercase tracking-[0.5em]">
                 Vantus Safety Systems // Mobile Terminal
-             </div>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
-    </nav>
+              </div>
+
+            </MotionDiv >
+          )
+        }
+      </AnimatePresence >
+    </nav >
   );
 };
 
 const App: React.FC = () => {
-  const [modalType, setModalType] = useState<'faq' | 'procurement' | 'login' | null>(null);
+  const [modalType, setModalType] = useState<'faq' | 'login' | 'careers' | 'whitepaper' | 'contact' | 'privacy' | 'terms' | null>(null);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
-  
+
   const MotionDiv = motion.div as any;
 
   return (
     <main className="bg-black text-white selection:bg-[#00FF41] selection:text-black min-h-screen relative overflow-x-hidden">
-      <Header 
+      <Header
         onOpenFAQ={() => setModalType('faq')}
-        onOpenProcurement={() => setModalType('procurement')}
-        onOpenLogin={() => setModalType('login')}
+        onOpenWaitlist={() => setModalType('login')}
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
       />
-      
+
       {/* Background Content Wrapper for Parallax Effect */}
       <MotionDiv
-        animate={{ 
+        animate={{
           scale: mobileMenuOpen ? 0.94 : 1,
           opacity: mobileMenuOpen ? 0.4 : 1,
           filter: mobileMenuOpen ? 'blur(10px)' : 'blur(0px)',
@@ -208,17 +210,31 @@ const App: React.FC = () => {
         transition={{ type: 'spring', damping: 30, stiffness: 200 }}
         className="relative z-10 origin-top"
       >
-        <Hero />
-        <div id="mission"><Problem /></div>
-        <div id="features"><Product /></div>
-        <div id="blueprint"><Physics /></div>
-        <Footer />
+        <Hero
+          onOpenWaitlist={() => setModalType('login')}
+          onOpenWhitepaper={() => setModalType('whitepaper')}
+        />
+        <div id="dashboard"><Dashboard /></div>
+        <Footer
+          onOpenWaitlist={() => setModalType('login')}
+          onOpenCareers={() => setModalType('careers')}
+          onOpenFAQ={() => setModalType('faq')}
+          onOpenWhitepaper={() => setModalType('whitepaper')}
+          onOpenContact={() => setModalType('contact')}
+          onOpenPrivacy={() => setModalType('privacy')}
+          onOpenTerms={() => setModalType('terms')}
+        />
       </MotionDiv>
 
       <TacticalOverlay isOpen={modalType === 'faq'} onClose={() => setModalType(null)} title="Tactical Protocol FAQ" type="faq" />
-      <TacticalOverlay isOpen={modalType === 'procurement'} onClose={() => setModalType(null)} title="Economics & Funding" type="procurement" />
-      <TacticalOverlay isOpen={modalType === 'login'} onClose={() => setModalType(null)} title="Secure Portal" type="login" />
-    </main>
+      <TacticalOverlay isOpen={modalType === 'login'} onClose={() => setModalType(null)} title="Pilot Waitlist" type="login" />
+      <TacticalOverlay isOpen={modalType === 'careers'} onClose={() => setModalType(null)} title="Join The Mission" type="careers" />
+      <TacticalOverlay isOpen={modalType === 'whitepaper'} onClose={() => setModalType(null)} title="Technical Whitepaper" type="whitepaper" />
+      <TacticalOverlay isOpen={modalType === 'contact'} onClose={() => setModalType(null)} title="Contact Us" type="contact" />
+      <TacticalOverlay isOpen={modalType === 'privacy'} onClose={() => setModalType(null)} title="Privacy Policy" type="privacy" />
+      <TacticalOverlay isOpen={modalType === 'terms'} onClose={() => setModalType(null)} title="Terms of Use" type="terms" />
+
+    </main >
   );
 };
 
