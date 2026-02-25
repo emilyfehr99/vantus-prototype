@@ -16,7 +16,7 @@ const faqs = [
   },
   {
     q: "What about false positives?",
-    a: "Our Multi-Modal Consensus requires alignment between audio detection and computer vision before triggering Tier 2 alerts, keeping false positive rates under 5%."
+    a: "Our cross-verification system requires alignment between audio detection and camera analysis before triggering alerts, keeping false positive rates under 5%."
   },
   {
     q: "What are the privacy implications?",
@@ -94,7 +94,7 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                   </div>
                   <div className="space-y-4">
                     <h5 className="text-[#00FF41] uppercase tracking-widest font-bold">2. Data Security</h5>
-                    <p>All transmitted data is protected via AES-256 encryption both in transit and at rest. Our systems comply with CJIS and PIPEDA requirements for handling sensitive law enforcement data.</p>
+                    <p>All transmitted data is protected via AES-256 encryption both in transit and at rest. Our systems comply with CJIS (Criminal Justice Information Services) and PIPEDA (Canadian privacy law) requirements for handling sensitive law enforcement data.</p>
                   </div>
                   <div className="space-y-4">
                     <h5 className="text-[#00FF41] uppercase tracking-widest font-bold">3. Third-Party Sharing</h5>
@@ -304,14 +304,14 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                       <div className="p-6 border border-neutral-900 bg-neutral-950">
                         <h5 className="text-[#00FF41] font-bold uppercase mb-3 text-sm">Edge-AI Processing</h5>
                         <ul className="space-y-2 text-xs text-neutral-500 font-mono">
-                          <li>• Neural Processing Unit (NPU) inference</li>
+                          <li>• AI processing engine for threat detection</li>
                           <li>• On-device threat detection models</li>
                           <li>• Sub-100ms latency for critical alerts</li>
                           <li>• Offline-capable core functionality</li>
                         </ul>
                       </div>
                       <div className="p-6 border border-neutral-900 bg-neutral-950">
-                        <h5 className="text-[#00FF41] font-bold uppercase mb-3 text-sm">Multi-Modal Fusion</h5>
+                        <h5 className="text-[#00FF41] font-bold uppercase mb-3 text-sm">Cross-Verified Detection</h5>
                         <ul className="space-y-2 text-xs text-neutral-500 font-mono">
                           <li>• Body-worn camera video analysis</li>
                           <li>• Wearable biometric integration</li>
@@ -344,7 +344,7 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                       <div className="text-center">
                         <div className="text-3xl font-black text-[#00FF41]">98%</div>
-                        <div className="text-[10px] font-mono text-neutral-500 uppercase mt-1">NPU Load Efficiency</div>
+                        <div className="text-[10px] font-mono text-neutral-500 uppercase mt-1">Processing Efficiency</div>
                       </div>
                       <div className="text-center">
                         <div className="text-3xl font-black text-[#00FF41]">&lt;50ms</div>
