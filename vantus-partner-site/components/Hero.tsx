@@ -48,7 +48,7 @@ export const Hero: React.FC<{
           <div className="flex items-center gap-3">
             <div className="w-1.5 h-1.5 bg-[#00FF41] rounded-full shadow-[0_0_8px_#00FF41] animate-pulse" />
             <span className="font-mono text-[11px] text-[#00FF41] font-bold uppercase tracking-[0.4em]">
-              Now Accepting Pilot Departments
+              Operational Interdiction Protocol Alpha
             </span>
           </div>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#00FF41]/10 border border-[#00FF41]/30 rounded-full backdrop-blur-sm">
@@ -68,7 +68,7 @@ export const Hero: React.FC<{
         {/* Description grounded in specific features */}
         <div className="max-w-4xl text-center">
           <p className="text-xl md:text-3xl text-neutral-300 font-medium leading-relaxed">
-            Vantus bridges the 100,000-officer staffing gap with an <span className="text-white font-bold">AI partner that automatically calls for backup within 20 seconds</span> when your officer is in danger — no radio needed. Plus, it handles documentation so officers can focus on the scene.
+            Vantus bridges the 100,000-officer staffing gap by providing an <span className="text-white font-bold">autonomous, agentic partner</span> that predicts violence, automates documentation, and ensures backup is never more than a heartbeat away.
           </p>
         </div>
 
@@ -88,11 +88,31 @@ export const Hero: React.FC<{
             onClick={onOpenWhitepaper}
             className="w-full sm:w-[320px] py-6 border border-neutral-800 font-mono text-[11px] uppercase tracking-[0.3em] text-neutral-500 transition-all"
           >
-            Technical Specs
+            Technical Specs // PDF
           </MotionButton>
         </div>
       </MotionDiv>
 
+      {/* Persistent Sensor Data Sidebar - Enhanced with feature-specific logs */}
+      <div className="absolute bottom-12 left-10 z-30 space-y-4 hidden md:block group">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="flex gap-1">
+            <span className="w-2 h-0.5 bg-[#00FF41]" />
+          </div>
+          <span className="font-mono text-[9px] text-[#00FF41] uppercase tracking-[0.4em] font-black group-hover:tracking-[0.5em] transition-all">Sensors: Online</span>
+        </div>
+        <div className="font-mono text-[10px] text-neutral-600 space-y-1.5 tracking-widest uppercase">
+          <p className="flex justify-between gap-4 group-hover:text-neutral-400 transition-colors"><span>Vocal Stress:</span> <span className="text-white">Nominal</span></p>
+          <p className="flex justify-between gap-4 group-hover:text-neutral-400 transition-colors"><span>Posture Map:</span> <span className="text-white">Scanning</span></p>
+          <p className="flex justify-between gap-4 group-hover:text-neutral-400 transition-colors"><span>Threat Sig:</span> <span className="text-white">0.02%</span></p>
+          <p className="pt-2 text-[8px] opacity-40">LAT: 34.0522° N // LON: 118.2437° W</p>
+        </div>
+      </div>
+
+      {/* Footer Vertical Label */}
+      <div className="absolute bottom-12 right-10 font-mono text-[9px] text-neutral-800 vertical-text tracking-[0.6em] uppercase pointer-events-none select-none opacity-50">
+        Vantus_Partner_Sys_v4.2
+      </div>
     </section >
   );
 };

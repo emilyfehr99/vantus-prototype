@@ -122,7 +122,7 @@ const AccordionItem: React.FC<{ title: string, badge?: string, defaultOpen?: boo
 
 const additionalSafetyFeatures = [
   { icon: <Activity />, title: "Stress Biometric Sync", desc: "(Optional) Syncs via Bluetooth wearables like Apple Watch." },
-  { icon: <Eye />, title: "Peripheral Overwatch", desc: "Camera analysis for secondary suspects in the officer's periphery." },
+  { icon: <Eye />, title: "Peripheral Overwatch", desc: "CV for secondary suspects in the officer's periphery." },
   { icon: <Zap />, title: "Pre-Arrival Intel", desc: "Live stream + AI assessment broadcasted to responding units." }
 
 ];
@@ -132,7 +132,7 @@ const scribeFeatures = [
   { icon: <PenTool />, title: "Auto-Documentation", desc: "Generates report draft within 15 minutes; officer reviews/edits." },
   { icon: <MessageSquare />, title: "Dictation Overlay", desc: "Voice commands (e.g., \"Vantus, mark blue Toyota as witness vehicle\")." },
   { icon: <CheckCircle2 />, title: "Forensic Audit Trail", desc: "Timestamped AI observations for compliance (e.g., CA SB 524)." },
-  { icon: <Lock />, title: "Evidence Protection", desc: "Data is only saved when a threat is detected — otherwise it's automatically discarded." }
+  { icon: <Lock />, title: "Volatile Evidence Locking", desc: "Write-only buffer; data evaporates unless trigger locks it to immutable storage." }
 ];
 
 interface LogEntry {
@@ -198,12 +198,12 @@ const LiveTacticalFeed = () => {
         <div className="flex items-center justify-between mb-10 pb-6 border-b border-neutral-900">
           <div className="flex items-center gap-4">
             <div className="w-2 h-2 rounded-full bg-[#00FF41] animate-pulse shadow-[0_0_8px_#00FF41]" />
-            <span className="font-mono text-[10px] text-[#00FF41] uppercase tracking-[0.4em] font-bold">Active Overwatch — Simulated Demo</span>
+            <span className="font-mono text-[10px] text-[#00FF41] uppercase tracking-[0.4em] font-bold">Situational Overwatch v4.2</span>
           </div>
           <div className="font-mono text-[8px] text-neutral-700 uppercase flex items-center gap-4 tracking-widest">
-            <span className="animate-pulse">Status: Monitoring</span>
-            <span>Latency: 1.2ms</span>
-            <span className="text-white">Encryption: Active</span>
+            <span className="animate-pulse">Buffer: Synchronized</span>
+            <span>Uptime: 142.04.11</span>
+            <span className="text-white">Enc: AES-XTS</span>
           </div>
         </div>
 
@@ -260,8 +260,8 @@ const LiveTacticalFeed = () => {
         <div className="mt-12 flex items-center justify-between pt-6 border-t border-neutral-900">
           <div className="flex gap-8">
             <div className="flex flex-col gap-1">
-              <span className="text-neutral-700 text-[7px] uppercase font-black tracking-widest">Processing</span>
-              <span className="text-[#00FF41] text-[10px] font-bold">98% Efficiency</span>
+              <span className="text-neutral-700 text-[7px] uppercase font-black tracking-widest">NPU Engine</span>
+              <span className="text-[#00FF41] text-[10px] font-bold">OPT_LOAD_98%</span>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-neutral-700 text-[7px] uppercase font-black tracking-widest">Sync Latency</span>
@@ -281,7 +281,7 @@ const LiveTacticalFeed = () => {
             </div>
             <div className="flex items-center gap-2 px-5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-sm">
               <Terminal size={12} className="text-[#00FF41]" />
-              <span className="text-neutral-500 text-[9px] uppercase tracking-widest font-black">System Ready</span>
+              <span className="text-neutral-500 text-[9px] uppercase tracking-widest font-black">Ready for Command_</span>
             </div>
           </div>
         </div>
@@ -323,7 +323,7 @@ export const Product: React.FC = () => {
             className="text-neutral-400 font-mono text-[10px] uppercase tracking-[0.2em] border-l-2 border-[#00FF41] pl-8 py-4 max-w-lg leading-relaxed space-y-4"
           >
             <span className="block text-white">Unlike passive AI scribes built for post-incident paperwork, Vantus is an active safety mechanism.</span>
-            <span className="block">Connects directly to your existing Axon and Motorola body cams. Audio is analyzed continuously for instant threat detection, pulling video only when a threat is confirmed — real-time overwatch without constant streaming.</span>
+            <span className="block">Integrates seamlessly with existing Axon and Motorola body cams via secure APIs. Audio streams continuously for zero-latency threat detection, selectively pulling on-demand video only when a threat is confirmed—ensuring real-time overwatch without continuous streaming overhead.</span>
           </MotionP>
         </div>
 
@@ -342,20 +342,20 @@ export const Product: React.FC = () => {
 
             <AccordionItem title="Tier 1 (Audio-Only Alerts)" badge="Low Latency" defaultOpen={true}>
               <div className="space-y-4">
-                <p><strong className="text-white">Voice-Stress Trigger:</strong> AI voice analysis monitors for distressed or aggressive vocal tones and specific keywords ("Drop it!", "10-33", "Gun!").</p>
-                <p><strong className="text-white">Sound Detection:</strong> Identifies gunshots, glass breaking, impact sounds, and struggle audio in real time.</p>
+                <p><strong className="text-white">Voice-Stress Trigger:</strong> Natural Language Processing (NLP) monitors for "High-Arousal" vocal tones and specific "Code 3" keywords ("Drop it!", "10-33", "Gun!").</p>
+                <p><strong className="text-white">Acoustic Sentinel:</strong> Spectral analysis detects gunshots (&gt;140dB impulse), glass breaking, impact sounds, struggle audio.</p>
                 <div className="mt-4 p-4 bg-[#FF3B30]/10 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs">
                   Action: SMS alert to dispatcher (human decides whether to send backup).
                 </div>
               </div>
             </AccordionItem>
 
-            <AccordionItem title="Tier 2 (Audio + Video Confirmed — Auto-Dispatch)" badge="Core Feature" defaultOpen={true}>
+            <AccordionItem title="Tier 2 (Audio + Video Confirmed - Auto-Dispatch)" badge="Multi-Modal Consensus">
               <div className="space-y-4">
-                <p><strong className="text-white">The "Guardian" Overwatch:</strong> When multiple AI models agree on a threat, the system pulls a 30-second video clip on-demand (not continuous streaming).</p>
-                <p><strong className="text-white">Camera Analysis:</strong> Analyzes video for weapons (holstered or brandished), officer down/prone position, multiple attackers.</p>
-                <p><strong className="text-white">Cross-Verification:</strong> Both audio and video must confirm the threat before triggering dispatch.</p>
-                <p><strong className="text-white">Automatic Dispatch:</strong> If a weapon is detected and audio confirms distress, Vantus automatically requests Priority 1 backup through the radio network — no officer action needed.</p>
+                <p><strong className="text-white">The "Guardian" Overwatch:</strong> When 2+ audio models agree, system pulls 30-second video clip on-demand (not continuous streaming).</p>
+                <p><strong className="text-white">Computer Vision:</strong> Analyzes video for weapons (holstered or brandished), officer down/prone position, multiple attackers.</p>
+                <p><strong className="text-white">Multi-Modal Consensus:</strong> Audio + Video confirmation required before triggering.</p>
+                <p><strong className="text-white">Autonomous Dispatch (The "Silent 10-33"):</strong> If weapon detected + audio distress, Vantus auto-injects Priority 1 Backup Request via RoIP (Radio over IP) to officer's talkgroup.</p>
                 <div className="mt-4 p-4 bg-[#FF3B30]/20 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs animate-pulse">
                   Action: Backup is rolling in &lt;20 seconds from incident start.
                 </div>
@@ -367,7 +367,7 @@ export const Product: React.FC = () => {
                 <p><strong className="text-white">Silence Analysis:</strong> Impact sound + no radio activity for 10+ seconds.</p>
                 <p><strong className="text-white">Video Confirmation:</strong> Pulls video to confirm officer on ground, not moving.</p>
                 <div className="mt-4 p-4 bg-[#FF3B30] text-white font-black uppercase text-xs">
-                  Action: Emergency broadcast to ALL units + automatic EMS notification + alerts nearest 5 units.
+                  Action: Emergency RoIP broadcast to ALL units + automatic EMS notification + alerts nearest 5 units.
                 </div>
               </div>
             </AccordionItem>

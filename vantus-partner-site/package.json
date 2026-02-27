@@ -9,10 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react-dom": "^19.2.3",
-    "react": "^19.2.3",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@xenova/transformers": "^2.17.2",
     "framer-motion": "^12.23.26",
-    "lucide-react": "^0.561.0"
+    "lucide-react": "^0.561.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
@@ -21,4 +23,3 @@
     "vite": "^6.2.0"
   }
 }
-

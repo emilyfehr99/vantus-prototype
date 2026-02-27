@@ -2,12 +2,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Logo } from './Logo';
 
-const FooterLink: React.FC<{ onClick?: () => void; href?: string; children: React.ReactNode }> = ({ onClick, href, children }) => {
+const FooterLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
   const MotionDiv = motion.div as any;
   return (
     <motion.li className="relative inline-block overflow-hidden py-1 group">
-      <button
-        onClick={onClick}
+      <a
+        href={href}
         className="text-neutral-600 transition-colors duration-300 group-hover:text-white flex items-center gap-2"
       >
         {children}
@@ -17,23 +17,23 @@ const FooterLink: React.FC<{ onClick?: () => void; href?: string; children: Reac
           whileHover={{ x: '0%' }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         />
-      </button>
+      </a>
     </motion.li>
   );
 };
 
-const LegalLink: React.FC<{ onClick?: () => void; children: React.ReactNode }> = ({ onClick, children }) => {
+const LegalLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
   const MotionDiv = motion.div as any;
   return (
-    <button
-      onClick={onClick}
+    <a
+      href={href}
       className="relative group text-neutral-700 hover:text-white transition-colors duration-300 py-1"
     >
       {children}
       <MotionDiv
         className="absolute -bottom-1 left-0 w-0 h-[1px] bg-[#00FF41]/60 group-hover:w-full transition-all duration-300 shadow-[0_0_4px_#00FF41]"
       />
-    </button>
+    </a>
   );
 };
 
@@ -72,10 +72,12 @@ export const Footer: React.FC<{
             <span className="font-bold tracking-tighter text-xl">VANTUS</span>
           </div>
           <p className="text-neutral-500 text-sm leading-relaxed">
-            AI-powered officer safety technology for modern law enforcement.
+            Revolutionizing field interdiction through computational optics and first-principles engineering.
           </p>
           <div className="text-[10px] font-mono text-neutral-600 tracking-wider flex flex-col gap-1">
-            <span className="text-[#00FF41]/30 mt-2">Secured Communications</span>
+            <span>CAGE CODE: Pending</span>
+            <span>DUNS: 098412034</span>
+            <span className="text-[#00FF41]/30 mt-2">SECURED_COMMS_v4.2</span>
           </div>
         </div>
 
@@ -92,9 +94,9 @@ export const Footer: React.FC<{
           <div className="space-y-4">
             <h4 className="font-mono text-xs uppercase text-neutral-400 tracking-widest border-l border-[#00FF41]/40 pl-3">Company</h4>
             <ul className="flex flex-col space-y-1 text-sm font-medium">
-              <FooterLink onClick={() => scrollToSection('mission')}>Our Mission</FooterLink>
-              <FooterLink onClick={onOpenCareers}>Careers</FooterLink>
-              <FooterLink onClick={onOpenContact}>Contact</FooterLink>
+              <FooterLink href="#">Our Mission</FooterLink>
+              <FooterLink href="#">Careers</FooterLink>
+              <FooterLink href="#">Contact</FooterLink>
             </ul>
           </div>
         </div >
