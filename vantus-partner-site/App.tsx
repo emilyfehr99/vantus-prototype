@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, useScroll, useSpring, AnimatePresence, useMotionValue } from 'framer-motion';
+import { Analytics } from '@vercel/analytics/react';
 import { Hero } from './components/Hero';
 import { Problem } from './components/Problem';
 import { Product } from './components/Product';
@@ -403,6 +404,7 @@ const App: React.FC = () => {
       <TacticalOverlay isOpen={modalType === 'privacy'} onClose={() => setModalType(null)} title="Privacy Policy" type="privacy" />
       <TacticalOverlay isOpen={modalType === 'terms'} onClose={() => setModalType(null)} title="Terms of Use" type="terms" />
 
+      <Analytics />
     </main >
   );
 };
