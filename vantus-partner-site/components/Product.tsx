@@ -121,18 +121,9 @@ const AccordionItem: React.FC<{ title: string, badge?: string, defaultOpen?: boo
 };
 
 const additionalSafetyFeatures = [
-  { icon: <Activity />, title: "Stress Biometric Sync", desc: "(Optional) Syncs via Bluetooth wearables like Apple Watch." },
-  { icon: <Eye />, title: "Peripheral Overwatch", desc: "CV for secondary suspects in the officer's periphery." },
-  { icon: <Zap />, title: "Pre-Arrival Intel", desc: "Live stream + AI assessment broadcasted to responding units." }
-
-];
-
-const scribeFeatures = [
-  { icon: <Database />, title: "Real-Time Fact Anchoring", desc: "Timestamped \"Fact Log\" (e.g., \"14:02:11 - Audio: Gunshot detected\")." },
-  { icon: <PenTool />, title: "Auto-Documentation", desc: "Generates report draft within 15 minutes; officer reviews/edits." },
-  { icon: <MessageSquare />, title: "Dictation Overlay", desc: "Voice commands (e.g., \"Vantus, mark blue Toyota as witness vehicle\")." },
-  { icon: <CheckCircle2 />, title: "Forensic Audit Trail", desc: "Timestamped AI observations for compliance (e.g., CA SB 524)." },
-  { icon: <Lock />, title: "Volatile Evidence Locking", desc: "Write-only buffer; data evaporates unless trigger locks it to immutable storage." }
+  { icon: <Activity />, title: "Stress Biometric Sync", desc: "(Optional) Syncs via Bluetooth wearables like Apple Watch. Monitors HR (>140 BPM) + GPS. Fallback: breathing, vocal pitch, phone accelerometer." },
+  { icon: <Database />, title: "Real-Time Fact Anchoring", desc: "Timestamped AI observations (e.g., '14:02:11 - Audio: Gunshot detected (92%)'). Solves CA SB 524 forensic audit trail compliance." },
+  { icon: <MessageSquare />, title: "Dictation Overlay", desc: "Speak voice commands during scene (e.g., \"Vantus, mark blue Toyota as witness vehicle\") for hands-free evidence tagging to timeline." }
 ];
 
 interface LogEntry {
@@ -340,34 +331,35 @@ export const Product: React.FC = () => {
           <div className="mb-12">
             <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-6">Three-Tier Threat Detection System</h3>
 
-            <AccordionItem title="Tier 1 (Audio-Only Alerts)" badge="Low Latency" defaultOpen={true}>
+            <AccordionItem title="TIER 1: Audio-Only Alerts (Low-Medium Confidence)" badge="Low Latency" defaultOpen={true}>
               <div className="space-y-4">
-                <p><strong className="text-white">Voice-Stress Trigger:</strong> Natural Language Processing (NLP) monitors for "High-Arousal" vocal tones and specific "Code 3" keywords ("Drop it!", "10-33", "Gun!").</p>
-                <p><strong className="text-white">Acoustic Sentinel:</strong> Spectral analysis detects gunshots (&gt;140dB impulse), glass breaking, impact sounds, struggle audio.</p>
+                <p><strong className="text-white">Real-time Gunshot Detection:</strong> &gt;140dB impulse signature.</p>
+                <p><strong className="text-white">Keyword Spotting:</strong> Distress phrases like "shots fired," "10-33," "officer down," "help," "gun," "knife," "drop it."</p>
+                <p><strong className="text-white">Struggle Sound Detection:</strong> Impacts, grunting, glass breaking, heavy breathing, vocal stress.</p>
                 <div className="mt-4 p-4 bg-[#FF3B30]/10 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs">
-                  Action: SMS alert to dispatcher (human decides whether to send backup).
+                  Action: SMS alert sent to dispatcher with timestamp, GPS location, and 30-second audio clip. Dispatcher makes final decision on sending backup.
                 </div>
               </div>
             </AccordionItem>
 
-            <AccordionItem title="Tier 2 (Audio + Video Confirmed - Auto-Dispatch)" badge="Multi-Modal Consensus">
+            <AccordionItem title="TIER 2: Audio + Video Confirmed Threats (High Confidence - Auto-Dispatch)" badge="Automated Dispatch">
               <div className="space-y-4">
-                <p><strong className="text-white">The "Guardian" Overwatch:</strong> When 2+ audio models agree, system pulls 30-second video clip on-demand (not continuous streaming).</p>
-                <p><strong className="text-white">Computer Vision:</strong> Analyzes video for weapons (holstered or brandished), officer down/prone position, multiple attackers.</p>
-                <p><strong className="text-white">Multi-Modal Consensus:</strong> Audio + Video confirmation required before triggering.</p>
-                <p><strong className="text-white">Autonomous Dispatch (The "Silent 10-33"):</strong> If weapon detected + audio distress, Vantus auto-injects Priority 1 Backup Request via RoIP (Radio over IP) to officer's talkgroup.</p>
+                <p><strong className="text-white">Multi-Modal Trigger:</strong> Triggered when 2+ audio models agree (&gt;80% confidence each).</p>
+                <p><strong className="text-white">Video Confirmation:</strong> System pulls 30-second video clip on-demand (15 sec before + 15 sec after trigger).</p>
+                <p><strong className="text-white">Computer Vision:</strong> YOLO weapon detection (handguns, rifles, knives visible) + Person detection/threat posture analysis (multiple attackers, fighting stance).</p>
                 <div className="mt-4 p-4 bg-[#FF3B30]/20 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs animate-pulse">
-                  Action: Backup is rolling in &lt;20 seconds from incident start.
+                  Action: Automatic RoIP dispatch broadcast: "Unit [badge], automatic backup alert. Officer [name], [address]. [Threat type]. Backup units respond Code 3." + SMS alert to dispatch supervisor verifying auto-dispatch was sent.
                 </div>
               </div>
             </AccordionItem>
 
-            <AccordionItem title="Tier 3 (Officer Down - Emergency Protocol)" badge="Critical">
+            <AccordionItem title="TIER 3: Officer Down - Emergency Protocol" badge="Critical">
               <div className="space-y-4">
-                <p><strong className="text-white">Silence Analysis:</strong> Impact sound + no radio activity for 10+ seconds.</p>
-                <p><strong className="text-white">Video Confirmation:</strong> Pulls video to confirm officer on ground, not moving.</p>
+                <p><strong className="text-white">Silence Analysis:</strong> Impact sound detection + silence analysis (&gt;10 seconds no radio activity).</p>
+                <p><strong className="text-white">Horizon Line Shift:</strong> Officer prone/unconscious via accelerometer + video.</p>
+                <p><strong className="text-white">Continuous Monitoring:</strong> Real-time assessment updates if officer regains consciousness.</p>
                 <div className="mt-4 p-4 bg-[#FF3B30] text-white font-black uppercase text-xs">
-                  Action: Emergency RoIP broadcast to ALL units + automatic EMS notification + alerts nearest 5 units.
+                  Action: Emergency RoIP broadcast to ALL units: "Unit [badge], OFFICER DOWN. [Address]. No response detected. All units Code 3." + SMS to all on-duty supervisors + Automatic EMS notification + Alert sent to nearest 5 units.
                 </div>
               </div>
             </AccordionItem>
@@ -389,28 +381,7 @@ export const Product: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-32">
-          <MotionDiv
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="text-xl font-black uppercase italic text-neutral-400 mb-12 flex items-center gap-6"
-          >
-            <span className="px-4 py-1.5 bg-neutral-800 text-white not-italic text-sm font-black">B</span> Documentation Features (The "Scribe" Layer)
-          </MotionDiv>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {scribeFeatures.map((f, i) => (
-              <FeatureCard
-                key={i}
-                icon={f.icon}
-                title={f.title}
-                desc={f.desc}
-                color="white"
-                index={i}
-              />
-            ))}
-          </div>
-        </div>
+
 
         <LiveTacticalFeed />
       </div>
