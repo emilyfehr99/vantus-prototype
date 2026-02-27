@@ -78,8 +78,8 @@ export const Problem: React.FC = () => {
           <div className="aspect-[4/5] bg-neutral-950 border border-neutral-800 p-1 flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 bg-[#FF3B30]/5 mix-blend-overlay z-10 group-hover:bg-[#FF3B30]/10 transition-colors" />
             <img
-              src="https://images2.minutemediacdn.com/image/upload/c_fill,w_1200,ar_4:5,f_auto,q_auto,g_auto/shape/cover/sport/124741-fop-d22-1014-0c588a4.jpg"
-              className="w-full h-full object-cover opacity-40 grayscale group-hover:scale-110 group-hover:grayscale-[0.5] transition-all duration-1000 ease-out"
+              src="https://lh3.googleusercontent.com/pw/AP1GczODWJqN4dM1s3u-4B41xZ1_v5A9I-Y4K8-8P9N8H-O5d-I-K7h-_P8-l1M9-4Jv-5X3-_E9h4Y6I1V4P9L6U6d9D9s6O4f-P5Z4A3P2o8-C7o9O2I1E5_Y2e4-K5M9Z3H2o1N4d5X_M9=w2560-h1440-s-no?authuser=0"
+              className="w-full h-full object-cover opacity-30 grayscale group-hover:scale-110 group-hover:grayscale-[0.5] transition-all duration-1000 ease-out"
               alt="Patrol Reality"
             />
 
