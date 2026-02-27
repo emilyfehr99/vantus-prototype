@@ -350,6 +350,7 @@ const App: React.FC = () => {
           >
             <Hero
               onOpenWaitlist={() => setModalType('waitlist')}
+              onOpenLogin={() => setModalType('login')}
               onOpenWhitepaper={() => setModalType('whitepaper')}
             />
             <div id="mission"><Problem /></div>

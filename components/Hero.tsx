@@ -3,8 +3,9 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 
 export const Hero: React.FC<{
   onOpenWaitlist: () => void;
+  onOpenLogin: () => void;
   onOpenWhitepaper: () => void;
-}> = ({ onOpenWaitlist, onOpenWhitepaper }) => {
+}> = ({ onOpenWaitlist, onOpenLogin, onOpenWhitepaper }) => {
   const MotionDiv = motion.div as any;
   const MotionButton = motion.button as any;
 
@@ -73,22 +74,30 @@ export const Hero: React.FC<{
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-6 pt-8 w-full justify-center items-center">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-4 pt-8 w-full justify-center items-center">
           <MotionButton
-            onClick={onOpenWaitlist}
+            onClick={onOpenLogin}
             whileHover={{ scale: 1.02, boxShadow: '0 0 30px rgba(255,255,255,0.15)' }}
             whileTap={{ scale: 0.98 }}
-            className="w-full sm:w-[320px] py-6 bg-white text-black font-black uppercase tracking-widest text-[11px] rounded-sm transition-all"
+            className="w-full sm:w-[260px] py-5 bg-white text-black font-black uppercase tracking-widest text-[11px] rounded-sm transition-all"
           >
-            Request Pilot Access
+            Pilot Access
+          </MotionButton>
+          <MotionButton
+            onClick={onOpenWaitlist}
+            whileHover={{ scale: 1.02, backgroundColor: '#00FF41', borderColor: '#00FF41', color: 'black' }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full sm:w-[260px] py-5 border border-white/20 bg-transparent text-white font-black uppercase tracking-widest text-[11px] rounded-sm transition-all"
+          >
+            Join Waitlist
           </MotionButton>
           <MotionButton
             whileHover={{ scale: 1.02, borderColor: 'white', color: 'white', boxShadow: '0 0 20px rgba(255,255,255,0.05)' }}
             whileTap={{ scale: 0.98 }}
             onClick={onOpenWhitepaper}
-            className="w-full sm:w-[320px] py-6 border border-neutral-800 font-mono text-[11px] uppercase tracking-[0.3em] text-neutral-500 transition-all"
+            className="w-full sm:w-[260px] py-5 border border-neutral-800 font-mono text-[11px] uppercase tracking-[0.3em] text-neutral-500 transition-all"
           >
-            Technical Specs // PDF
+            Tech Specs // PDF
           </MotionButton>
         </div>
       </MotionDiv>
