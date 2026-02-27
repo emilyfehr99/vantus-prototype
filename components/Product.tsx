@@ -355,7 +355,7 @@ export const Product: React.FC = () => {
                 <p><strong className="text-white">The "Guardian" Overwatch:</strong> When 2+ audio models agree, system pulls 30-second video clip on-demand (not continuous streaming).</p>
                 <p><strong className="text-white">Computer Vision:</strong> Analyzes video for weapons (holstered or brandished), officer down/prone position, multiple attackers.</p>
                 <p><strong className="text-white">Multi-Modal Consensus:</strong> Audio + Video confirmation required before triggering.</p>
-                <p><strong className="text-white">Autonomous Dispatch (The "Silent 10-33"):</strong> If weapon detected + audio distress, Vantus auto-injects Priority 1 Backup Request via RoIP (Radio over IP) to officer's talkgroup.</p>
+                <p><strong className="text-white">Autonomous Dispatch (The "Silent 10-33"):</strong> If weapon detected + audio distress, Vantus auto-injects Priority 1 Backup Request via encrypted radio channel to officer's talkgroup.</p>
                 <div className="mt-4 p-4 bg-[#FF3B30]/20 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs animate-pulse">
                   Action: Backup is rolling in &lt;20 seconds from incident start.
                 </div>
@@ -367,7 +367,7 @@ export const Product: React.FC = () => {
                 <p><strong className="text-white">Silence Analysis:</strong> Impact sound + no radio activity for 10+ seconds.</p>
                 <p><strong className="text-white">Video Confirmation:</strong> Pulls video to confirm officer on ground, not moving.</p>
                 <div className="mt-4 p-4 bg-[#FF3B30] text-white font-black uppercase text-xs">
-                  Action: Emergency RoIP broadcast to ALL units + automatic EMS notification + alerts nearest 5 units.
+                  Action: Emergency radio broadcast to ALL units + automatic EMS notification + alerts nearest 5 units.
                 </div>
               </div>
             </AccordionItem>
