@@ -78,8 +78,8 @@ export const Problem: React.FC = () => {
           <div className="aspect-[4/5] bg-neutral-950 border border-neutral-800 p-1 flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 bg-[#FF3B30]/5 mix-blend-overlay z-10 group-hover:bg-[#FF3B30]/10 transition-colors" />
             <img
-              src="https://images.unsplash.com/photo-1541818165030-9b646c103289?auto=format&fit=crop&q=80&w=1200"
-              className="w-full h-full object-cover opacity-60 grayscale group-hover:scale-110 group-hover:grayscale-0 transition-all duration-[4s]"
+              src="https://images2.minutemediacdn.com/image/upload/c_fill,w_1200,ar_4:5,f_auto,q_auto,g_auto/shape/cover/sport/124741-fop-d22-1014-0c588a4.jpg"
+              className="w-full h-full object-cover opacity-40 grayscale group-hover:scale-110 group-hover:grayscale-[0.5] transition-all duration-1000 ease-out"
               alt="Patrol Reality"
             />
 
@@ -87,16 +87,16 @@ export const Problem: React.FC = () => {
             <MotionDiv
               animate={{ top: ['-10%', '110%'] }}
               transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-              className="absolute left-0 w-full h-1 bg-[#FF3B30] shadow-[0_0_20px_#FF3B30] z-20 opacity-50 pointer-events-none"
+              className="absolute left-0 w-full h-1 bg-[#FF3B30] shadow-[0_0_20px_#FF3B30] z-20 opacity-40 pointer-events-none"
             />
 
             <div className="absolute inset-0 z-20 p-10 flex flex-col justify-between">
-              <div className="bg-black/80 backdrop-blur-md p-4 border-l-2 border-[#FF3B30] self-start font-mono text-[10px] group-hover:bg-black transition-colors">
+              <div className="bg-black/80 backdrop-blur-md p-4 border-l-2 border-[#FF3B30] self-start font-mono text-[10px] group-hover:bg-black/90 transition-colors">
                 <span className="text-neutral-500 block">THREAT_VECTOR</span>
                 <span className="text-white font-bold">SOLO_PATROL_VULNERABILITY</span>
               </div>
 
-              <div className="bg-black/90 p-8 border border-neutral-800 group-hover:border-[#FF3B30]/20 transition-all">
+              <div className="bg-absolute bg-black/80 backdrop-blur-md p-8 border border-neutral-800 group-hover:border-[#FF3B30]/30 transition-all duration-500">
                 <span className="text-6xl font-black text-[#FF3B30] block mb-2 tracking-tighter group-hover:scale-110 transition-transform origin-left">82%</span>
                 <p className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest leading-relaxed">
                   of U.S. patrol units operate solo.
