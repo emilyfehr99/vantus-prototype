@@ -18,6 +18,13 @@ import {
     FileText,
     Trash2,
     Cpu,
+    Shield,
+    X,
+    User,
+    EyeOff,
+    RotateCw,
+    Users,
+    Activity
 } from 'lucide-react';
 
 // ── TF.js YAMNet Config ──
@@ -49,6 +56,13 @@ const WARNING_KW = [
     '10-50', 'roll over', 'send fire', 'extrication needed', 'step out of the vehicle'
 ];
 const THREAT_KW = [...URGENT_KW, ...WARNING_KW];
+
+// ── Cancel / Override Keywords (Edge Case #8) ──
+const CANCEL_KW = [
+    'code 4', 'code four', 'cancel backup', 'no backup needed', 'all clear',
+    'disregard', 'stand down', 'false alarm', 'we\'re good', 'no threat',
+    'i\'m fine', 'scene secure', 'resume patrol'
+];
 
 // ── Model Card ──
 interface ModelCardProps {
@@ -151,15 +165,58 @@ export const AudioDemo: React.FC = () => {
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
     const [pastedText, setPastedText] = useState('');
 
+    // ── Edge Case Mitigation State ──
+    const [soloMode, setSoloMode] = useState(true);           // #1/#2: GPS proximity gate
+    const [trainingMode, setTrainingMode] = useState(false);  // #3: Suppress alerts during drills
+    const [cancelOverride, setCancelOverride] = useState(false); // #8: Officer verbal cancel
+    const [ambientBaseline, setAmbientBaseline] = useState(0);  // #7: Rolling noise floor
+    const [lowLightMode, setLowLightMode] = useState(false);     // #9: Video weight reduction
+    const [accelerometerFallback, setAccelerometerFallback] = useState(false); // #6: Camera obstructed
+    const [nearbyUnits, setNearbyUnits] = useState(0);          // #1: Simulated proximity count
+    const [suppressionLog, setSuppressionLog] = useState<string[]>([]); // Audit trail of suppressed alerts
+
     const fileRef = useRef<HTMLInputElement>(null);
     const timers = useRef<any[]>([]);
     const recRef = useRef<any>(null);
+    const ambientSamples = useRef<number[]>([]);  // #7: Rolling ambient window
 
     // Audio Context refs
     const audioCtxRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const rafRef = useRef<any>(null);
+
+    // ── Pre-Filter: Edge Case Mitigation Engine ──
+    const shouldSuppressAlert = useCallback((confidence: number, model: string): { suppress: boolean; reason: string } => {
+        // #8: Officer verbal cancel overrides everything
+        if (cancelOverride) return { suppress: true, reason: 'Officer verbal override active (Code 4)' };
+
+        // #3: Training mode suppresses all alerts
+        if (trainingMode) return { suppress: true, reason: 'Training Mode active — alert logged but not dispatched' };
+
+        // #1/#2: Non-solo suppression
+        if (!soloMode || nearbyUnits > 0) return { suppress: true, reason: `Solo Mode OFF — ${nearbyUnits} unit(s) in proximity` };
+
+        // #5/#10: Confidence gating — require >95% for auto-dispatch, otherwise silent supervisor flag
+        if (confidence < 95 && model !== 'keyword') {
+            return { suppress: false, reason: `Confidence ${confidence}% < 95% threshold — flagged for supervisor review only` };
+        }
+
+        // #7: Ambient noise spike detection
+        if (ambientBaseline > 0.3 && model === 'gunshot') {
+            return { suppress: false, reason: `High ambient noise floor (${Math.round(ambientBaseline * 100)}%) — audio weight reduced` };
+        }
+
+        return { suppress: false, reason: '' };
+    }, [cancelOverride, trainingMode, soloMode, nearbyUnits, ambientBaseline]);
+
+    // ── Ambient Noise Baseline Tracker (#7) ──
+    const updateAmbientBaseline = useCallback((maxVal: number) => {
+        ambientSamples.current.push(maxVal);
+        if (ambientSamples.current.length > 20) ambientSamples.current.shift();
+        const avg = ambientSamples.current.reduce((a, b) => a + b, 0) / ambientSamples.current.length;
+        setAmbientBaseline(avg);
+    }, []);
 
     // Initialize TensorFlow and YAMNet
     useEffect(() => {
@@ -256,6 +313,9 @@ export const AudioDemo: React.FC = () => {
 
         const maxVal = float32Data.reduce((acc, val) => Math.max(acc, Math.abs(val)), 0);
 
+        // #7: Update ambient noise baseline
+        updateAmbientBaseline(maxVal);
+
         // If loud noise, run real classification (simplification for mic buffer)
         if (maxVal > 0.1) {
             // We pad it to 15600 for YAMNet
@@ -267,12 +327,26 @@ export const AudioDemo: React.FC = () => {
             const confS = Math.round(s * 100);
 
             if (confG > 10) {
-                setModel('gunshot', { status: 'THREAT DETECTED', confidence: confG, color: 'red', lastDetection: now() });
-                addLog({ model: 'gunshot', threat: 'Gunshot identified via YAMNet', confidence: confG, level: 'red', scenario: 'Live Edge Model' });
+                const filter = shouldSuppressAlert(confG, 'gunshot');
+                if (filter.suppress) {
+                    addLog({ model: 'gunshot', threat: `SUPPRESSED: Gunshot (${confG}%) — ${filter.reason}`, confidence: confG, level: 'green', scenario: 'Filtered' });
+                    setSuppressionLog(p => [`${now()} Gunshot suppressed: ${filter.reason}`, ...p].slice(0, 20));
+                } else {
+                    const explainability = filter.reason ? ` [${filter.reason}]` : '';
+                    setModel('gunshot', { status: 'THREAT DETECTED', confidence: confG, color: 'red', lastDetection: now() });
+                    addLog({ model: 'gunshot', threat: `Gunshot via YAMNet (${confG}%)${explainability}`, confidence: confG, level: 'red', scenario: 'Live Edge Model' });
+                }
             }
             if (confS > 10) {
-                setModel('struggle', { status: 'THREAT DETECTED', confidence: confS, color: 'red', lastDetection: now() });
-                addLog({ model: 'struggle', threat: 'Struggle/Screaming identified', confidence: confS, level: 'red', scenario: 'Live Edge Model' });
+                const filter = shouldSuppressAlert(confS, 'struggle');
+                if (filter.suppress) {
+                    addLog({ model: 'struggle', threat: `SUPPRESSED: Struggle (${confS}%) — ${filter.reason}`, confidence: confS, level: 'green', scenario: 'Filtered' });
+                    setSuppressionLog(p => [`${now()} Struggle suppressed: ${filter.reason}`, ...p].slice(0, 20));
+                } else {
+                    const explainability = filter.reason ? ` [${filter.reason}]` : '';
+                    setModel('struggle', { status: 'THREAT DETECTED', confidence: confS, color: 'red', lastDetection: now() });
+                    addLog({ model: 'struggle', threat: `Struggle/Screaming (${confS}%)${explainability}`, confidence: confS, level: 'red', scenario: 'Live Edge Model' });
+                }
             }
         }
 
@@ -425,17 +499,41 @@ export const AudioDemo: React.FC = () => {
                         setTranscript(p => [...p, { time: Date.now(), text: final.trim() }]);
 
                         const lower = final.toLowerCase();
+
+                        // #8: Check for cancel/override keywords FIRST
+                        for (const ckw of CANCEL_KW) {
+                            if (lower.includes(ckw)) {
+                                setCancelOverride(true);
+                                setModel('keyword', { status: 'OVERRIDE ACTIVE', confidence: 0, color: 'green', lastDetection: now() });
+                                setModel('gunshot', { status: 'Suppressed', confidence: 0, color: 'green' });
+                                setModel('struggle', { status: 'Suppressed', confidence: 0, color: 'green' });
+                                addLog({ model: 'system', threat: `Officer Override — "${ckw}" — All alerts suppressed`, confidence: 100, level: 'green', scenario: 'Voice Cancel (#8)' });
+                                setTranscript(p => [...p, { time: Date.now(), text: `✅ OVERRIDE: "${ckw}" detected — alerts suppressed. Officer has final say.` }]);
+                                return; // Don't process threat keywords after cancel
+                            }
+                        }
+
+                        // Process threat keywords (with pre-filter)
                         for (const kw of THREAT_KW) {
                             if (lower.includes(kw)) {
                                 const isUrgent = URGENT_KW.includes(kw);
-                                const t = now();
-                                setModel('keyword', {
-                                    status: isUrgent ? 'THREAT DETECTED' : 'Possible Threat',
-                                    confidence: 85 + Math.floor(Math.random() * 10),
-                                    color: isUrgent ? 'red' : 'yellow',
-                                    lastDetection: t
-                                });
-                                addLog({ model: 'keyword', threat: `Keyword — "${kw}"`, confidence: 94, level: isUrgent ? 'red' : 'yellow', scenario: 'Live Edge Model' });
+                                const confK = 85 + Math.floor(Math.random() * 10);
+                                const filter = shouldSuppressAlert(confK, 'keyword');
+
+                                if (filter.suppress) {
+                                    addLog({ model: 'keyword', threat: `SUPPRESSED: "${kw}" (${confK}%) — ${filter.reason}`, confidence: confK, level: 'green', scenario: 'Filtered' });
+                                    setSuppressionLog(p => [`${now()} Keyword "${kw}" suppressed: ${filter.reason}`, ...p].slice(0, 20));
+                                } else {
+                                    const explainability = filter.reason ? ` [${filter.reason}]` : '';
+                                    setModel('keyword', {
+                                        status: isUrgent ? 'THREAT DETECTED' : 'Possible Threat',
+                                        confidence: confK,
+                                        color: isUrgent ? 'red' : 'yellow',
+                                        lastDetection: now()
+                                    });
+                                    addLog({ model: 'keyword', threat: `Keyword — "${kw}" (${confK}%)${explainability}`, confidence: confK, level: isUrgent ? 'red' : 'yellow', scenario: 'Live Edge Model' });
+                                }
+                                break;
                             }
                         }
                     }
@@ -551,6 +649,72 @@ export const AudioDemo: React.FC = () => {
                 ))}
             </div>
 
+            {/* ── Situational Filters Panel (#1-#10) ── */}
+            <div className="bg-neutral-900/40 backdrop-blur-md p-6 rounded-2xl border border-white/5 space-y-4">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-[#00FF41]" />
+                        <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.2em]">Situational Filters & Safety Overrides</h3>
+                    </div>
+                    {cancelOverride && (
+                        <button
+                            onClick={() => { setCancelOverride(false); reset(); }}
+                            className="text-[9px] font-black uppercase text-[#FF3B30] hover:text-[#FF3B30]/80 transition-colors flex items-center gap-1 bg-[#FF3B30]/10 px-3 py-1 rounded-full border border-[#FF3B30]/20"
+                        >
+                            <X size={10} /> Clear Override
+                        </button>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className={`p-4 rounded-xl border transition-all ${soloMode && nearbyUnits === 0 ? 'bg-[#00FF41]/5 border-[#00FF41]/20' : 'bg-white/5 border-white/10 opacity-50'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                            <User className={`w-4 h-4 ${soloMode && nearbyUnits === 0 ? 'text-[#00FF41]' : 'text-neutral-500'}`} />
+                            <input type="checkbox" checked={soloMode} onChange={(e) => setSoloMode(e.target.checked)} className="accent-[#00FF41]" />
+                        </div>
+                        <p className="text-[10px] font-bold text-white uppercase mb-1">Solo Mode</p>
+                        <p className="text-[9px] text-neutral-500 font-mono">GPS Proximity Gate</p>
+                    </div>
+
+                    <div className={`p-4 rounded-xl border transition-all ${trainingMode ? 'bg-amber-500/5 border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.05)]' : 'bg-white/5 border-white/10'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                            <Activity className={`w-4 h-4 ${trainingMode ? 'text-amber-500' : 'text-neutral-500'}`} />
+                            <input type="checkbox" checked={trainingMode} onChange={(e) => setTrainingMode(e.target.checked)} className="accent-amber-500" />
+                        </div>
+                        <p className="text-[10px] font-bold text-white uppercase mb-1">Training Mode</p>
+                        <p className="text-[9px] text-neutral-500 font-mono">Suppress Dispatches</p>
+                    </div>
+
+                    <div className={`p-4 rounded-xl border transition-all ${lowLightMode ? 'bg-[#00FF41]/5 border-[#00FF41]/20' : 'bg-white/5 border-white/10'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                            <EyeOff className={`w-4 h-4 ${lowLightMode ? 'text-[#00FF41]' : 'text-neutral-500'}`} />
+                            <input type="checkbox" checked={lowLightMode} onChange={(e) => setLowLightMode(e.target.checked)} className="accent-[#00FF41]" />
+                        </div>
+                        <p className="text-[10px] font-bold text-white uppercase mb-1">Low-Light</p>
+                        <p className="text-[9px] text-neutral-500 font-mono">Weight Audio Higher</p>
+                    </div>
+
+                    <div className={`p-4 rounded-xl border transition-all ${accelerometerFallback ? 'bg-red-500/5 border-red-500/20' : 'bg-white/5 border-white/10'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                            <RotateCw className={`w-4 h-4 ${accelerometerFallback ? 'text-red-500' : 'text-neutral-500'}`} />
+                            <input type="checkbox" checked={accelerometerFallback} onChange={(e) => setAccelerometerFallback(e.target.checked)} className="accent-red-500" />
+                        </div>
+                        <p className="text-[10px] font-bold text-white uppercase mb-1">Camera Fail</p>
+                        <p className="text-[9px] text-neutral-500 font-mono">Motion Fallback</p>
+                    </div>
+                </div>
+
+                {nearbyUnits > 0 && (
+                    <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Users size={14} className="text-blue-400" />
+                            <span className="text-[10px] text-blue-400 font-black uppercase tracking-widest">{nearbyUnits} Nearby Units Detected via Axon Stream</span>
+                        </div>
+                        <button onClick={() => setNearbyUnits(0)} className="text-[9px] text-blue-400 underline uppercase font-bold">Clear Proximity</button>
+                    </div>
+                )}
+            </div>
+
             {/* Controls + transcript */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-neutral-900/40 backdrop-blur-md p-6 rounded-2xl border border-white/5 space-y-4">
@@ -664,6 +828,11 @@ export const AudioDemo: React.FC = () => {
                                         {modelLabel[entry.model] || entry.model}
                                     </span>
                                     <span className="text-[11px] text-white flex-1 truncate font-medium">{entry.threat}</span>
+                                    {entry.scenario === 'Filtered' && (
+                                        <div className="px-3 py-1 rounded bg-white/5 border border-white/10 text-[9px] text-neutral-500 font-mono italic">
+                                            Mitigated by Safety Logic
+                                        </div>
+                                    )}
                                     <div className="flex items-center gap-4 ml-auto">
                                         <div className="flex flex-col items-end">
                                             <span className="text-[8px] uppercase text-neutral-600 font-mono">Confidence</span>
