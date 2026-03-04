@@ -24,7 +24,14 @@ import {
     EyeOff,
     RotateCw,
     Users,
-    Activity
+    Activity,
+    Home,
+    Brain,
+    Siren,
+    Moon,
+    CloudRain,
+    Footprints,
+    Lock
 } from 'lucide-react';
 
 // ── TF.js YAMNet Config ──
@@ -57,11 +64,16 @@ const WARNING_KW = [
 ];
 const THREAT_KW = [...URGENT_KW, ...WARNING_KW];
 
-// ── Cancel / Override Keywords (Edge Case #8) ──
+// ── Cancel / Override Keywords (Edge Case #8, #18) ──
 const CANCEL_KW = [
     'code 4', 'code four', 'cancel backup', 'no backup needed', 'all clear',
     'disregard', 'stand down', 'false alarm', 'we\'re good', 'no threat',
-    'i\'m fine', 'scene secure', 'resume patrol'
+    'i\'m fine', 'scene secure', 'resume patrol', 'suspect in custody', 'handcuffs on'
+];
+
+// ── Context / Priming Keywords (Edge Case #13, #16) ──
+const CONTEXT_KW = [
+    'traffic stop', 'subject stop', 'suspicious vehicle', 'in foot pursuit'
 ];
 
 // ── Model Card ──
@@ -175,6 +187,16 @@ export const AudioDemo: React.FC = () => {
     const [nearbyUnits, setNearbyUnits] = useState(0);          // #1: Simulated proximity count
     const [suppressionLog, setSuppressionLog] = useState<string[]>([]); // Audit trail of suppressed alerts
 
+    // ── Advanced CAD & Context State (Cases 11-20) ──
+    const [cadDomestic, setCadDomestic] = useState(false);      // #11: Domestic/Disturbance
+    const [cadEDP, setCadEDP] = useState(false);                // #12: Mental Health/EDP
+    const [cadHighRisk, setCadHighRisk] = useState(false);      // #20: Swatting/Prank
+    const [lateShift, setLateShift] = useState(false);          // #19: Fatigue
+    const [weatherNoise, setWeatherNoise] = useState(false);    // #17: Environment mimicking distress
+    const [pursuitMode, setPursuitMode] = useState(false);      // #13: Foot pursuits
+    const [custodyMode, setCustodyMode] = useState(false);      // #18: Post-restraint
+    const [primedContext, setPrimedContext] = useState<string | null>(null); // #14, #15, #16: Officer initiated contacts
+
     const fileRef = useRef<HTMLInputElement>(null);
     const timers = useRef<any[]>([]);
     const recRef = useRef<any>(null);
@@ -188,8 +210,9 @@ export const AudioDemo: React.FC = () => {
 
     // ── Pre-Filter: Edge Case Mitigation Engine ──
     const shouldSuppressAlert = useCallback((confidence: number, model: string): { suppress: boolean; reason: string } => {
-        // #8: Officer verbal cancel overrides everything
+        // #8, #18: Officer verbal cancel or custody mode overrides everything
         if (cancelOverride) return { suppress: true, reason: 'Officer verbal override active (Code 4)' };
+        if (custodyMode) return { suppress: true, reason: 'Post-restraint custody mode active — Use-of-force sounds suppressed' };
 
         // #3: Training mode suppresses all alerts
         if (trainingMode) return { suppress: true, reason: 'Training Mode active — alert logged but not dispatched' };
@@ -197,9 +220,28 @@ export const AudioDemo: React.FC = () => {
         // #1/#2: Non-solo suppression
         if (!soloMode || nearbyUnits > 0) return { suppress: true, reason: `Solo Mode OFF — ${nearbyUnits} unit(s) in proximity` };
 
+        // #13: Foot pursuit suppresses heavy breathing / struggle sounds
+        if (pursuitMode && model === 'struggle') return { suppress: true, reason: 'Foot Pursuit Active — Motion/Audio baseline suppressed' };
+
+        // #17: Environmental noise mimicking distress
+        if (weatherNoise && model !== 'keyword' && confidence < 95) {
+            return { suppress: true, reason: 'Environmental/Weather Disturbance Flag Active — Low confidence audio suppressed' };
+        }
+
+        // #11, #12: Domestic/EDP require higher certainty to prevent false positives from yelling
+        if ((cadDomestic || cadEDP) && model === 'struggle' && confidence < 98) {
+            return { suppress: false, reason: `CAD Profile (Domestic/EDP) Active — Multi-modal confirmation required (Conf ${confidence}% < 98%)` };
+        }
+
+        // #20: Swatting / High-risk profiling boosts sensitivity
+        if (cadHighRisk && confidence >= 85) {
+            return { suppress: false, reason: `CAD High-Risk/Swat Profile — Sensitivity Boosted (Auto-Dispatch at 85% instead of 95%)` };
+        }
+
         // #5/#10: Confidence gating — require >95% for auto-dispatch, otherwise silent supervisor flag
         if (confidence < 95 && model !== 'keyword') {
-            return { suppress: false, reason: `Confidence ${confidence}% < 95% threshold — flagged for supervisor review only` };
+            const fatigueNote = lateShift ? ' (Late Shift Active — Lowering supervisor threshold)' : '';
+            return { suppress: false, reason: `Confidence ${confidence}% < 95% threshold — flagged for supervisor review only${fatigueNote}` };
         }
 
         // #7: Ambient noise spike detection
@@ -207,8 +249,9 @@ export const AudioDemo: React.FC = () => {
             return { suppress: false, reason: `High ambient noise floor (${Math.round(ambientBaseline * 100)}%) — audio weight reduced` };
         }
 
-        return { suppress: false, reason: '' };
-    }, [cancelOverride, trainingMode, soloMode, nearbyUnits, ambientBaseline]);
+        const primingNote = primedContext ? ` [Context Primed: ${primedContext}]` : '';
+        return { suppress: false, reason: primingNote };
+    }, [cancelOverride, trainingMode, soloMode, nearbyUnits, ambientBaseline, custodyMode, pursuitMode, weatherNoise, cadDomestic, cadEDP, cadHighRisk, lateShift, primedContext]);
 
     // ── Ambient Noise Baseline Tracker (#7) ──
     const updateAmbientBaseline = useCallback((maxVal: number) => {
@@ -500,6 +543,19 @@ export const AudioDemo: React.FC = () => {
 
                         const lower = final.toLowerCase();
 
+                        // #16: Context Priming
+                        for (const ctx of CONTEXT_KW) {
+                            if (lower.includes(ctx)) {
+                                if (ctx === 'in foot pursuit') {
+                                    setPursuitMode(true);
+                                    setTranscript(p => [...p, { time: Date.now(), text: `🏃 CONTEXT UPDATE: Foot Pursuit Mode Activated.` }]);
+                                } else {
+                                    setPrimedContext(ctx);
+                                    setTranscript(p => [...p, { time: Date.now(), text: `📋 CONTEXT UPDATE: Officer initiated contact (${ctx}). AI baseline adjusted.` }]);
+                                }
+                            }
+                        }
+
                         // #8: Check for cancel/override keywords FIRST
                         for (const ckw of CANCEL_KW) {
                             if (lower.includes(ckw)) {
@@ -579,15 +635,52 @@ export const AudioDemo: React.FC = () => {
 
                 const lowerLine = line.toLowerCase();
 
-                for (const kw of THREAT_KW) {
-                    if (lowerLine.includes(kw)) {
-                        const isUrgent = URGENT_KW.includes(kw);
-                        const confK = 85 + Math.floor(Math.random() * 10);
-                        const level = isUrgent ? 'red' : 'yellow' as const;
-                        const t = Date.now();
-                        setModel('keyword', { status: isUrgent ? 'THREAT DETECTED' : 'Possible Threat', confidence: confK, color: level, lastDetection: now() });
-                        addLog({ model: 'keyword', threat: `Keyword — "${kw}"`, confidence: confK, level: level, scenario: 'Text Analysis' });
+                // #16: Context Priming
+                for (const ctx of CONTEXT_KW) {
+                    if (lowerLine.includes(ctx)) {
+                        if (ctx === 'in foot pursuit') {
+                            setPursuitMode(true);
+                            setTranscript(p => [...p, { time: Date.now(), text: `🏃 CONTEXT UPDATE: Foot Pursuit Mode Activated.` }]);
+                        } else {
+                            setPrimedContext(ctx);
+                            setTranscript(p => [...p, { time: Date.now(), text: `📋 CONTEXT UPDATE: Officer initiated contact (${ctx}). AI baseline adjusted.` }]);
+                        }
+                    }
+                }
+
+                // #8, #18: Check for cancel/override keywords FIRST
+                let canceled = false;
+                for (const ckw of CANCEL_KW) {
+                    if (lowerLine.includes(ckw)) {
+                        if (ckw === 'suspect in custody' || ckw === 'handcuffs on') {
+                            setCustodyMode(true);
+                            setModel('struggle', { status: 'Suppressed', confidence: 0, color: 'gray', lastDetection: now() });
+                            addLog({ model: 'system', threat: `Custody Mode Active — Use-of-force sounds suppressed`, confidence: 100, level: 'green', scenario: 'Post-Restraint' });
+                            setTranscript(p => [...p, { time: Date.now(), text: `🔒 CONTEXT UPDATE: Subject in custody. Audio baseline restricted.` }]);
+                        } else {
+                            setCancelOverride(true);
+                            setModel('keyword', { status: 'OVERRIDE ACTIVE', confidence: 0, color: 'green', lastDetection: now() });
+                            setModel('gunshot', { status: 'Suppressed', confidence: 0, color: 'green', lastDetection: now() });
+                            setModel('struggle', { status: 'Suppressed', confidence: 0, color: 'green', lastDetection: now() });
+                            addLog({ model: 'system', threat: `Officer Override — "${ckw}" — All alerts suppressed`, confidence: 100, level: 'green', scenario: 'Voice Cancel (#8)' });
+                            setTranscript(p => [...p, { time: Date.now(), text: `✅ OVERRIDE: "${ckw}" detected — alerts suppressed. Officer has final say.` }]);
+                        }
+                        canceled = true;
                         break;
+                    }
+                }
+
+                if (!canceled) {
+                    for (const kw of THREAT_KW) {
+                        if (lowerLine.includes(kw)) {
+                            const isUrgent = URGENT_KW.includes(kw);
+                            const confK = 85 + Math.floor(Math.random() * 10);
+                            const level = isUrgent ? 'red' : 'yellow' as const;
+                            const t = Date.now();
+                            setModel('keyword', { status: isUrgent ? 'THREAT DETECTED' : 'Possible Threat', confidence: confK, color: level, lastDetection: now() });
+                            addLog({ model: 'keyword', threat: `Keyword — "${kw}"`, confidence: confK, level: level, scenario: 'Text Analysis' });
+                            break;
+                        }
                     }
                 }
 
@@ -713,6 +806,76 @@ export const AudioDemo: React.FC = () => {
                         <button onClick={() => setNearbyUnits(0)} className="text-[9px] text-blue-400 underline uppercase font-bold">Clear Proximity</button>
                     </div>
                 )}
+            </div>
+
+            {/* ── Advanced CAD & Context Integrations (#11-20) ── */}
+            <div className="bg-neutral-900/40 backdrop-blur-md p-6 rounded-2xl border border-white/5 space-y-4">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <Radio className="w-4 h-4 text-blue-400" />
+                        <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.2em]">Advanced CAD & Context Links</h3>
+                    </div>
+                    {primedContext && (
+                        <button
+                            onClick={() => setPrimedContext(null)}
+                            className="text-[9px] font-black uppercase text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20"
+                        >
+                            <X size={10} /> Clear Context: {primedContext}
+                        </button>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                    <div className={`p-3 rounded-xl border transition-all ${cadDomestic ? 'bg-purple-500/5 border-purple-500/20' : 'bg-white/5 border-white/10'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                            <Home className={`w-3.5 h-3.5 ${cadDomestic ? 'text-purple-400' : 'text-neutral-500'}`} />
+                            <input type="checkbox" checked={cadDomestic} onChange={(e) => setCadDomestic(e.target.checked)} className="accent-purple-500" />
+                        </div>
+                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">Domestic</p>
+                    </div>
+                    <div className={`p-3 rounded-xl border transition-all ${cadEDP ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-white/5 border-white/10'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                            <Brain className={`w-3.5 h-3.5 ${cadEDP ? 'text-indigo-400' : 'text-neutral-500'}`} />
+                            <input type="checkbox" checked={cadEDP} onChange={(e) => setCadEDP(e.target.checked)} className="accent-indigo-500" />
+                        </div>
+                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">EDP/Mental</p>
+                    </div>
+                    <div className={`p-3 rounded-xl border transition-all ${cadHighRisk ? 'bg-red-500/5 border-red-500/20' : 'bg-white/5 border-white/10'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                            <Siren className={`w-3.5 h-3.5 ${cadHighRisk ? 'text-red-500' : 'text-neutral-500'}`} />
+                            <input type="checkbox" checked={cadHighRisk} onChange={(e) => setCadHighRisk(e.target.checked)} className="accent-red-500" />
+                        </div>
+                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">High Risk</p>
+                    </div>
+                    <div className={`p-3 rounded-xl border transition-all ${lateShift ? 'bg-blue-400/5 border-blue-400/20' : 'bg-white/5 border-white/10'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                            <Moon className={`w-3.5 h-3.5 ${lateShift ? 'text-blue-400' : 'text-neutral-500'}`} />
+                            <input type="checkbox" checked={lateShift} onChange={(e) => setLateShift(e.target.checked)} className="accent-blue-400" />
+                        </div>
+                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">Late Shift</p>
+                    </div>
+                    <div className={`p-3 rounded-xl border transition-all ${weatherNoise ? 'bg-cyan-500/5 border-cyan-500/20' : 'bg-white/5 border-white/10'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                            <CloudRain className={`w-3.5 h-3.5 ${weatherNoise ? 'text-cyan-400' : 'text-neutral-500'}`} />
+                            <input type="checkbox" checked={weatherNoise} onChange={(e) => setWeatherNoise(e.target.checked)} className="accent-cyan-500" />
+                        </div>
+                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">Weather</p>
+                    </div>
+                    <div className={`p-3 rounded-xl border transition-all ${pursuitMode ? 'bg-orange-500/5 border-orange-500/20' : 'bg-white/5 border-white/10'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                            <Footprints className={`w-3.5 h-3.5 ${pursuitMode ? 'text-orange-400' : 'text-neutral-500'}`} />
+                            <input type="checkbox" checked={pursuitMode} onChange={(e) => setPursuitMode(e.target.checked)} className="accent-orange-500" />
+                        </div>
+                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">Pursuit</p>
+                    </div>
+                    <div className={`p-3 rounded-xl border transition-all ${custodyMode ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-white/5 border-white/10'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                            <Lock className={`w-3.5 h-3.5 ${custodyMode ? 'text-emerald-400' : 'text-neutral-500'}`} />
+                            <input type="checkbox" checked={custodyMode} onChange={(e) => setCustodyMode(e.target.checked)} className="accent-emerald-500" />
+                        </div>
+                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">Custody</p>
+                    </div>
+                </div>
             </div>
 
             {/* Controls + transcript */}
