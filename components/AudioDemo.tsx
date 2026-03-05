@@ -31,8 +31,7 @@ import {
     Moon,
     CloudRain,
     Footprints,
-    Lock,
-    BrainCircuit
+    Lock
 } from 'lucide-react';
 
 // ── TF.js YAMNet Config ──
@@ -76,33 +75,6 @@ const CANCEL_KW = [
 const CONTEXT_KW = [
     'traffic stop', 'subject stop', 'suspicious vehicle', 'in foot pursuit'
 ];
-
-// ── Simulated LLM Intent Analysis ──
-const simulateLLMIntent = (text: string) => {
-    const lower = text.toLowerCase();
-
-    // Explicit false positive contexts
-    const falsePositives = [
-        "don't have a gun", "not a gun", "staple gun", "nail gun", "squirt gun", "water gun", "fake gun",
-        "put the knife away", "don't have a knife", "butter knife", "pocket knife",
-        "just a", "talking about", "movie", "video game", "toy"
-    ];
-
-    // Explicit true positive contexts (officer commands or direct threats)
-    const truePositives = [
-        "drop the", "put it down", "he's got a", "has a gun", "has a knife",
-        "stop resisting", "show me your hands", "shots fired", "officer down"
-    ];
-
-    const hasFalsePositive = falsePositives.some(fp => lower.includes(fp));
-    const hasTruePositive = truePositives.some(tp => lower.includes(tp));
-
-    if (hasTruePositive) return { isThreat: true, intent: 'Aggressive/Command' };
-    if (hasFalsePositive) return { isThreat: false, intent: 'Benign Context' };
-
-    // Default fallback to standard keyword matching behavior if no strong context is found
-    return { isThreat: true, intent: 'Ambiguous Threat' };
-};
 
 // ── Model Card ──
 interface ModelCardProps {
@@ -224,7 +196,6 @@ export const AudioDemo: React.FC = () => {
     const [pursuitMode, setPursuitMode] = useState(false);      // #13: Foot pursuits
     const [custodyMode, setCustodyMode] = useState(false);      // #18: Post-restraint
     const [primedContext, setPrimedContext] = useState<string | null>(null); // #14, #15, #16: Officer initiated contacts
-    const [llmGuard, setLlmGuard] = useState(true);             // Simulated LLM Intent Pipeline
 
     const fileRef = useRef<HTMLInputElement>(null);
     const timers = useRef<any[]>([]);
@@ -238,18 +209,10 @@ export const AudioDemo: React.FC = () => {
     const rafRef = useRef<any>(null);
 
     // ── Pre-Filter: Edge Case Mitigation Engine ──
-    const shouldSuppressAlert = useCallback((confidence: number, model: string, text?: string): { suppress: boolean; reason: string } => {
+    const shouldSuppressAlert = useCallback((confidence: number, model: string): { suppress: boolean; reason: string } => {
         // #8, #18: Officer verbal cancel or custody mode overrides everything
         if (cancelOverride) return { suppress: true, reason: 'Officer verbal override active (Code 4)' };
         if (custodyMode) return { suppress: true, reason: 'Post-restraint custody mode active — Use-of-force sounds suppressed' };
-
-        // LLM Semantic Guard for keywords
-        if (model === 'keyword' && text && llmGuard) {
-            const llm = simulateLLMIntent(text);
-            if (!llm.isThreat) {
-                return { suppress: true, reason: `LLM Semantic Guard parsed intent as benign (${llm.intent})` };
-            }
-        }
 
         // #3: Training mode suppresses all alerts
         if (trainingMode) return { suppress: true, reason: 'Training Mode active — alert logged but not dispatched' };
@@ -611,13 +574,13 @@ export const AudioDemo: React.FC = () => {
                             if (lower.includes(kw)) {
                                 const isUrgent = URGENT_KW.includes(kw);
                                 const confK = 85 + Math.floor(Math.random() * 10);
-                                const filter = shouldSuppressAlert(confK, 'keyword', lower);
+                                const filter = shouldSuppressAlert(confK, 'keyword');
 
                                 if (filter.suppress) {
                                     addLog({ model: 'keyword', threat: `SUPPRESSED: "${kw}" (${confK}%) — ${filter.reason}`, confidence: confK, level: 'green', scenario: 'Filtered' });
                                     setSuppressionLog(p => [`${now()} Keyword "${kw}" suppressed: ${filter.reason}`, ...p].slice(0, 20));
                                 } else {
-                                    const explainability = filter.reason ? ` [${filter.reason}]` : (llmGuard ? ' [LLM Confirmed Threat Intent]' : '');
+                                    const explainability = filter.reason ? ` [${filter.reason}]` : '';
                                     setModel('keyword', {
                                         status: isUrgent ? 'THREAT DETECTED' : 'Possible Threat',
                                         confidence: confK,
@@ -712,17 +675,10 @@ export const AudioDemo: React.FC = () => {
                         if (lowerLine.includes(kw)) {
                             const isUrgent = URGENT_KW.includes(kw);
                             const confK = 85 + Math.floor(Math.random() * 10);
-                            const filter = shouldSuppressAlert(confK, 'keyword', lowerLine);
-
-                            if (filter.suppress) {
-                                addLog({ model: 'keyword', threat: `SUPPRESSED: "${kw}" (${confK}%) — ${filter.reason}`, confidence: confK, level: 'green', scenario: 'Filtered' });
-                                setSuppressionLog(p => [`${now()} Keyword "${kw}" suppressed: ${filter.reason}`, ...p].slice(0, 20));
-                            } else {
-                                const explainability = filter.reason ? ` [${filter.reason}]` : (llmGuard ? ' [LLM Confirmed Threat Intent]' : '');
-                                const level = isUrgent ? 'red' : 'yellow' as const;
-                                setModel('keyword', { status: isUrgent ? 'THREAT DETECTED' : 'Possible Threat', confidence: confK, color: level, lastDetection: now() });
-                                addLog({ model: 'keyword', threat: `Keyword — "${kw}"${explainability}`, confidence: confK, level: level, scenario: 'Text Analysis' });
-                            }
+                            const level = isUrgent ? 'red' : 'yellow' as const;
+                            const t = Date.now();
+                            setModel('keyword', { status: isUrgent ? 'THREAT DETECTED' : 'Possible Threat', confidence: confK, color: level, lastDetection: now() });
+                            addLog({ model: 'keyword', threat: `Keyword — "${kw}"`, confidence: confK, level: level, scenario: 'Text Analysis' });
                             break;
                         }
                     }
@@ -869,14 +825,7 @@ export const AudioDemo: React.FC = () => {
                     )}
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-                    <div className={`p-3 rounded-xl border transition-all ${llmGuard ? 'bg-pink-500/5 border-pink-500/20 shadow-[0_0_15px_rgba(236,72,153,0.05)]' : 'bg-white/5 border-white/10'}`}>
-                        <div className="flex items-center justify-between mb-2">
-                            <BrainCircuit className={`w-3.5 h-3.5 ${llmGuard ? 'text-pink-400' : 'text-neutral-500'}`} />
-                            <input type="checkbox" checked={llmGuard} onChange={(e) => setLlmGuard(e.target.checked)} className="accent-pink-500" />
-                        </div>
-                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">LLM Guard</p>
-                    </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
                     <div className={`p-3 rounded-xl border transition-all ${cadDomestic ? 'bg-purple-500/5 border-purple-500/20' : 'bg-white/5 border-white/10'}`}>
                         <div className="flex items-center justify-between mb-2">
                             <Home className={`w-3.5 h-3.5 ${cadDomestic ? 'text-purple-400' : 'text-neutral-500'}`} />
