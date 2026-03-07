@@ -63,13 +63,14 @@ const LegalLink: React.FC<{ href?: string; onClick?: () => void; children: React
 
 export const Footer: React.FC<{
   onOpenWaitlist: () => void;
+  onOpenMission: () => void;
   onOpenCareers: () => void;
   onOpenFAQ: () => void;
   onOpenWhitepaper: () => void;
   onOpenContact: () => void;
   onOpenPrivacy: () => void;
   onOpenTerms: () => void;
-}> = ({ onOpenWaitlist, onOpenCareers, onOpenFAQ, onOpenWhitepaper, onOpenContact, onOpenPrivacy, onOpenTerms }) => {
+}> = ({ onOpenWaitlist, onOpenMission, onOpenCareers, onOpenFAQ, onOpenWhitepaper, onOpenContact, onOpenPrivacy, onOpenTerms }) => {
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -121,7 +122,7 @@ export const Footer: React.FC<{
           <div className="space-y-4">
             <h4 className="font-mono text-xs uppercase text-neutral-400 tracking-widest border-l border-[#00FF41]/40 pl-3">Company</h4>
             <ul className="flex flex-col space-y-1 text-sm font-medium">
-              <FooterLink onClick={() => scrollToSection('mission')}>Our Mission</FooterLink>
+              <FooterLink onClick={onOpenMission}>Our Mission</FooterLink>
               <FooterLink onClick={onOpenCareers}>Careers</FooterLink>
               <FooterLink onClick={onOpenContact}>Contact</FooterLink>
             </ul>

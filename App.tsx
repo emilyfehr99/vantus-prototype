@@ -373,6 +373,7 @@ const App: React.FC = () => {
             {isLoggedIn && <div id="dashboard"><Dashboard /></div>}
             <Footer
               onOpenWaitlist={() => setModalType('waitlist')}
+              onOpenMission={() => setModalType('mission')}
               onOpenCareers={() => setModalType('careers')}
               onOpenFAQ={() => setModalType('faq')}
               onOpenWhitepaper={() => setModalType('whitepaper')}
@@ -392,7 +393,8 @@ const App: React.FC = () => {
             <AudioDemo />
             <div className="mt-20">
               <Footer
-                onOpenWaitlist={() => { }}
+                onOpenWaitlist={() => setModalType('waitlist')}
+                onOpenMission={() => setModalType('mission')}
                 onOpenCareers={() => setModalType('careers')}
                 onOpenFAQ={() => setModalType('faq')}
                 onOpenWhitepaper={() => setModalType('whitepaper')}
@@ -416,6 +418,7 @@ const App: React.FC = () => {
       <TacticalOverlay isOpen={modalType === 'contact'} onClose={() => setModalType(null)} title="Contact Us" type="contact" />
       <TacticalOverlay isOpen={modalType === 'privacy'} onClose={() => setModalType(null)} title="Privacy Policy" type="privacy" />
       <TacticalOverlay isOpen={modalType === 'terms'} onClose={() => setModalType(null)} title="Terms of Use" type="terms" />
+      <TacticalOverlay isOpen={modalType === 'mission'} onClose={() => setModalType(null)} title="Our Mission" type="mission" />
 
     </main >
   );
