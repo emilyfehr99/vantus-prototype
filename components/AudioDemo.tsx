@@ -31,9 +31,10 @@ import {
     Moon,
     CloudRain,
     Footprints,
-    Lock
+    Lock,
+    ShieldAlert
 } from 'lucide-react';
-
+import { motion, AnimatePresence } from 'framer-motion';
 // ── TF.js YAMNet Config ──
 const YAMNET_MODEL_URL = 'https://tfhub.dev/google/tfjs-model/yamnet/tfjs/1';
 const SAMPLE_RATE = 16000;
@@ -159,6 +160,14 @@ interface TranscriptLine {
     text: string;
 }
 
+interface TimelineEvent {
+    id: string;
+    timestamp: string;
+    type: 'DETECTION' | 'SIGNAL' | 'DISPATCH' | 'REPORT';
+    label: string;
+    confidence?: number;
+}
+
 // ── Main ──
 export const AudioDemo: React.FC = () => {
     const [tfModel, setTfModel] = useState<any>(null);
@@ -198,6 +207,14 @@ export const AudioDemo: React.FC = () => {
     const [pursuitMode, setPursuitMode] = useState(false);      // #13: Foot pursuits
     const [custodyMode, setCustodyMode] = useState(false);      // #18: Post-restraint
     const [primedContext, setPrimedContext] = useState<string | null>(null); // #14, #15, #16: Officer initiated contacts
+
+    // ── Phase 1: Pipeline State ──
+    const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+    const [isDispatching, setIsDispatching] = useState(false);
+    const [activeSignals, setActiveSignals] = useState<string[]>([]);
+    const [incidentReport, setIncidentReport] = useState<string | null>(null);
+    const [showReport, setShowReport] = useState(false);
+    const [lastDispatchTime, setLastDispatchTime] = useState<number>(0);
 
     const fileRef = useRef<HTMLInputElement>(null);
     const timers = useRef<any[]>([]);
@@ -311,13 +328,50 @@ export const AudioDemo: React.FC = () => {
 
     const setModel = useCallback((m: string, d: any) => setModels(p => ({ ...p, [m]: { ...p[m], ...d } })), []);
 
-    const reset = useCallback(() => setModels({
-        gunshot: { status: 'Standby', confidence: 0, color: 'green', lastDetection: null },
-        keyword: { status: 'Standby', confidence: 0, color: 'green', lastDetection: null },
-        struggle: { status: 'Standby', confidence: 0, color: 'green', lastDetection: null },
-        speaker: { status: 'Calibrating', confidence: 0, color: 'green', lastDetection: null },
-        stress: { status: 'Standby', confidence: 0, color: 'green', lastDetection: null },
-    }), []);
+    // ── Transition & Timeline Logic ──
+    const addToTimeline = useCallback((label: string, type: TimelineEvent['type'], confidence?: number) => {
+        const newEvent: TimelineEvent = {
+            id: Math.random().toString(36).substr(2, 9),
+            timestamp: now(),
+            type,
+            label,
+            confidence
+        };
+        setTimeline(prev => [newEvent, ...prev].slice(0, 50));
+    }, []);
+
+    const triggerDispatch = useCallback((reason: string) => {
+        if (isDispatching || Date.now() - lastDispatchTime < 30000) return; // Prevent spam
+
+        setIsDispatching(true);
+        setLastDispatchTime(Date.now());
+        addToTimeline(`Simulated Dispatch Triggered: ${reason}`, 'DISPATCH');
+
+        // Simulated Radio Call (TTS)
+        if ('speechSynthesis' in window) {
+            const msg = new SpeechSynthesisUtterance();
+            msg.text = `Dispatch to Unit 4, automatic backup initiated. Priority 1 response. Reason: ${reason}`;
+            msg.rate = 0.9;
+            msg.pitch = 1.1;
+            window.speechSynthesis.speak(msg);
+        }
+
+        // Auto-clear notification after 10s
+        setTimeout(() => setIsDispatching(false), 10000);
+    }, [isDispatching, lastDispatchTime, addToTimeline]);
+
+    const reset = useCallback(() => {
+        setModels({
+            gunshot: { status: 'Standby', confidence: 0, color: 'green', lastDetection: null },
+            keyword: { status: 'Standby', confidence: 0, color: 'green', lastDetection: null },
+            struggle: { status: 'Standby', confidence: 0, color: 'green', lastDetection: null },
+            speaker: { status: 'Calibrating', confidence: 0, color: 'green', lastDetection: null },
+            stress: { status: 'Standby', confidence: 0, color: 'green', lastDetection: null },
+        });
+        setTimeline([]);
+        setIsDispatching(false);
+        setActiveSignals([]);
+    }, []);
 
     // ── Signal Processing Helpers ──
     const getSpectralCentroid = (data: Float32Array) => {
@@ -417,6 +471,8 @@ export const AudioDemo: React.FC = () => {
                     const explainability = filter.reason ? ` [${filter.reason}]` : '';
                     setModel('gunshot', { status: 'THREAT DETECTED', confidence: confG, color: 'red', lastDetection: now() });
                     addLog({ model: 'gunshot', threat: `Gunshot via YAMNet (${confG}%)${explainability}`, confidence: confG, level: 'red', scenario: 'Live Edge Model' });
+                    addToTimeline('Gunshot Impulse Detected', 'SIGNAL', confG);
+                    if (confG > 90) triggerDispatch('Acoustic Gunshot Signature');
                 }
             }
             if (confS > 10) {
@@ -428,6 +484,7 @@ export const AudioDemo: React.FC = () => {
                     const explainability = filter.reason ? ` [${filter.reason}]` : '';
                     setModel('struggle', { status: 'THREAT DETECTED', confidence: confS, color: 'red', lastDetection: now() });
                     addLog({ model: 'struggle', threat: `Struggle/Screaming (${confS}%)${explainability}`, confidence: confS, level: 'red', scenario: 'Live Edge Model' });
+                    addToTimeline('Physical Struggle / Screaming Detected', 'SIGNAL', confS);
                 }
             }
 
@@ -459,6 +516,9 @@ export const AudioDemo: React.FC = () => {
                 stressColor = 'red';
                 if (stressConf > 80) {
                     addLog({ model: 'stress', threat: 'Critical Vocal Stress / Adrenaline Spike', confidence: stressConf, level: 'red', scenario: 'Neural Resonance' });
+                    addToTimeline('Vocal Stress Peak: Adrenaline Spike Detected', 'SIGNAL', stressConf);
+                    // Critical stress + Agitated Subject = Trigger
+                    if (isSubject) triggerDispatch('Vocal Stress + Subject Agitation');
                 }
             } else if (stressLevel > 0.8) {
                 stressLabel = 'Agitated';
@@ -764,6 +824,22 @@ export const AudioDemo: React.FC = () => {
                     }
                 }
 
+                // Check for keywords
+                let foundKeyword = false;
+                THREAT_KW.forEach(k => { // Assuming THREAT_KW is the 'keywords' array from the instruction
+                    if (lowerLine.includes(k)) { // Changed textLC to lowerLine
+                        foundKeyword = true;
+                        setModel('keyword', { status: 'TACTICAL MATCH', confidence: 99, color: 'red', lastDetection: now() });
+                        addLog({ model: 'keyword', threat: `Keyword Detected: "${k.toUpperCase()}"`, confidence: 99, level: 'red', scenario: 'Syntactical Match' });
+                        addToTimeline(`Tactical Keyword: "${k}"`, 'SIGNAL', 99);
+
+                        // Keyword + Stress or Keyword + Struggle = Trigger
+                        if (models.stress.status !== 'Calm' || models.struggle.confidence > 50) {
+                            triggerDispatch(`Keyword "${k}" + Physiological Stress`);
+                        }
+                    }
+                });
+
                 if (lowerLine.includes('gunshot') || lowerLine.includes('shots fired')) {
                     setModel('gunshot', { status: 'THREAT DETECTED', confidence: 99, color: 'red', lastDetection: now() });
                     addLog({ model: 'gunshot', threat: 'Gunshot identified via transcript tag', confidence: 99, level: 'red', scenario: 'Text Analysis' });
@@ -1016,33 +1092,170 @@ export const AudioDemo: React.FC = () => {
                 </div>
 
                 {/* Transcript */}
-                <div className="bg-neutral-900/40 backdrop-blur-md p-6 rounded-2xl border border-white/5 flex flex-col">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                            <Radio className="w-4 h-4 text-[#00FF41]" />
-                            <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.2em]">Live Terminal Output</h3>
+                <div className="bg-neutral-900/40 backdrop-blur-md rounded-2xl border border-white/5 flex flex-col overflow-hidden">
+                    <div className="p-6 pb-0">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <Radio className="w-4 h-4 text-[#00FF41]" />
+                                <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.2em]">Live Terminal Output</h3>
+                            </div>
+                            {(isPlaying || isRecording) && (
+                                <span className="flex items-center gap-2 text-[9px] font-black text-red-500 uppercase tracking-widest animate-pulse">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                    Processing
+                                </span>
+                            )}
                         </div>
-                        {(isPlaying || isRecording) && (
-                            <span className="flex items-center gap-2 text-[9px] font-black text-red-500 uppercase tracking-widest animate-pulse">
-                                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                                Processing
-                            </span>
-                        )}
+                        <div className="bg-black/60 rounded-xl p-4 font-mono text-[11px] overflow-y-auto h-[200px] border border-white/5 scrollbar-hide mb-6">
+                            {transcript.length === 0
+                                ? <p className="text-neutral-700 italic">Waiting for signal input...</p>
+                                : transcript.map((l, i) => (
+                                    <p key={i} className={`mb-1.5 leading-relaxed ${l.text.includes('[') || l.text.includes('⚠') || l.text.includes('⏳') ? 'text-amber-500' : l.text.startsWith('🎤') || l.text.startsWith('Processing') || l.text.startsWith('Running') ? 'text-[#00FF41]' : 'text-neutral-400'
+                                        }`}>
+                                        <span className="text-neutral-700 mr-2">[{new Date(l.time || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
+                                        {l.text}
+                                    </p>
+                                ))
+                            }
+                        </div>
                     </div>
-                    <div className="flex-1 bg-black/60 rounded-xl p-4 font-mono text-[11px] overflow-y-auto max-h-[300px] border border-white/5 scrollbar-hide">
-                        {transcript.length === 0
-                            ? <p className="text-neutral-700 italic">Waiting for signal input...</p>
-                            : transcript.map((l, i) => (
-                                <p key={i} className={`mb-1.5 leading-relaxed ${l.text.includes('[') || l.text.includes('⚠') || l.text.includes('⏳') ? 'text-amber-500' : l.text.startsWith('🎤') || l.text.startsWith('Processing') || l.text.startsWith('Running') ? 'text-[#00FF41]' : 'text-neutral-400'
-                                    }`}>
-                                    <span className="text-neutral-700 mr-2">[{new Date(l.time || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
-                                    {l.text}
-                                </p>
-                            ))
-                        }
+
+                    <div className="flex-1 bg-black/40 border-t border-white/5 p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Clock className="w-4 h-4 text-blue-400" />
+                            <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.2em]">Pilot Incident Timeline</h3>
+                        </div>
+                        <div className="space-y-3 max-h-[250px] overflow-y-auto scrollbar-hide pr-2">
+                            {timeline.length === 0 ? (
+                                <p className="text-[10px] text-neutral-600 italic">No timeline events recorded.</p>
+                            ) : (
+                                timeline.map((event) => (
+                                    <div key={event.id} className="flex gap-3 relative pb-3 last:pb-0">
+                                        <div className="flex flex-col items-center">
+                                            <div className={`w-2 h-2 rounded-full mt-1 ${event.type === 'DISPATCH' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' :
+                                                event.type === 'SIGNAL' ? 'bg-[#00FF41]' :
+                                                    'bg-blue-400'
+                                                }`} />
+                                            <div className="w-[1px] flex-1 bg-white/10 mt-1" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex items-center justify-between mb-0.5">
+                                                <span className="text-[9px] font-mono text-neutral-500">[{event.timestamp}]</span>
+                                                {event.confidence && (
+                                                    <span className="text-[8px] font-black text-neutral-600 uppercase">Conf: {event.confidence}%</span>
+                                                )}
+                                            </div>
+                                            <p className={`text-[10px] font-bold uppercase tracking-wide ${event.type === 'DISPATCH' ? 'text-red-400' : 'text-neutral-300'
+                                                }`}>{event.label}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
+
+                {/* Pilot Shift Report Button */}
+                <div className="mt-8 flex justify-center">
+                    <button
+                        onClick={() => {
+                            const summary = `
+INCIDENT REPORT SUMMARY - [${now()}]
+------------------------------------
+Duration: ${transcript.length > 0 ? (transcript.length * 0.25).toFixed(1) : '0'}s
+Signals Detected: ${timeline.filter(e => e.type === 'SIGNAL').length}
+Dispatch Status: ${timeline.some(e => e.type === 'DISPATCH') ? 'SUCCESS (P1 BACKUP SENT)' : 'STANDBY'}
+
+TIMELINE LOG:
+${timeline.map(e => `[${e.timestamp}] ${e.label} (${e.type})`).join('\n')}
+                            `.trim();
+                            setIncidentReport(summary);
+                            setShowReport(true);
+                        }}
+                        className="px-8 py-4 bg-white text-black text-[11px] font-black uppercase tracking-[0.3em] rounded-full hover:scale-105 transition-all shadow-xl flex items-center gap-3"
+                    >
+                        <FileText size={16} />
+                        Generate Pilot Shift Report
+                    </button>
+                </div>
             </div>
+
+            {/* Shift Report Modal */}
+            <AnimatePresence>
+                {showReport && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowReport(false)}
+                            className="absolute inset-0 bg-black/90 backdrop-blur-xl"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-2xl bg-neutral-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+                        >
+                            <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-blue-500/10 rounded-lg">
+                                        <ShieldAlert size={20} className="text-blue-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-black uppercase tracking-widest text-white">Pilot Phase 1 Report</h3>
+                                        <p className="text-[10px] text-neutral-500 font-mono">Axon Evidence.com Export - Forensic Audit v1.0</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowReport(false)} className="p-2 hover:bg-white/5 rounded-full transition-colors">
+                                    <X size={20} className="text-neutral-500" />
+                                </button>
+                            </div>
+                            <div className="p-8 font-mono text-[11px] text-neutral-300 whitespace-pre-wrap leading-relaxed max-h-[60vh] overflow-y-auto bg-black/40">
+                                {incidentReport}
+                            </div>
+                            <div className="p-6 bg-white/[0.02] border-t border-white/5 flex gap-3">
+                                <button className="flex-1 py-4 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-xl hover:opacity-90 transition-all">
+                                    Push to Evidence.com Vault
+                                </button>
+                                <button
+                                    onClick={() => window.print()}
+                                    className="px-6 py-4 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-white/5 transition-all"
+                                >
+                                    Print PDF
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Dispatch Overlay */}
+            <AnimatePresence>
+                {isDispatching && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                        className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md"
+                    >
+                        <div className="bg-red-500 text-white p-6 rounded-2xl shadow-[0_0_50px_rgba(239,68,68,0.3)] border border-red-400 flex items-center gap-6">
+                            <div className="relative">
+                                <ShieldAlert size={40} className="text-white animate-pulse" />
+                                <div className="absolute inset-0 bg-white/20 rounded-full animate-ping" />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="text-sm font-black uppercase tracking-tighter leading-tight italic">Backup Dispatched</h4>
+                                <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-1">Automatic Priority 1 Stream Initiated</p>
+                                <div className="flex items-center gap-2 mt-3 p-2 bg-black/20 rounded-lg border border-white/10">
+                                    <Volume2 size={12} className="animate-bounce" />
+                                    <span className="text-[9px] font-mono uppercase">Radio Call: Active</span>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
 
             {/* Log */}
