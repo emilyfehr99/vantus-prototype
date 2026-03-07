@@ -34,10 +34,10 @@ export const Physics: React.FC = () => {
             <img
               src={bodycamImage}
               alt="Officer bodycam footage"
-              className="w-full h-full object-cover scale-[0.6] opacity-40 grayscale sepia-[.1]"
+              className="w-full h-full object-cover scale-[0.6] opacity-80 brightness-[1.2] grayscale sepia-[.1]"
             />
             {/* Added a subtle gradient to ensure text readability */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/50 to-transparent" />
           </div>
           {/* Kinetic Blueprint Schematic */}
           <MotionDiv
