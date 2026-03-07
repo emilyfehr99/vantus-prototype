@@ -54,13 +54,13 @@ export const Mission: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="relative pt-16 pb-16 px-8 mt-16 group overflow-hidden border border-neutral-900 rounded-sm bg-[#050505] shadow-[0_0_80px_rgba(0,0,0,1)]">
+                    <div className="relative pt-32 pb-32 px-8 mt-16 group overflow-hidden border border-neutral-900 rounded-sm bg-[#050505] shadow-[0_0_80px_rgba(0,0,0,1)]">
                         {/* Background Image Layer */}
                         <div className="absolute inset-0 z-0">
                             <img
                                 src={bodycamImage}
                                 alt="Officer bodycam footage"
-                                className="w-full h-full object-cover scale-[0.6] opacity-80 brightness-[1.2] grayscale sepia-[.1]"
+                                className="w-full h-full object-cover opacity-80 brightness-[1.2] grayscale sepia-[.1]"
                             />
                             {/* Gradient to ensure text readability */}
                             <div className="absolute inset-0 bg-gradient-to-r from-black via-black/50 to-transparent" />
