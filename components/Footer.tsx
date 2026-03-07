@@ -68,11 +68,14 @@ export const Footer: React.FC<{
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between gap-12 relative z-10">
         <div className="space-y-6 max-w-xs">
           <div className="flex items-center gap-3">
-            <Logo className="h-6 w-auto text-white" />
-            <span className="font-bold tracking-tighter text-xl">VANTUS</span>
+            <Logo className="h-6 w-auto text-white group-hover:text-[#00FF41] transition-colors duration-500" />
+            <div className="flex flex-col leading-none">
+              <span className="font-bold tracking-tighter text-xl uppercase">Vantus</span>
+              <span className="font-mono text-[7px] text-[#00FF41] tracking-[0.2em] uppercase mt-0.5">Intelligent Safety</span>
+            </div>
           </div>
-          <p className="text-neutral-500 text-sm leading-relaxed">
-            Revolutionizing field interdiction through computational optics and first-principles engineering.
+          <p className="text-neutral-400 text-base font-medium leading-relaxed tracking-tight italic">
+            Intelligence that acts. Backup that arrives.
           </p>
           <div className="text-[10px] font-mono text-neutral-600 tracking-wider flex flex-col gap-1">
             <span>CAGE CODE: Pending</span>
@@ -85,7 +88,7 @@ export const Footer: React.FC<{
           <div className="space-y-4">
             <h4 className="font-mono text-xs uppercase text-neutral-400 tracking-widest border-l border-[#00FF41]/40 pl-3">Resources</h4>
             <ul className="flex flex-col space-y-1 text-sm font-medium">
-              <FooterLink onClick={onOpenWaitlist}>Join Pilot Waitlist</FooterLink>
+              <FooterLink onClick={onOpenWaitlist}>Get a Free Demo</FooterLink>
               <FooterLink onClick={onOpenFAQ}>FAQ</FooterLink>
               <FooterLink onClick={onOpenWhitepaper}>Technical Whitepaper</FooterLink>
 
@@ -102,10 +105,11 @@ export const Footer: React.FC<{
         </div >
       </div >
 
-      <div className="max-w-6xl mx-auto mt-20 text-center relative z-10 border border-neutral-800 bg-neutral-950 p-8">
-        <h4 className="text-xl font-black uppercase text-white mb-2 tracking-tight">Ready to enhance officer safety?</h4>
-        <button onClick={onOpenWaitlist} className="mt-4 px-6 py-3 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs hover:bg-white transition-colors duration-300">
-          Join the Waitlist
+      <div className="max-w-6xl mx-auto mt-20 text-center relative z-10 border border-neutral-800 bg-neutral-950 p-12 rounded-lg shadow-[0_0_50px_rgba(0,255,65,0.05)]">
+        <Logo className="h-8 w-auto text-[#00FF41] mx-auto mb-6 opacity-80" />
+        <h4 className="text-2xl font-black uppercase text-white mb-4 tracking-tight">Ready to enhance officer safety?</h4>
+        <button onClick={onOpenWaitlist} className="mt-4 px-10 py-4 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs hover:bg-white transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(0,255,65,0.2)]">
+          Get a Free Demo
         </button>
       </div>
 

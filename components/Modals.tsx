@@ -277,8 +277,8 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                         <div className="w-16 h-16 bg-neutral-900 border border-neutral-800 flex items-center justify-center text-[#00FF41] mx-auto group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,255,65,0.2)] transition-all">
                           <ShieldAlert size={32} />
                         </div>
-                        <h3 className="text-2xl font-black uppercase">Join Pilot Waitlist</h3>
-                        <p className="text-xs text-neutral-500 font-mono">Register your department for early access to the Vantus Partner System.</p>
+                        <h3 className="text-2xl font-black uppercase">Get a Free Demo</h3>
+                        <p className="text-xs text-neutral-500 font-mono">Schedule a live demonstration of the Vantus Intelligent Safety platform.</p>
                       </div>
                       <form className="space-y-4 text-left" onSubmit={(e) => {
                         e.preventDefault();

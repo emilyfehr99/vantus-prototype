@@ -84,7 +84,7 @@ const Header = ({
   };
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-[100] transition-all duration-700 py-10 bg-transparent">
+    <nav className="fixed top-0 left-0 w-full z-[100] transition-all duration-700 py-6 bg-black/40 backdrop-blur-md border-b border-white/5">
       <div className="max-w-[1600px] mx-auto px-10 flex items-center justify-between">
         {/* Brand */}
         <div
@@ -94,10 +94,10 @@ const Header = ({
           }}
           className="flex items-center gap-4 group cursor-pointer relative z-[110]"
         >
-          <Logo className="h-6 w-auto text-white group-hover:text-[#00FF41] transition-colors duration-500" />
+          <Logo className="h-7 w-auto text-white group-hover:text-[#00FF41] transition-colors duration-500" />
           <div className="flex flex-col leading-none">
             <span className="font-black tracking-[-0.04em] text-2xl uppercase group-hover:translate-x-1 transition-transform duration-500">Vantus</span>
-            <span className="font-mono text-[7px] text-neutral-500 tracking-[0.3em] uppercase mt-1 font-bold group-hover:text-neutral-300 transition-colors duration-500">Safety Systems</span>
+            <span className="font-mono text-[8px] text-[#00FF41] tracking-[0.2em] uppercase mt-1 font-bold group-hover:text-white transition-colors duration-500">Intelligent Safety</span>
           </div>
         </div>
 
@@ -138,7 +138,7 @@ const Header = ({
                 whileTap={{ scale: 0.95 }}
                 className="flex items-center px-8 py-3 bg-transparent border border-white/20 text-white font-black uppercase text-[10px] tracking-[0.2em] transition-all rounded-sm"
               >
-                Join Waitlist
+                Get a Free Demo
               </MotionButton>
               <MotionButton
                 onClick={onOpenLogin}
@@ -270,7 +270,7 @@ const Header = ({
                         onClick={onOpenWaitlist}
                         className="px-12 py-5 bg-transparent border border-white/20 text-white font-black uppercase text-sm tracking-widest"
                       >
-                        Join Waitlist
+                        Get a Free Demo
                       </button>
                       <button
                         onClick={onOpenLogin}
@@ -395,7 +395,7 @@ const App: React.FC = () => {
         <Login onLogin={handleLogin} />
       </TacticalOverlay>
 
-      <TacticalOverlay isOpen={modalType === 'waitlist'} onClose={() => setModalType(null)} title="Waitlist Enrollment" type="waitlist" />
+      <TacticalOverlay isOpen={modalType === 'waitlist'} onClose={() => setModalType(null)} title="Free Demo Scheduling" type="waitlist" />
       <TacticalOverlay isOpen={modalType === 'faq'} onClose={() => setModalType(null)} title="Tactical Protocol FAQ" type="faq" />
       <TacticalOverlay isOpen={modalType === 'careers'} onClose={() => setModalType(null)} title="Join The Mission" type="careers" />
       <TacticalOverlay isOpen={modalType === 'whitepaper'} onClose={() => setModalType(null)} title="Technical Whitepaper" type="whitepaper" />

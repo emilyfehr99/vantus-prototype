@@ -69,7 +69,7 @@ export const Hero: React.FC<{
         {/* Description grounded in specific features */}
         <div className="max-w-4xl text-center">
           <p className="text-xl md:text-3xl text-neutral-300 font-medium leading-relaxed">
-            Vantus bridges the 100,000-officer staffing gap by providing an <span className="text-white font-bold">autonomous, agentic partner</span> that predicts violence, automates documentation, and ensures backup is never more than a heartbeat away.
+            An <span className="text-white font-bold">AI dispatch partner</span> that triages calls, routes officers, and ensures backup arrives instantly.
           </p>
         </div>
 
@@ -89,7 +89,7 @@ export const Hero: React.FC<{
             whileTap={{ scale: 0.98 }}
             className="w-full sm:w-[260px] py-5 border border-white/20 bg-transparent text-white font-black uppercase tracking-widest text-[11px] rounded-sm transition-all"
           >
-            Join Waitlist
+            Get a Free Demo
           </MotionButton>
           <MotionButton
             whileHover={{ scale: 1.02, borderColor: 'white', color: 'white', boxShadow: '0 0 20px rgba(255,255,255,0.05)' }}
