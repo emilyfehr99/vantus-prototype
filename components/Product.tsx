@@ -152,20 +152,7 @@ const DYNAMIC_MESSAGES = [
 
 ];
 
-const STATIC_LOGS: LogEntry[] = [
-  {
-    id: 1,
-    time: "03:46:19",
-    type: "SYS",
-    message: "Scanning env... Sector 4 clear."
-  },
-  {
-    id: 2,
-    time: "[-TIME-]", // Replaced with empty logic or hardcoded
-    type: "ALERT",
-    message: "THREAT DETECTED: BLADED STANCE."
-  }
-];
+const STATIC_LOGS: LogEntry[] = [];
 
 const LiveTacticalFeed = () => {
   const MotionDiv = motion.div as any;
@@ -188,10 +175,8 @@ const LiveTacticalFeed = () => {
         <div className="flex items-center justify-between mb-10 pb-6 border-b border-neutral-900">
           <div className="flex items-center gap-4">
           </div>
-          <div className="font-mono text-[8px] text-neutral-700 uppercase flex items-center gap-4 tracking-widest">
-            <span>Buffer: Synchronized</span>
-            <span>Uptime: 142.04.11</span>
-            <span className="text-white">Enc: AES-XTS</span>
+          <div className="font-mono text-[8px] text-neutral-800 uppercase flex items-center gap-4 tracking-widest">
+            <span>System: Active</span>
           </div>
         </div>
 
@@ -224,16 +209,7 @@ const LiveTacticalFeed = () => {
         </div>
 
         {/* Status Bar */}
-        <div className="mt-8 flex items-center justify-between pt-6 border-t border-neutral-900">
-          <div className="flex gap-8">
-            {/* Removed dense NPU/Latency metrics for cleaner approachability */}
-          </div>
-          <div className="flex items-center gap-5">
-            <div className="flex items-center gap-2 px-5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-sm">
-              <Terminal size={12} className="text-[#00FF41]" />
-              <span className="text-neutral-500 text-[9px] uppercase tracking-widest font-black">Ready for Command_</span>
-            </div>
-          </div>
+        <div className="mt-8 pt-6 border-t border-neutral-900/50">
         </div>
       </div>
 
@@ -325,7 +301,7 @@ export const Product: React.FC = () => {
           </div>
 
           <h3 className="text-sm font-mono text-neutral-500 uppercase tracking-widest mb-6">Additional Safety Capabilities</h3>
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 gap-4">
             {additionalSafetyFeatures.map((f, i) => (
 
               <FeatureCard
