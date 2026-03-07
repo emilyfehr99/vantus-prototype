@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Target, CheckCircle2 } from 'lucide-react';
+import bodycamImage from '../public/bodycam-footage-v2.jpg';
 
 export const Mission: React.FC = () => {
     const MotionDiv = motion.div as any;
@@ -53,11 +54,24 @@ export const Mission: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="pt-8 group">
-                        <p className="text-neutral-600 font-mono text-[10px] uppercase tracking-[0.3em] mb-6">Core Directive // v4.2</p>
-                        <blockquote className="text-2xl md:text-3xl font-light italic text-white/90 max-w-3xl mx-auto leading-relaxed">
-                            "To engineer a world where operational silence is replaced by unwavering support, and every hero returns home."
-                        </blockquote>
+                    <div className="relative pt-16 pb-16 px-8 mt-16 group overflow-hidden border border-neutral-900 rounded-sm bg-[#050505] shadow-[0_0_80px_rgba(0,0,0,1)]">
+                        {/* Background Image Layer */}
+                        <div className="absolute inset-0 z-0">
+                            <img
+                                src={bodycamImage}
+                                alt="Officer bodycam footage"
+                                className="w-full h-full object-cover scale-[0.6] opacity-80 brightness-[1.2] grayscale sepia-[.1]"
+                            />
+                            {/* Gradient to ensure text readability */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/50 to-transparent" />
+                        </div>
+
+                        <div className="relative z-10">
+                            <p className="text-[#00FF41] font-mono text-[10px] uppercase tracking-[0.3em] mb-6">Core Directive // v4.2</p>
+                            <blockquote className="text-2xl md:text-3xl font-light italic text-white/90 max-w-3xl mx-auto leading-relaxed">
+                                "To engineer a world where operational silence is replaced by unwavering support, and every hero returns home."
+                            </blockquote>
+                        </div>
                     </div>
                 </MotionDiv>
             </div>
