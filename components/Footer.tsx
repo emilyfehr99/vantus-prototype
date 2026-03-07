@@ -21,7 +21,15 @@ const FooterLink: React.FC<{ href?: string; onClick?: () => void; children: Reac
       {href ? (
         <a href={href}>{content}</a>
       ) : (
-        <button onClick={onClick} className="text-left w-full">{content}</button>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            onClick?.();
+          }}
+          className="text-left w-full"
+        >
+          {content}
+        </button>
       )}
     </motion.li>
   );
@@ -41,7 +49,15 @@ const LegalLink: React.FC<{ href?: string; onClick?: () => void; children: React
   return href ? (
     <a href={href} className="inline-block">{content}</a>
   ) : (
-    <button onClick={onClick} className="inline-block">{content}</button>
+    <button
+      onClick={(e) => {
+        e.preventDefault();
+        onClick?.();
+      }}
+      className="inline-block"
+    >
+      {content}
+    </button>
   );
 };
 
