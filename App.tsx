@@ -22,10 +22,10 @@ const NavLink: React.FC<{ onClick: () => void; children: React.ReactNode; index:
       onClick={onClick}
       className="relative group py-2 px-5 flex items-center gap-3 transition-all duration-300 rounded-sm hover:bg-white/[0.03]"
     >
-      <span className="font-mono text-[8px] text-[#00FF41]/40 group-hover:text-[#00FF41] transition-colors duration-300">
+      <span className="font-mono text-[8px] text-[#00FF41]/60 group-hover:text-[#00FF41] transition-colors duration-300">
         [{index}]
       </span>
-      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 group-hover:text-white transition-colors duration-500">
+      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white group-hover:text-[#00FF41] transition-colors duration-500">
         {children}
       </span>
 
