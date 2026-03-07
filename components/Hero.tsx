@@ -23,7 +23,7 @@ export const Hero: React.FC<{
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
-          src="/bodycam-footage.jpg"
+          src="/bodycam-footage-v2.jpg"
           alt="Officer bodycam footage"
           className="w-full h-full object-cover opacity-30 blur-sm brightness-[0.4] grayscale sepia-[.1]"
           onError={(e) => {
@@ -80,9 +80,9 @@ export const Hero: React.FC<{
               muted
               loop
               playsInline
-              className="w-full h-full object-cover opacity-20 grayscale brightness-125"
+              className="w-full h-full object-cover opacity-[0.15] grayscale brightness-125"
             >
-              <source src="/vantus-bg-video.mp4" type="video/mp4" />
+              <source src="/vantus-bg-video-v2.mp4" type="video/mp4" />
             </video>
           </div>
 
