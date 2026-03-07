@@ -13,18 +13,30 @@ import { Login } from './components/Login';
 import { AudioDemo } from './components/AudioDemo';
 
 // Use React.FC to ensure children prop is correctly handled by the JSX parser and TypeScript
-const NavLink: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({ onClick, children }) => {
+const NavLink: React.FC<{ onClick: () => void; children: React.ReactNode; index: string }> = ({ onClick, children, index }) => {
   const MotionDiv = motion.div as any;
   return (
     <button
       onClick={onClick}
-      className="relative group hover:text-white transition-colors py-2"
+      className="relative group py-2 px-5 flex items-center gap-3 transition-all duration-300 rounded-sm hover:bg-white/[0.03]"
     >
-      {children}
+      <span className="font-mono text-[8px] text-[#00FF41]/40 group-hover:text-[#00FF41] transition-colors duration-300">
+        [{index}]
+      </span>
+      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 group-hover:text-white transition-colors duration-500">
+        {children}
+      </span>
+
+      {/* Tactical Corner Accents */}
       <MotionDiv
-        className="absolute -bottom-1 left-0 w-0 h-[1px] bg-[#00FF41] shadow-[0_0_8px_#00FF41]"
-        whileHover={{ width: '100%' }}
-        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+        initial={{ opacity: 0 }}
+        whileHover={{ opacity: 1 }}
+        className="absolute top-0 left-0 w-1.5 h-1.5 border-t border-l border-[#00FF41]"
+      />
+      <MotionDiv
+        initial={{ opacity: 0 }}
+        whileHover={{ opacity: 1 }}
+        className="absolute bottom-0 right-0 w-1.5 h-1.5 border-b border-r border-[#00FF41]"
       />
     </button>
   );
@@ -94,36 +106,36 @@ const Header = ({
           }}
           className="flex items-center gap-4 group cursor-pointer relative z-[110]"
         >
-          <Logo className="h-7 w-auto text-white group-hover:text-[#00FF41] transition-colors duration-500" />
+          <Logo className="h-6 w-auto text-white group-hover:text-[#00FF41] transition-colors duration-500" />
           <div className="flex flex-col leading-none">
             <span className="font-black tracking-[-0.04em] text-2xl uppercase group-hover:translate-x-1 transition-transform duration-500">Vantus</span>
-            <span className="font-mono text-[8px] text-[#00FF41] tracking-[0.2em] uppercase mt-1 font-bold group-hover:text-white transition-colors duration-500">Intelligent Safety</span>
+            <span className="font-mono text-[7px] text-neutral-500 tracking-[0.3em] uppercase mt-1 font-bold group-hover:text-neutral-300 transition-colors duration-500">Safety Systems</span>
           </div>
         </div>
 
         {/* Navigation Links */}
-        <div className="hidden lg:flex items-center gap-12 font-mono text-[10px] uppercase tracking-[0.3em] text-neutral-500">
+        <div className="hidden lg:flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-full backdrop-blur-md">
           {!isLoggedIn ? (
             <>
-              <NavLink onClick={() => scrollToSection('mission')}>The Problem</NavLink>
-              <NavLink onClick={() => scrollToSection('features')}>Our Solution</NavLink>
-              <NavLink onClick={onOpenFAQ}>FAQ</NavLink>
+              <NavLink onClick={() => scrollToSection('mission')} index="01">The Problem</NavLink>
+              <NavLink onClick={() => scrollToSection('features')} index="02">Our Solution</NavLink>
+              <NavLink onClick={onOpenFAQ} index="03">FAQ</NavLink>
             </>
           ) : (
             <>
-              <NavLink onClick={() => setActiveTab?.('landing')}>
+              <NavLink onClick={() => setActiveTab?.('landing')} index="01">
                 <div className="flex items-center gap-2">
-                  <Layout size={12} className={activeTab === 'landing' ? 'text-[#00FF41]' : ''} />
+                  <Layout size={10} className={activeTab === 'landing' ? 'text-[#00FF41]' : ''} />
                   Dashboard
                 </div>
               </NavLink>
-              <NavLink onClick={() => setActiveTab?.('audio')}>
+              <NavLink onClick={() => setActiveTab?.('audio')} index="02">
                 <div className="flex items-center gap-2">
-                  <Mic size={12} className={activeTab === 'audio' ? 'text-[#00FF41]' : ''} />
-                  Audio Detection
+                  <Mic size={10} className={activeTab === 'audio' ? 'text-[#00FF41]' : ''} />
+                  Audio Mode
                 </div>
               </NavLink>
-              <NavLink onClick={onOpenFAQ}>FAQ</NavLink>
+              <NavLink onClick={onOpenFAQ} index="03">FAQ</NavLink>
             </>
           )}
         </div>

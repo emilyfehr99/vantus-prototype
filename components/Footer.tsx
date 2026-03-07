@@ -71,7 +71,7 @@ export const Footer: React.FC<{
             <Logo className="h-6 w-auto text-white group-hover:text-[#00FF41] transition-colors duration-500" />
             <div className="flex flex-col leading-none">
               <span className="font-bold tracking-tighter text-xl uppercase">Vantus</span>
-              <span className="font-mono text-[7px] text-[#00FF41] tracking-[0.2em] uppercase mt-0.5">Intelligent Safety</span>
+              <span className="font-mono text-[7px] text-neutral-500 tracking-[0.3em] uppercase mt-0.5">Safety Systems</span>
             </div>
           </div>
           <p className="text-neutral-400 text-base font-medium leading-relaxed tracking-tight italic">
