@@ -19,16 +19,21 @@ export const Hero: React.FC<{
   const textY = useTransform(scrollYProgress, [0, 1], ["0%", "10%"]);
 
   return (
-    <section ref={containerRef} className="relative min-h-screen flex flex-col items-center justify-center pt-48 pb-32 px-6 lg:px-12 bg-black overflow-hidden select-none">
-      {/* Background Image */}
+    <section ref={containerRef} className="relative min-h-screen flex flex-col items-center justify-center pt-56 pb-40 px-6 lg:px-12 bg-black overflow-hidden select-none">
       <div className="absolute inset-0 z-0">
+        {/* We use a local placeholder for the user's provided bodycam screenshot. 
+            The user can drop their image into public/bodycam-footage.jpg to use it. */}
         <img
-          src="https://images.unsplash.com/photo-1596705359489-3224b1ff5801?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80"
-          alt="Officer background"
-          className="w-full h-full object-cover opacity-20 blur-sm brightness-75 grayscale sepia-[.1]"
+          src="/bodycam-footage.jpg"
+          alt="Officer bodycam footage"
+          className="w-full h-full object-cover opacity-20 blur-sm brightness-75 mix-blend-screen"
+          onError={(e) => {
+            // Fallback to the original image if the local file isn't placed yet
+            (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1596705359489-3224b1ff5801?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80";
+          }}
         />
         {/* Subtle Bodycam / Tactical Texture Overlay */}
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=2000&q=80')] bg-cover bg-center opacity-5 mix-blend-overlay pointer-events-none" />
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=2000&q=80')] bg-cover bg-center opacity-[0.02] mix-blend-overlay pointer-events-none" />
 
         {/* Gradient Overlay for Text Readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
@@ -109,21 +114,9 @@ export const Hero: React.FC<{
         </div>
       </MotionDiv>
 
-      {/* Persistent Sensor Data Sidebar - Enhanced with feature-specific logs */}
-      <div className="absolute bottom-12 left-10 z-30 space-y-4 hidden md:block group">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="flex gap-1">
-            <span className="w-2 h-0.5 bg-[#00FF41]" />
-          </div>
-          <span className="font-mono text-[9px] text-[#00FF41] uppercase tracking-[0.4em] font-black group-hover:tracking-[0.5em] transition-all">Sensors: Online</span>
-        </div>
-        <div className="font-mono text-[10px] text-neutral-600 space-y-2 tracking-widest uppercase">
-          <p className="flex justify-between gap-6 group-hover:text-neutral-400 transition-colors"><span>Vocal Stress:</span> <span className="text-white">Nominal</span></p>
-          <p className="flex justify-between gap-6 group-hover:text-neutral-400 transition-colors"><span>Posture Map:</span> <span className="text-white">Scanning</span></p>
-          <p className="flex justify-between gap-6 group-hover:text-neutral-400 transition-colors"><span>Threat Sig:</span> <span className="text-white">0.02%</span></p>
-          <p className="pt-2 text-[8px] opacity-40">LAT: 34.0522° N // LON: 118.2437° W</p>
-        </div>
-      </div>
+      {/* Corner Accents - Removed the dense metrics */}
+      <div className="absolute bottom-10 left-10 w-16 h-16 border-b-2 border-l-2 border-neutral-800 pointer-events-none opacity-50" />
+      <div className="absolute bottom-10 right-10 w-16 h-16 border-b-2 border-r-2 border-neutral-800 pointer-events-none opacity-50" />
     </section >
   );
 };

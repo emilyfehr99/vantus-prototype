@@ -178,11 +178,11 @@ const LiveTacticalFeed = () => {
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-10 pb-6 border-b border-neutral-900">
           <div className="flex items-center gap-4">
-            <div className="w-2 h-2 rounded-full bg-[#00FF41] animate-pulse shadow-[0_0_8px_#00FF41]" />
+            <div className="w-2 h-2 rounded-full bg-[#00FF41] shadow-[0_0_8px_#00FF41]" />
             <span className="font-mono text-[10px] text-[#00FF41] uppercase tracking-[0.4em] font-bold">Situational Overwatch v4.2</span>
           </div>
           <div className="font-mono text-[8px] text-neutral-700 uppercase flex items-center gap-4 tracking-widest">
-            <span className="animate-pulse">Buffer: Synchronized</span>
+            <span>Buffer: Synchronized</span>
             <span>Uptime: 142.04.11</span>
             <span className="text-white">Enc: AES-XTS</span>
           </div>
@@ -222,16 +222,6 @@ const LiveTacticalFeed = () => {
             {/* Removed dense NPU/Latency metrics for cleaner approachability */}
           </div>
           <div className="flex items-center gap-5">
-            <div className="flex items-center gap-1.5">
-              {[1, 2, 3, 4, 5].map(i => (
-                <MotionDiv
-                  key={i}
-                  animate={{ opacity: [0.2, 1, 0.2] }}
-                  transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.1 }}
-                  className="w-1.5 h-1.5 bg-[#00FF41]"
-                />
-              ))}
-            </div>
             <div className="flex items-center gap-2 px-5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-sm">
               <Terminal size={12} className="text-[#00FF41]" />
               <span className="text-neutral-500 text-[9px] uppercase tracking-widest font-black">Ready for Command_</span>
@@ -309,7 +299,7 @@ export const Product: React.FC = () => {
                 <p><strong className="text-white">Multi-Modal Trigger:</strong> Triggered when 2+ audio models agree (&gt;80% confidence each).</p>
                 <p><strong className="text-white">Video Confirmation:</strong> System pulls 30-second video clip on-demand (15 sec before + 15 sec after trigger).</p>
                 <p><strong className="text-white">Computer Vision:</strong> YOLO weapon detection (handguns, rifles, knives visible) + Person detection/threat posture analysis (multiple attackers, fighting stance).</p>
-                <div className="mt-4 p-4 bg-[#FF3B30]/20 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs animate-pulse">
+                <div className="mt-4 p-4 bg-[#FF3B30]/20 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs">
                   Action: Automatic RoIP dispatch broadcast: "Unit [badge], automatic backup alert. Officer [name], [address]. [Threat type]. Backup units respond Code 3." + SMS alert to dispatch supervisor verifying auto-dispatch was sent.
                 </div>
               </div>
