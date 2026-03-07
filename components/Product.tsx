@@ -127,7 +127,6 @@ const AccordionItem: React.FC<{ title: string, badge?: string, defaultOpen?: boo
 };
 
 const additionalSafetyFeatures = [
-  { icon: <Activity />, title: "Stress Biometric Sync", desc: "(Optional) Syncs via Bluetooth wearables like Apple Watch. Monitors HR (>140 BPM) + GPS. Fallback: breathing, vocal pitch, phone accelerometer." },
   { icon: <Database />, title: "Real-Time Fact Anchoring", desc: "Timestamped AI observations (e.g., '14:02:11 - Audio: Gunshot detected (92%)'). Solves CA SB 524 forensic audit trail compliance." },
   { icon: <MessageSquare />, title: "Dictation Overlay", desc: "Speak voice commands during scene (e.g., \"Vantus, mark blue Toyota as witness vehicle\") for hands-free evidence tagging to timeline." }
 ];
@@ -188,8 +187,6 @@ const LiveTacticalFeed = () => {
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-10 pb-6 border-b border-neutral-900">
           <div className="flex items-center gap-4">
-            <div className="w-2 h-2 rounded-full bg-[#00FF41] shadow-[0_0_8px_#00FF41]" />
-            <span className="font-mono text-[10px] text-[#00FF41] uppercase tracking-[0.4em] font-bold">Situational Overwatch v4.2</span>
           </div>
           <div className="font-mono text-[8px] text-neutral-700 uppercase flex items-center gap-4 tracking-widest">
             <span>Buffer: Synchronized</span>
