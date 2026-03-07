@@ -226,6 +226,8 @@ export const AudioDemo: React.FC = () => {
     const analyserRef = useRef<AnalyserNode | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const rafRef = useRef<any>(null);
+    const struggleStartTime = useRef<number | null>(null); // #3: Duration gate for struggle
+    const shoutStartTime = useRef<number | null>(null);    // #3: Duration gate for shouting
 
     // ── Pre-Filter: Edge Case Mitigation Engine ──
     const shouldSuppressAlert = useCallback((confidence: number, model: string): { suppress: boolean; reason: string } => {
@@ -244,38 +246,27 @@ export const AudioDemo: React.FC = () => {
 
         // #9: Low Light / Night Mode — Boost audio sensitivity because video is degraded
         const effectiveConfidence = lowLightMode ? confidence + 15 : confidence;
-        const threshold = lowLightMode ? 80 : 95;
+        let threshold = lowLightMode ? 80 : 95;
+
+        // #20, #11, #12: CAD Context Sensitivity
+        if (cadDomestic || cadEDP || cadHighRisk) {
+            threshold -= 10; // Lower threshold (increase sensitivity) for high-risk calls
+        }
 
         // #17: Environmental noise mimicking distress
-        if (weatherNoise && model !== 'keyword' && effectiveConfidence < 95) {
-            return { suppress: true, reason: 'Environmental/Weather Disturbance Flag Active — Low confidence audio suppressed' };
+        if (weatherNoise && model !== 'keyword' && effectiveConfidence < threshold + 5) {
+            return { suppress: true, reason: 'Weather Noise Filter — Suppressing ambiguous low-frequency signals' };
         }
 
-        // #11, #12: Domestic/EDP require higher certainty to prevent false positives from yelling
-        if ((cadDomestic || cadEDP) && model === 'struggle' && effectiveConfidence < 98) {
-            return { suppress: false, reason: `CAD Profile (Domestic/EDP) Active — Multi-modal confirmation required (Conf ${effectiveConfidence}% < 98%)` };
+        // #1: Ambient Floor Suppression
+        const currentEnergy = confidence / 100;
+        if (currentEnergy < ambientBaseline * 1.5 && model === 'struggle') {
+            return { suppress: true, reason: 'Environmental Masking — Signal below ambient noise floor' };
         }
 
-        // #20: Swatting / High-risk profiling boosts sensitivity
-        if (cadHighRisk && effectiveConfidence >= 85) {
-            return { suppress: false, reason: `CAD High-Risk/Swat Profile — Sensitivity Boosted (Auto-Dispatch at 85% instead of 95%)` };
-        }
-
-        // #5/#10: Confidence gating — require >95% for auto-dispatch, otherwise silent supervisor flag
-        if (effectiveConfidence < threshold && model !== 'keyword') {
-            const fatigueNote = lateShift ? ' (Late Shift Active — Lowering supervisor threshold)' : '';
-            const lightNote = lowLightMode ? ' (Low-Light Sensitivity Boost Active)' : '';
-            return { suppress: false, reason: `Confidence ${effectiveConfidence}% < ${threshold}% threshold — flagged for supervisor review only${fatigueNote}${lightNote}` };
-        }
-
-        // #7: Ambient noise spike detection
-        if (ambientBaseline > 0.3 && model === 'gunshot') {
-            return { suppress: false, reason: `High ambient noise floor (${Math.round(ambientBaseline * 100)}%) — audio weight reduced` };
-        }
-
-        const primingNote = primedContext ? ` [Context Primed: ${primedContext}]` : '';
-        return { suppress: false, reason: primingNote };
-    }, [cancelOverride, trainingMode, soloMode, nearbyUnits, ambientBaseline, custodyMode, pursuitMode, weatherNoise, cadDomestic, cadEDP, cadHighRisk, lateShift, primedContext, lowLightMode]);
+        if (effectiveConfidence >= threshold) return { suppress: false, reason: '' };
+        return { suppress: true, reason: `Confidence (${effectiveConfidence}%) below dynamic threshold (${threshold}%)` };
+    }, [cancelOverride, custodyMode, trainingMode, soloMode, nearbyUnits, pursuitMode, lowLightMode, cadDomestic, cadEDP, cadHighRisk, weatherNoise, ambientBaseline]);
 
     // ── Ambient Noise Baseline Tracker (#7) ──
     const updateAmbientBaseline = useCallback((maxVal: number) => {
@@ -340,25 +331,39 @@ export const AudioDemo: React.FC = () => {
         setTimeline(prev => [newEvent, ...prev].slice(0, 50));
     }, []);
 
-    const triggerDispatch = useCallback((reason: string) => {
-        if (isDispatching || Date.now() - lastDispatchTime < 30000) return; // Prevent spam
+    const triggerDispatch = (reason: string) => {
+        const nowMs = Date.now();
+        if (nowMs - lastDispatchTime < 15000) return; // Debounce dispatches
 
+        // Phase 3: Collaborative Mesh Voting
+        if (nearbyUnits > 0) {
+            // If other units are near, require a higher signal-to-noise or "consensus" simulation
+            addToTimeline(`Collaborative Check: Pinging ${nearbyUnits} nearby units...`, 'SIGNAL', 100);
+            // Simulate consensus delay
+            setTimeout(() => {
+                actualDispatch(reason + ' (Confirmed by Mesh Consensus)');
+            }, 800);
+        } else {
+            actualDispatch(reason);
+        }
+    };
+
+    const actualDispatch = (reason: string) => {
         setIsDispatching(true);
         setLastDispatchTime(Date.now());
-        addToTimeline(`Simulated Dispatch Triggered: ${reason}`, 'DISPATCH');
+        addToTimeline(`DISPATCH TRIGGERED: ${reason}`, 'DISPATCH', 99);
+        addLog({ model: 'BRAIN', threat: `AUTOMATIC BACKUP INITIATED: ${reason}`, confidence: 99, level: 'red', scenario: 'Consensus reached' });
 
-        // Simulated Radio Call (TTS)
+        // Use browser TTS for the radio call
         if ('speechSynthesis' in window) {
-            const msg = new SpeechSynthesisUtterance();
-            msg.text = `Dispatch to Unit 4, automatic backup initiated. Priority 1 response. Reason: ${reason}`;
-            msg.rate = 0.9;
-            msg.pitch = 1.1;
-            window.speechSynthesis.speak(msg);
+            const utterance = new SpeechSynthesisUtterance(`Dispatch to Unit 4, automatic backup initiated. Priority 1 response. Threat: ${reason}`);
+            utterance.rate = 1.1;
+            utterance.pitch = 0.9;
+            window.speechSynthesis.speak(utterance);
         }
 
-        // Auto-clear notification after 10s
-        setTimeout(() => setIsDispatching(false), 10000);
-    }, [isDispatching, lastDispatchTime, addToTimeline]);
+        setTimeout(() => setIsDispatching(false), 5000);
+    };
 
     const reset = useCallback(() => {
         setModels({
@@ -521,55 +526,70 @@ export const AudioDemo: React.FC = () => {
                 if (filter.suppress) {
                     addLog({ model: 'struggle', threat: `SUPPRESSED: Struggle (${confS}%) — ${filter.reason}`, confidence: confS, level: 'green', scenario: 'Filtered' });
                     setSuppressionLog(p => [`${now()} Struggle suppressed: ${filter.reason}`, ...p].slice(0, 20));
+                    struggleStartTime.current = null;
+                } else if (confS > 70) {
+                    if (!struggleStartTime.current) struggleStartTime.current = Date.now();
+                    const struggleDur = Date.now() - struggleStartTime.current;
+
+                    if (struggleDur > 1500) { // 1.5s gate
+                        setModel('struggle', { status: 'SUSTAINED STRUGGLE', confidence: confS, color: 'red', lastDetection: now() });
+                        addLog({ model: 'struggle', threat: 'Sustained Physical Struggle / Agitation', confidence: confS, level: 'red', scenario: 'Temporal Gate' });
+                        addToTimeline('Sustained Struggle Detected', 'SIGNAL', confS);
+                        triggerDispatch('Sustained Physical Struggle');
+                    } else {
+                        setModel('struggle', { status: `Detecting Struggle (${Math.round(struggleDur / 100) / 10}s)`, confidence: confS, color: 'yellow', lastDetection: now() });
+                    }
                 } else {
-                    const explainability = filter.reason ? ` [${filter.reason}]` : '';
-                    setModel('struggle', { status: 'THREAT DETECTED', confidence: confS, color: 'red', lastDetection: now() });
-                    addLog({ model: 'struggle', threat: `Struggle/Screaming (${confS}%)${explainability}`, confidence: confS, level: 'red', scenario: 'Live Edge Model' });
-                    addToTimeline('Physical Struggle / Screaming Detected', 'SIGNAL', confS);
+                    struggleStartTime.current = null;
+                    setModel('struggle', { status: confS > 30 ? 'Agitation Detected' : 'No Struggle', confidence: confS, color: confS > 30 ? 'yellow' : 'green', lastDetection: now() });
                 }
+            } else {
+                struggleStartTime.current = null;
             }
 
-            // ── Phase 2: Speaker & Stress Detection (Advanced Analytics) ──
+            // ── Phase 2/3: High-Precision Processing ──
             const { energy, timbre } = getMFCC(float32Data);
             const { jitter, shimmer } = getJitterShimmer(float32Data);
 
-            // Speaker Detection (MFCC Timbre Proxy)
-            // Officers matched to a calibrated baseline, subjects usually show higher timbre variance
+            // Update Rolling Ambient Baseline
+            ambientSamples.current.push(energy);
+            if (ambientSamples.current.length > 20) ambientSamples.current.shift();
+            const avgBaseline = ambientSamples.current.reduce((a, b) => a + b, 0) / ambientSamples.current.length;
+            setAmbientBaseline(Math.abs(avgBaseline));
+
+            // Speaker Detection (MFCC)
             const isSubject = Math.abs(timbre) > 0.45;
             const speakerConf = Math.min(99.8, 85 + (Math.abs(timbre) * 10));
+            setModel('speaker', { status: isSubject ? 'Subject Identified' : 'Officer Identified', confidence: speakerConf, color: isSubject ? 'yellow' : 'green', lastDetection: now() });
 
-            setModel('speaker', {
-                status: isSubject ? 'Subject Identified (Non-Baseline)' : 'Officer Match Confirmed',
-                confidence: speakerConf,
-                color: isSubject ? 'yellow' : 'green',
-                lastDetection: now()
-            });
-
-            // Vocal Stress Detection (Jitter/Shimmer Analytic)
+            // Stress Analytics
             const stressScore = (jitter * 50) + (shimmer * 50);
             let stressLabel = 'Baseline';
             let stressColor: 'green' | 'yellow' | 'red' = 'green';
             let stressConf = Math.min(100, Math.round(stressScore * 100));
 
+            // Temporal Duration Gate for Stress/Distress
             if (stressScore > 1.2) {
+                if (!shoutStartTime.current) shoutStartTime.current = Date.now();
+                const duration = Date.now() - shoutStartTime.current;
+
                 stressLabel = 'Critical Distress';
                 stressColor = 'red';
-                if (stressConf > 90) {
-                    addLog({ model: 'stress', threat: 'High-Arousal Vocal Instability (Jitter Peak)', confidence: stressConf, level: 'red', scenario: 'Neural Resonance' });
-                    addToTimeline('Critical Stress: Physiological Instability Detected', 'SIGNAL', stressConf);
-                    if (isSubject) triggerDispatch('Subject Distressed + High Agitation');
+
+                if (duration > 1500 && stressConf > 90) { // 1.5s gate
+                    addLog({ model: 'stress', threat: `High-Arousal Vocal Instability (>1.5s)`, confidence: stressConf, level: 'red', scenario: 'Temporal Gate' });
+                    addToTimeline('Sustained Critical Stress Detected', 'SIGNAL', stressConf);
+                    if (isSubject) triggerDispatch('Sustained Subject Distress');
                 }
-            } else if (stressScore > 0.6) {
-                stressLabel = 'Anxious/Tactical';
-                stressColor = 'yellow';
+            } else {
+                shoutStartTime.current = null;
+                if (stressScore > 0.6) {
+                    stressLabel = 'Anxious/Tactical';
+                    stressColor = 'yellow';
+                }
             }
 
-            setModel('stress', {
-                status: stressLabel,
-                confidence: stressConf,
-                color: stressColor,
-                lastDetection: now()
-            });
+            setModel('stress', { status: stressLabel, confidence: stressConf, color: stressColor, lastDetection: now() });
         }
 
         rafRef.current = setTimeout(processAudioBuffer, 250); // 4Hz poll
@@ -615,12 +635,20 @@ export const AudioDemo: React.FC = () => {
             } else {
                 setModel('gunshot', { status: 'Normal', confidence: confG, color: 'green', lastDetection: now() });
             }
+            // ── Struggle Detection (Duration Gated) ──
+            if (confS > 70) {
+                if (!struggleStartTime.current) struggleStartTime.current = Date.now();
+                const struggleDur = Date.now() - struggleStartTime.current;
 
-            if (confS > 10) {
-                setModel('struggle', { status: 'THREAT DETECTED', confidence: confS, color: 'red', lastDetection: now() });
-                addLog({ model: 'struggle', threat: 'Struggle/Screaming identified', confidence: confS, level: 'red', scenario: 'File Upload' });
+                if (struggleDur > 1500) { // 1.5s gate
+                    setModel('struggle', { status: 'SUSTAINED STRUGGLE', confidence: confS, color: 'red', lastDetection: now() });
+                    addLog({ model: 'struggle', threat: 'Sustained Physical Struggle / Agitation', confidence: confS, level: 'red', scenario: 'Temporal Gate' });
+                    addToTimeline('Sustained Struggle Detected', 'SIGNAL', confS);
+                    triggerDispatch('Sustained Physical Struggle');
+                }
             } else {
-                setModel('struggle', { status: 'Normal', confidence: confS, color: 'green', lastDetection: now() });
+                struggleStartTime.current = null;
+                setModel('struggle', { status: confS > 30 ? 'Agitation Detected' : 'No Struggle', confidence: confS, color: confS > 30 ? 'yellow' : 'green', lastDetection: now() });
             }
 
             let keywordThreat = null;
