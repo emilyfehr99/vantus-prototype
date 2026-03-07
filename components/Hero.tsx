@@ -90,34 +90,6 @@ export const Hero: React.FC<{
             An <span className="text-white font-bold">AI dispatch partner</span> that triages calls, routes officers, and ensures backup arrives instantly.
           </p>
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row flex-wrap gap-4 pt-8 w-full justify-center items-center">
-          <MotionButton
-            onClick={onOpenLogin}
-            whileHover={{ scale: 1.02, boxShadow: '0 0 30px rgba(255,255,255,0.15)' }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full sm:w-[260px] py-5 bg-white text-black font-black uppercase tracking-widest text-[11px] rounded-sm transition-all"
-          >
-            Pilot Access
-          </MotionButton>
-          <MotionButton
-            onClick={onOpenWaitlist}
-            whileHover={{ scale: 1.02, backgroundColor: '#00FF41', borderColor: '#00FF41', color: 'black' }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full sm:w-[260px] py-5 border border-white/20 bg-transparent text-white font-black uppercase tracking-widest text-[11px] rounded-sm transition-all"
-          >
-            Get a Free Demo
-          </MotionButton>
-          <MotionButton
-            whileHover={{ scale: 1.02, borderColor: 'white', color: 'white', boxShadow: '0 0 20px rgba(255,255,255,0.05)' }}
-            whileTap={{ scale: 0.98 }}
-            onClick={onOpenWhitepaper}
-            className="w-full sm:w-[260px] py-5 border border-neutral-800 font-mono text-[11px] uppercase tracking-[0.3em] text-neutral-500 transition-all"
-          >
-            Tech Specs // PDF
-          </MotionButton>
-        </div>
       </MotionDiv>
 
       {/* Corner Accents - Cleaned up to ensure no rogue metrics creep in */}
