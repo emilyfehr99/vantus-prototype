@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import { Eye, Cloud, Zap, Radio, Shield, Boxes } from 'lucide-react';
+import bodycamImage from '../public/bodycam-footage-v2.jpg';
 
 export const Physics: React.FC = () => {
   const MotionDiv = motion.div as any;
@@ -28,6 +29,16 @@ export const Physics: React.FC = () => {
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
           className="bg-[#050505] border border-neutral-900 p-10 md:p-28 relative overflow-hidden rounded-sm shadow-[0_0_80px_rgba(0,0,0,1)]"
         >
+          {/* Background Image Layer */}
+          <div className="absolute inset-0 z-0">
+            <img
+              src={bodycamImage}
+              alt="Officer bodycam footage"
+              className="w-full h-full object-cover opacity-20 grayscale sepia-[.1] brightness-[0.4]"
+            />
+            {/* Added a subtle gradient to ensure text readability */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
+          </div>
           {/* Kinetic Blueprint Schematic */}
           <MotionDiv
             style={{ y: schemaY, rotate: rotateSchema, scale: scaleSchema } as any}

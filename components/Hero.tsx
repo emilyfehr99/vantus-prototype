@@ -1,6 +1,5 @@
 import React, { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import heroImage from '../public/bodycam-footage-v2.jpg';
 import heroVideo from '../public/vantus-bg-video-v2.mp4';
 
 export const Hero: React.FC<{
@@ -22,13 +21,8 @@ export const Hero: React.FC<{
 
   return (
     <section ref={containerRef} className="relative min-h-screen flex flex-col items-center justify-center pt-48 pb-32 px-6 lg:px-12 bg-black overflow-hidden select-none">
-      {/* Background Image */}
+      {/* Background Video Layer Only */}
       <div className="absolute inset-0 z-0">
-        <img
-          src={heroImage}
-          alt="Officer bodycam footage"
-          className="w-full h-full object-cover"
-        />
         {/* Subtle Bodycam / Tactical Texture Overlay */}
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=2000&q=80')] bg-cover bg-center opacity-5 mix-blend-overlay pointer-events-none" />
 
@@ -78,7 +72,7 @@ export const Hero: React.FC<{
               muted
               loop
               playsInline
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover brightness-[1.15]"
             >
               <source src={heroVideo} type="video/mp4" />
             </video>
