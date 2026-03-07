@@ -25,11 +25,7 @@ export const Hero: React.FC<{
         <img
           src="/bodycam-footage-v2.jpg"
           alt="Officer bodycam footage"
-          className="w-full h-full object-cover opacity-30 blur-sm brightness-[0.4] grayscale sepia-[.1]"
-          onError={(e) => {
-            // Fallback to the original image if the local file isn't placed yet
-            (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1596705359489-3224b1ff5801?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80";
-          }}
+          className="w-full h-full object-cover"
         />
         {/* Subtle Bodycam / Tactical Texture Overlay */}
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=2000&q=80')] bg-cover bg-center opacity-5 mix-blend-overlay pointer-events-none" />
@@ -80,7 +76,7 @@ export const Hero: React.FC<{
               muted
               loop
               playsInline
-              className="w-full h-full object-cover opacity-[0.15] grayscale brightness-125"
+              className="w-full h-full object-cover"
             >
               <source src="/vantus-bg-video-v2.mp4" type="video/mp4" />
             </video>
