@@ -1,5 +1,7 @@
 import React, { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
+import heroImage from '../public/bodycam-footage-v2.jpg';
+import heroVideo from '../public/vantus-bg-video-v2.mp4';
 
 export const Hero: React.FC<{
   onOpenWaitlist: () => void;
@@ -23,7 +25,7 @@ export const Hero: React.FC<{
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
-          src="/bodycam-footage-v2.jpg"
+          src={heroImage}
           alt="Officer bodycam footage"
           className="w-full h-full object-cover"
         />
@@ -78,7 +80,7 @@ export const Hero: React.FC<{
               playsInline
               className="w-full h-full object-cover"
             >
-              <source src="/vantus-bg-video-v2.mp4" type="video/mp4" />
+              <source src={heroVideo} type="video/mp4" />
             </video>
           </div>
 
