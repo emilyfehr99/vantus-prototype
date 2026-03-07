@@ -7,11 +7,11 @@ export const Problem: React.FC = () => {
   const MotionDiv = motion.div as any;
 
   return (
-    <section className="py-40 px-6 bg-black border-t border-neutral-900 overflow-hidden relative">
+    <section id="the-problem" className="py-24 px-6 bg-[#000000] relative overflow-hidden group">
       {/* Background Ambience */}
       <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-[#FF3B30]/5 to-transparent pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-24 items-center relative z-10">
+      <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 lg:gap-24 items-center mt-12 relative z-10">
         <MotionDiv
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -34,14 +34,14 @@ export const Problem: React.FC = () => {
             Solo-patrol units are operating in increasingly volatile environments without a physical second officer. When every second is a matter of life and death, radio lag is unacceptable.
           </p>
 
-          <div className="flex gap-12 pb-6 border-b border-neutral-900 w-full max-w-lg">
-            <div>
-              <div className="text-5xl font-black text-[#FF3B30] tracking-tighter">100k</div>
-              <div className="font-mono text-[9px] text-neutral-500 uppercase tracking-widest mt-2">Officer Staffing Gap</div>
+          <div className="mt-8 flex gap-8 p-6 md:p-8 bg-[#0a0a0a] border border-[#FF3B30]/10 rounded-sm w-full max-w-lg shadow-[0_10px_40px_-10px_rgba(255,59,48,0.1)]">
+            <div className="flex-1 border-r border-neutral-900">
+              <div className="text-4xl md:text-5xl font-black text-[#FF3B30] tracking-tighter">100k</div>
+              <div className="font-mono text-[9px] md:text-[10px] text-neutral-500 uppercase tracking-widest mt-2">Officer Staffing Gap</div>
             </div>
-            <div>
-              <div className="text-5xl font-black text-[#FF3B30] tracking-tighter">82%</div>
-              <div className="font-mono text-[9px] text-neutral-500 uppercase tracking-widest mt-2">Solo Patrol Units</div>
+            <div className="flex-1 pl-4">
+              <div className="text-4xl md:text-5xl font-black text-[#FF3B30] tracking-tighter">82%</div>
+              <div className="font-mono text-[9px] md:text-[10px] text-neutral-500 uppercase tracking-widest mt-2">Solo Patrol Units</div>
             </div>
           </div>
 

@@ -19,14 +19,14 @@ export const Physics: React.FC = () => {
   const scaleSchema = useTransform(smoothProgress, [0, 0.5, 1], [0.8, 1, 0.8]);
 
   return (
-    <section ref={sectionRef} className="py-40 px-6 bg-[#000000] overflow-hidden relative">
+    <section ref={sectionRef} className="py-48 px-6 lg:px-12 bg-[#000000] overflow-hidden relative">
       <div className="max-w-7xl mx-auto">
         <MotionDiv
           initial={{ opacity: 0, y: 60 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-          className="bg-[#050505] border border-neutral-900 p-8 md:p-24 relative overflow-hidden rounded-sm shadow-[0_0_80px_rgba(0,0,0,1)]"
+          className="bg-[#050505] border border-neutral-900 p-12 md:p-32 relative overflow-hidden rounded-sm shadow-[0_0_80px_rgba(0,0,0,1)]"
         >
           {/* Kinetic Blueprint Schematic */}
           <MotionDiv
@@ -110,53 +110,35 @@ export const Physics: React.FC = () => {
                 {/* Outer Rings */}
                 <MotionDiv
                   animate={{ rotate: 360 }}
-                  transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 border border-dashed border-neutral-800 rounded-full opacity-50 group-hover:opacity-100 group-hover:border-[#00FF41]/20 transition-all duration-700"
+                  transition={{ duration: 120, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 border border-dashed border-neutral-800 rounded-full opacity-30 group-hover:opacity-60 group-hover:border-[#00FF41]/10 transition-all duration-1000"
                 />
                 <MotionDiv
                   animate={{ rotate: -360 }}
-                  transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-10 border border-[#00FF41]/20 rounded-full group-hover:border-[#00FF41]/50 transition-all duration-700"
+                  transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-10 border border-[#00FF41]/10 rounded-full group-hover:border-[#00FF41]/30 transition-all duration-1000"
                 />
                 <MotionDiv
-                  animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.5, 0.2] }}
-                  transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute inset-20 border border-neutral-800 rounded-full group-hover:border-[#00FF41]/30 transition-all duration-700"
+                  animate={{ scale: [1, 1.05, 1], opacity: [0.1, 0.3, 0.1] }}
+                  transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute inset-20 border border-neutral-800 rounded-full group-hover:border-[#00FF41]/20 transition-all duration-1000"
                 />
 
                 {/* Central Power Core */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <MotionDiv
                     animate={{
-                      boxShadow: ['0 0 0px #00FF4100', '0 0 50px #00FF4144', '0 0 0px #00FF4100'],
-                      scale: [1, 1.1, 1]
+                      boxShadow: ['0 0 0px #00FF4100', '0 0 30px #00FF4122', '0 0 0px #00FF4100'],
+                      scale: [1, 1.02, 1]
                     }}
-                    whileHover={{ scale: 1.2, boxShadow: '0 0 80px rgba(0,255,65,0.4)' }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                    className="w-32 h-32 bg-[#00FF41]/5 rounded-sm flex items-center justify-center border border-[#00FF41]/40 relative overflow-hidden group-hover:border-[#00FF41] group-hover:bg-[#00FF41]/10 transition-all"
+                    whileHover={{ scale: 1.1, boxShadow: '0 0 60px rgba(0,255,65,0.2)' }}
+                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                    className="w-32 h-32 bg-[#00FF41]/5 rounded-sm flex items-center justify-center border border-[#00FF41]/20 relative overflow-hidden group-hover:border-[#00FF41]/60 group-hover:bg-[#00FF41]/10 transition-all duration-700"
                   >
-                    <Zap className="text-[#00FF41] relative z-10 w-12 h-12" />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#00FF4144,transparent)] opacity-50" />
+                    <Zap className="text-[#00FF41]/70 group-hover:text-[#00FF41] relative z-10 w-12 h-12 transition-colors duration-700" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#00FF4122,transparent)] opacity-30 group-hover:opacity-60 transition-opacity duration-700" />
                   </MotionDiv>
                 </div>
-
-                {/* HUD Elements */}
-                <MotionDiv
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  transition={{ delay: 0.8 }}
-                  className="absolute -top-4 -left-4 p-5 border-l-2 border-t-2 border-[#00FF41] font-mono text-[9px] text-[#00FF41] bg-black shadow-[0_0_20px_rgba(0,255,65,0.1)] group-hover:translate-x-2 group-hover:translate-y-2 transition-transform"
-                >
-                  SYNC_INGEST_OK: 120FPS
-                </MotionDiv>
-                <MotionDiv
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  transition={{ delay: 1.0 }}
-                  className="absolute -bottom-4 -right-4 p-5 border-r-2 border-b-2 border-neutral-700 font-mono text-[9px] text-neutral-500 bg-black group-hover:-translate-x-2 group-hover:-translate-y-2 transition-transform"
-                >
-                  THREAT_THRESHOLD: HIGH
-                </MotionDiv>
               </div>
             </MotionDiv>
           </div>

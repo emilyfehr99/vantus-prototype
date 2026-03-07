@@ -140,39 +140,29 @@ const DYNAMIC_MESSAGES = [
   { type: 'SYS', text: 'Analyzing subject behavioral audio...' },
   { type: 'ALERT', text: 'THREAT DETECTED: BLADED STANCE.' },
   { type: 'LOG', text: 'Voice Stress: High Arousal Detected.' },
-  { type: 'ALERT', text: 'WEAPON SIGNATURE: KNIFE (98%).' },
   { type: 'SYS', text: 'Autonomous Lifeline Triggered.' },
   { type: 'LOG', text: 'Dispatch Notified: Priority 1 Backup.' },
   { type: 'SYS', text: 'GPS Coordinates Sent to CAD.' },
+];
 
+const STATIC_LOGS: LogEntry[] = [
+  {
+    id: 1,
+    time: "03:46:16",
+    type: "ALERT",
+    message: "THREAT DETECTED: BLADED STANCE."
+  },
+  {
+    id: 2,
+    time: "03:46:19",
+    type: "SYS",
+    message: "Scanning env... Sector 4 clear."
+  }
 ];
 
 const LiveTacticalFeed = () => {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const logId = useRef(0);
   const MotionDiv = motion.div as any;
   const feedContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const addLog = () => {
-      const msgTemplate = DYNAMIC_MESSAGES[Math.floor(Math.random() * DYNAMIC_MESSAGES.length)];
-      const now = new Date();
-      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-
-      const newEntry: LogEntry = {
-        id: logId.current++,
-        time: timeStr,
-        type: msgTemplate.type as any,
-        message: msgTemplate.text
-      };
-
-      setLogs(prev => [newEntry, ...prev].slice(0, 8));
-    };
-
-    const interval = setInterval(addLog, 2500);
-    addLog();
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <MotionDiv
@@ -180,7 +170,7 @@ const LiveTacticalFeed = () => {
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: "-100px" }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className="mt-32 p-8 md:p-12 bg-[#050505] border border-neutral-900 rounded-sm relative overflow-hidden group min-h-[400px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)]"
+      className="mt-20 p-8 md:p-10 bg-[#050505] border border-neutral-900 rounded-sm relative overflow-hidden group shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)]"
     >
       {/* Decorative Grid */}
       <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[linear-gradient(to_right,#00FF41_1px,transparent_1px),linear-gradient(to_bottom,#00FF41_1px,transparent_1px)] bg-[size:32px_32px]"></div>
@@ -198,66 +188,38 @@ const LiveTacticalFeed = () => {
           </div>
         </div>
 
-        <div className="space-y-4 font-mono text-[11px] h-[280px] overflow-hidden relative" ref={feedContainerRef}>
-          <AnimatePresence initial={false} mode="popLayout">
-            {logs.map((log) => (
-              <MotionDiv
-                key={log.id}
-                layout
-                initial={{ opacity: 0, x: -30, filter: 'blur(10px)', skewX: -10 }}
-                animate={{
-                  opacity: 1,
-                  x: 0,
-                  filter: 'blur(0px)',
-                  skewX: 0,
-                  backgroundColor: log.type === 'ALERT' ? ['rgba(255,59,48,0.4)', 'rgba(255,59,48,0.05)'] : 'rgba(0,0,0,0)'
-                }}
-                exit={{ opacity: 0, x: 50, transition: { duration: 0.3 } }}
-                transition={{
-                  type: 'spring',
-                  stiffness: 400,
-                  damping: 30,
-                  layout: { duration: 0.3 }
-                }}
-                className={`flex gap-6 group py-1.5 px-3 rounded-sm relative overflow-hidden transition-all duration-300 ${log.type === 'ALERT' ? 'border-l-2 border-[#FF3B30] bg-[#FF3B30]/5' : 'hover:bg-white/[0.02]'
-                  }`}
-              >
-                <span className="text-neutral-700 w-16 shrink-0 font-bold">{log.time}</span>
-                <span className={`font-black w-12 shrink-0 tracking-tighter ${log.type === 'ALERT' ? 'text-[#FF3B30] animate-pulse' :
-                  log.type === 'SYS' ? 'text-[#00FF41]' :
-                    'text-neutral-500'
-                  }`}>
-                  [{log.type}]
-                </span>
-                <span className={`flex-1 transition-colors duration-300 ${log.type === 'ALERT' ? 'text-white font-black uppercase' :
-                  'text-neutral-400 group-hover:text-white'
-                  }`}>
-                  {log.message}
-                </span>
-
-                {/* Visual Sweep Effect */}
-                <MotionDiv
-                  initial={{ left: '-100%' }}
-                  animate={{ left: '200%' }}
-                  transition={{ duration: 1.2, ease: 'linear' }}
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-[#00FF41]/10 to-transparent pointer-events-none"
-                />
-              </MotionDiv>
-            ))}
-          </AnimatePresence>
+        <div className="space-y-3 font-mono text-[10px] overflow-hidden relative" ref={feedContainerRef}>
+          {STATIC_LOGS.map((log) => (
+            <MotionDiv
+              key={log.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{
+                opacity: 1,
+                x: 0,
+                backgroundColor: log.type === 'ALERT' ? 'rgba(255,59,48,0.05)' : 'rgba(0,0,0,0)'
+              }}
+              className={`flex gap-4 group py-1.5 px-3 rounded-sm relative overflow-hidden transition-all duration-300 ${log.type === 'ALERT' ? 'border-l-2 border-[#FF3B30]' : ''
+                }`}
+            >
+              <span className={`font-black w-14 shrink-0 tracking-tighter ${log.type === 'ALERT' ? 'text-[#FF3B30]' :
+                log.type === 'SYS' ? 'text-[#00FF41]' :
+                  'text-neutral-500'
+                }`}>
+                [{log.type}]
+              </span>
+              <span className={`flex-1 transition-colors duration-300 ${log.type === 'ALERT' ? 'text-white font-black uppercase' :
+                'text-neutral-400'
+                }`}>
+                {log.message}
+              </span>
+            </MotionDiv>
+          ))}
         </div>
 
         {/* Status Bar */}
-        <div className="mt-12 flex items-center justify-between pt-6 border-t border-neutral-900">
+        <div className="mt-8 flex items-center justify-between pt-6 border-t border-neutral-900">
           <div className="flex gap-8">
-            <div className="flex flex-col gap-1">
-              <span className="text-neutral-700 text-[7px] uppercase font-black tracking-widest">NPU Engine</span>
-              <span className="text-[#00FF41] text-[10px] font-bold">OPT_LOAD_98%</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-neutral-700 text-[7px] uppercase font-black tracking-widest">Sync Latency</span>
-              <span className="text-white text-[10px] font-bold">1.2 MS</span>
-            </div>
+            {/* Removed dense NPU/Latency metrics for cleaner approachability */}
           </div>
           <div className="flex items-center gap-5">
             <div className="flex items-center gap-1.5">
