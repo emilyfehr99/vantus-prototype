@@ -19,17 +19,20 @@ export const Hero: React.FC<{
   const textY = useTransform(scrollYProgress, [0, 1], ["0%", "10%"]);
 
   return (
-    <section ref={containerRef} className="relative min-h-screen flex flex-col items-center justify-center pt-32 pb-20 px-6 bg-black overflow-hidden select-none">
+    <section ref={containerRef} className="relative min-h-screen flex flex-col items-center justify-center pt-40 pb-28 px-6 bg-black overflow-hidden select-none">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
           src="https://images.unsplash.com/photo-1596705359489-3224b1ff5801?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80"
           alt="Officer background"
-          className="w-full h-full object-cover opacity-30 blur-sm brightness-75 grayscale sepia-[.2]"
+          className="w-full h-full object-cover opacity-20 blur-sm brightness-75 grayscale sepia-[.1]"
         />
+        {/* Subtle Bodycam / Tactical Texture Overlay */}
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=2000&q=80')] bg-cover bg-center opacity-5 mix-blend-overlay pointer-events-none" />
+
         {/* Gradient Overlay for Text Readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-        <div className="absolute inset-0 bg-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+        <div className="absolute inset-0 bg-black/30" />
       </div>
 
       {/* Corner Accents */}
@@ -47,7 +50,11 @@ export const Hero: React.FC<{
         {/* Status Line */}
         <div className="flex flex-col items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-1.5 h-1.5 bg-[#00FF41] rounded-full shadow-[0_0_8px_#00FF41] animate-pulse" />
+            <MotionDiv
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              className="w-1.5 h-1.5 bg-[#00FF41] rounded-full shadow-[0_0_8px_#00FF41]"
+            />
             <span className="font-mono text-[11px] text-[#00FF41] font-bold uppercase tracking-[0.4em]">
               Operational Interdiction Protocol Alpha
             </span>
@@ -110,10 +117,9 @@ export const Hero: React.FC<{
           </div>
           <span className="font-mono text-[9px] text-[#00FF41] uppercase tracking-[0.4em] font-black group-hover:tracking-[0.5em] transition-all">Sensors: Online</span>
         </div>
-        <div className="font-mono text-[10px] text-neutral-600 space-y-1.5 tracking-widest uppercase">
-          <p className="flex justify-between gap-4 group-hover:text-neutral-400 transition-colors"><span>Vocal Stress:</span> <span className="text-white">Nominal</span></p>
-          <p className="flex justify-between gap-4 group-hover:text-neutral-400 transition-colors"><span>Posture Map:</span> <span className="text-white">Scanning</span></p>
-          <p className="flex justify-between gap-4 group-hover:text-neutral-400 transition-colors"><span>Threat Sig:</span> <span className="text-white">0.02%</span></p>
+        <div className="font-mono text-[10px] text-neutral-600 space-y-2 tracking-widest uppercase">
+          <p className="flex justify-between gap-6 group-hover:text-neutral-400 transition-colors"><span>Vocal Stress:</span> <span className="text-white">Nominal</span></p>
+          <p className="flex justify-between gap-6 group-hover:text-neutral-400 transition-colors"><span>Threat Sig:</span> <span className="text-white">0.02%</span></p>
           <p className="pt-2 text-[8px] opacity-40">LAT: 34.0522° N // LON: 118.2437° W</p>
         </div>
       </div>

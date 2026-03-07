@@ -149,6 +149,7 @@ const DYNAMIC_MESSAGES = [
 
 const LiveTacticalFeed = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [isExpanded, setIsExpanded] = useState(false);
   const logId = useRef(0);
   const MotionDiv = motion.div as any;
   const feedContainerRef = useRef<HTMLDivElement>(null);
@@ -166,7 +167,7 @@ const LiveTacticalFeed = () => {
         message: msgTemplate.text
       };
 
-      setLogs(prev => [newEntry, ...prev].slice(0, 8));
+      setLogs(prev => [newEntry, ...prev].slice(0, 15));
     };
 
     const interval = setInterval(addLog, 2500);
@@ -180,8 +181,10 @@ const LiveTacticalFeed = () => {
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: "-100px" }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className="mt-32 p-8 md:p-12 bg-[#050505] border border-neutral-900 rounded-sm relative overflow-hidden group min-h-[400px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)]"
+      className="mt-32 p-10 md:p-14 bg-[#050505] border border-neutral-900 rounded-sm relative overflow-hidden group min-h-[400px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)]"
     >
+      {/* Abstract tactical texture */}
+      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1583324113626-70df0f4deaab?auto=format&fit=crop&w=800&q=80')] bg-cover bg-center opacity-[0.03] mix-blend-overlay pointer-events-none grayscale" />
       {/* Decorative Grid */}
       <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[linear-gradient(to_right,#00FF41_1px,transparent_1px),linear-gradient(to_bottom,#00FF41_1px,transparent_1px)] bg-[size:32px_32px]"></div>
 
@@ -198,9 +201,9 @@ const LiveTacticalFeed = () => {
           </div>
         </div>
 
-        <div className="space-y-4 font-mono text-[11px] h-[280px] overflow-hidden relative" ref={feedContainerRef}>
+        <div className={`space-y-4 font-mono text-[11px] overflow-hidden relative transition-all duration-500 ${isExpanded ? 'h-[400px]' : 'h-[175px]'}`} ref={feedContainerRef}>
           <AnimatePresence initial={false} mode="popLayout">
-            {logs.map((log) => (
+            {logs.slice(0, isExpanded ? 15 : 5).map((log) => (
               <MotionDiv
                 key={log.id}
                 layout
@@ -247,17 +250,18 @@ const LiveTacticalFeed = () => {
           </AnimatePresence>
         </div>
 
+        {/* Expand Toggle */}
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="mt-6 w-full py-3 border border-neutral-900 rounded-sm font-mono text-[9px] uppercase tracking-[0.3em] text-neutral-500 hover:text-[#00FF41] hover:border-[#00FF41]/30 hover:bg-[#00FF41]/[0.02] transition-all duration-300"
+        >
+          {isExpanded ? 'Collapse Log Stream_' : 'View Full Simulation_'}
+        </button>
+
         {/* Status Bar */}
-        <div className="mt-12 flex items-center justify-between pt-6 border-t border-neutral-900">
+        <div className="mt-8 flex items-center justify-between pt-6 border-t border-neutral-900">
           <div className="flex gap-8">
-            <div className="flex flex-col gap-1">
-              <span className="text-neutral-700 text-[7px] uppercase font-black tracking-widest">NPU Engine</span>
-              <span className="text-[#00FF41] text-[10px] font-bold">OPT_LOAD_98%</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-neutral-700 text-[7px] uppercase font-black tracking-widest">Sync Latency</span>
-              <span className="text-white text-[10px] font-bold">1.2 MS</span>
-            </div>
+            {/* Removed dense NPU/Latency metrics for cleaner approachability */}
           </div>
           <div className="flex items-center gap-5">
             <div className="flex items-center gap-1.5">
