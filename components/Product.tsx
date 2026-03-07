@@ -147,33 +147,24 @@ const DYNAMIC_MESSAGES = [
 
 ];
 
+const STATIC_LOGS: LogEntry[] = [
+  {
+    id: 1,
+    time: "03:46:19",
+    type: "SYS",
+    message: "Scanning env... Sector 4 clear."
+  },
+  {
+    id: 2,
+    time: "[-TIME-]", // Replaced with empty logic or hardcoded
+    type: "ALERT",
+    message: "THREAT DETECTED: BLADED STANCE."
+  }
+];
+
 const LiveTacticalFeed = () => {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const logId = useRef(0);
   const MotionDiv = motion.div as any;
   const feedContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const addLog = () => {
-      const msgTemplate = DYNAMIC_MESSAGES[Math.floor(Math.random() * DYNAMIC_MESSAGES.length)];
-      const now = new Date();
-      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-
-      const newEntry: LogEntry = {
-        id: logId.current++,
-        time: timeStr,
-        type: msgTemplate.type as any,
-        message: msgTemplate.text
-      };
-
-      setLogs(prev => [newEntry, ...prev].slice(0, 15));
-    };
-
-    const interval = setInterval(addLog, 2500);
-    addLog();
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <MotionDiv
@@ -181,7 +172,7 @@ const LiveTacticalFeed = () => {
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: "-100px" }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className="mt-32 p-10 md:p-14 bg-[#050505] border border-neutral-900 rounded-sm relative overflow-hidden group min-h-[400px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)]"
+      className="mt-20 p-8 md:p-10 bg-[#050505] border border-neutral-900 rounded-sm relative overflow-hidden group shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)]"
     >
       {/* Abstract tactical texture */}
       <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1583324113626-70df0f4deaab?auto=format&fit=crop&w=800&q=80')] bg-cover bg-center opacity-[0.03] mix-blend-overlay pointer-events-none grayscale" />
@@ -201,62 +192,33 @@ const LiveTacticalFeed = () => {
           </div>
         </div>
 
-        <div className={`space-y-4 font-mono text-[11px] overflow-hidden relative transition-all duration-500 ${isExpanded ? 'h-[400px]' : 'h-[175px]'}`} ref={feedContainerRef}>
-          <AnimatePresence initial={false} mode="popLayout">
-            {logs.slice(0, isExpanded ? 15 : 5).map((log) => (
-              <MotionDiv
-                key={log.id}
-                layout
-                initial={{ opacity: 0, x: -30, filter: 'blur(10px)', skewX: -10 }}
-                animate={{
-                  opacity: 1,
-                  x: 0,
-                  filter: 'blur(0px)',
-                  skewX: 0,
-                  backgroundColor: log.type === 'ALERT' ? ['rgba(255,59,48,0.4)', 'rgba(255,59,48,0.05)'] : 'rgba(0,0,0,0)'
-                }}
-                exit={{ opacity: 0, x: 50, transition: { duration: 0.3 } }}
-                transition={{
-                  type: 'spring',
-                  stiffness: 400,
-                  damping: 30,
-                  layout: { duration: 0.3 }
-                }}
-                className={`flex gap-6 group py-1.5 px-3 rounded-sm relative overflow-hidden transition-all duration-300 ${log.type === 'ALERT' ? 'border-l-2 border-[#FF3B30] bg-[#FF3B30]/5' : 'hover:bg-white/[0.02]'
-                  }`}
-              >
-                <span className="text-neutral-700 w-16 shrink-0 font-bold">{log.time}</span>
-                <span className={`font-black w-12 shrink-0 tracking-tighter ${log.type === 'ALERT' ? 'text-[#FF3B30] animate-pulse' :
-                  log.type === 'SYS' ? 'text-[#00FF41]' :
-                    'text-neutral-500'
-                  }`}>
-                  [{log.type}]
-                </span>
-                <span className={`flex-1 transition-colors duration-300 ${log.type === 'ALERT' ? 'text-white font-black uppercase' :
-                  'text-neutral-400 group-hover:text-white'
-                  }`}>
-                  {log.message}
-                </span>
-
-                {/* Visual Sweep Effect */}
-                <MotionDiv
-                  initial={{ left: '-100%' }}
-                  animate={{ left: '200%' }}
-                  transition={{ duration: 1.2, ease: 'linear' }}
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-[#00FF41]/10 to-transparent pointer-events-none"
-                />
-              </MotionDiv>
-            ))}
-          </AnimatePresence>
+        <div className="space-y-3 font-mono text-[10px] overflow-hidden relative" ref={feedContainerRef}>
+          {STATIC_LOGS.map((log) => (
+            <MotionDiv
+              key={log.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{
+                opacity: 1,
+                x: 0,
+                backgroundColor: log.type === 'ALERT' ? 'rgba(255,59,48,0.05)' : 'rgba(0,0,0,0)'
+              }}
+              className={`flex gap-4 group py-1.5 px-3 rounded-sm relative overflow-hidden transition-all duration-300 ${log.type === 'ALERT' ? 'border-l-2 border-[#FF3B30] bg-[#FF3B30]/5' : ''
+                }`}
+            >
+              <span className={`font-black w-14 shrink-0 tracking-tighter ${log.type === 'ALERT' ? 'text-[#FF3B30]' :
+                log.type === 'SYS' ? 'text-[#00FF41]' :
+                  'text-neutral-500'
+                }`}>
+                [{log.type}]
+              </span>
+              <span className={`flex-1 transition-colors duration-300 ${log.type === 'ALERT' ? 'text-white font-black uppercase' :
+                'text-neutral-400'
+                }`}>
+                {log.message}
+              </span>
+            </MotionDiv>
+          ))}
         </div>
-
-        {/* Expand Toggle */}
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="mt-6 w-full py-3 border border-neutral-900 rounded-sm font-mono text-[9px] uppercase tracking-[0.3em] text-neutral-500 hover:text-[#00FF41] hover:border-[#00FF41]/30 hover:bg-[#00FF41]/[0.02] transition-all duration-300"
-        >
-          {isExpanded ? 'Collapse Log Stream_' : 'View Full Simulation_'}
-        </button>
 
         {/* Status Bar */}
         <div className="mt-8 flex items-center justify-between pt-6 border-t border-neutral-900">

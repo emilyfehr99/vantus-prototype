@@ -19,7 +19,7 @@ export const Hero: React.FC<{
   const textY = useTransform(scrollYProgress, [0, 1], ["0%", "10%"]);
 
   return (
-    <section ref={containerRef} className="relative min-h-screen flex flex-col items-center justify-center pt-40 pb-28 px-6 bg-black overflow-hidden select-none">
+    <section ref={containerRef} className="relative min-h-screen flex flex-col items-center justify-center pt-48 pb-32 px-6 lg:px-12 bg-black overflow-hidden select-none">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
@@ -119,14 +119,10 @@ export const Hero: React.FC<{
         </div>
         <div className="font-mono text-[10px] text-neutral-600 space-y-2 tracking-widest uppercase">
           <p className="flex justify-between gap-6 group-hover:text-neutral-400 transition-colors"><span>Vocal Stress:</span> <span className="text-white">Nominal</span></p>
+          <p className="flex justify-between gap-6 group-hover:text-neutral-400 transition-colors"><span>Posture Map:</span> <span className="text-white">Scanning</span></p>
           <p className="flex justify-between gap-6 group-hover:text-neutral-400 transition-colors"><span>Threat Sig:</span> <span className="text-white">0.02%</span></p>
           <p className="pt-2 text-[8px] opacity-40">LAT: 34.0522° N // LON: 118.2437° W</p>
         </div>
-      </div>
-
-      {/* Footer Vertical Label */}
-      <div className="absolute bottom-12 right-10 font-mono text-[9px] text-neutral-800 vertical-text tracking-[0.6em] uppercase pointer-events-none select-none opacity-50">
-        Vantus_Partner_Sys_v4.2
       </div>
     </section >
   );
