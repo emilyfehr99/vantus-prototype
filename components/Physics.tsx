@@ -34,7 +34,7 @@ export const Physics: React.FC = () => {
             <img
               src={bodycamImage}
               alt="Officer bodycam footage"
-              className="w-full h-full object-cover opacity-20 grayscale sepia-[.1] brightness-[0.4]"
+              className="w-full h-full object-cover opacity-40 grayscale sepia-[.1]"
             />
             {/* Added a subtle gradient to ensure text readability */}
             <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />

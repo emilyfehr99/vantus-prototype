@@ -16,7 +16,6 @@ export const Hero: React.FC<{
     offset: ["start start", "end start"]
   });
 
-  const opacity = useTransform(scrollYProgress, [0, 0.4], [1, 0]);
   const textY = useTransform(scrollYProgress, [0, 1], ["0%", "10%"]);
 
   return (
@@ -37,7 +36,7 @@ export const Hero: React.FC<{
 
       {/* Main Tactical Content */}
       <MotionDiv
-        style={{ y: textY, opacity } as any}
+        style={{ y: textY } as any}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
