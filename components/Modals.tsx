@@ -253,6 +253,7 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2, ease: "easeOut" }}
                                 className="overflow-hidden"
                               >
                                 <div className="p-8 pt-0 text-neutral-500 font-mono text-xs leading-relaxed border-t border-neutral-900 bg-[#00FF41]/[0.01]">
