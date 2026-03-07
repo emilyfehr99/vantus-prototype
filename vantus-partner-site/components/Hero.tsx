@@ -26,7 +26,7 @@ export const Hero: React.FC<{
         <img
           src="/bodycam-footage.jpg"
           alt="Officer bodycam footage"
-          className="w-full h-full object-cover opacity-20 blur-sm brightness-75 mix-blend-screen"
+          className="w-full h-full object-cover opacity-30 blur-sm brightness-[0.4] grayscale sepia-[.1]"
           onError={(e) => {
             // Fallback to the original image if the local file isn't placed yet
             (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1596705359489-3224b1ff5801?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80";
@@ -71,11 +71,27 @@ export const Hero: React.FC<{
           </div>
         </div>
 
-        {/* Massive Stacked Headline */}
-        <div className="flex flex-col items-center leading-[0.82] tracking-[-0.05em] uppercase font-black">
-          <h1 className="text-[clamp(3rem,12vw,10rem)] text-white">Every Officer.</h1>
-          <h1 className="text-[clamp(3rem,12vw,10rem)] text-neutral-500">Every Call.</h1>
-          <h1 className="text-[clamp(3rem,12vw,10rem)] text-white hover:text-red-500 transition-colors duration-700">Never Alone.</h1>
+        {/* Massive Stacked Headline with Cinematic Video Background */}
+        <div className="relative w-full max-w-7xl mx-auto flex flex-col items-center justify-center py-24 mb-12">
+
+          {/* Low Opacity Video Background masked to fade out at the edges */}
+          <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden pointer-events-none [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)]">
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-full object-cover opacity-20 grayscale brightness-125"
+            >
+              <source src="/vantus-bg-video.mp4" type="video/mp4" />
+            </video>
+          </div>
+
+          <div className="relative z-10 flex flex-col items-center leading-[0.82] tracking-[-0.05em] uppercase font-black">
+            <h1 className="text-[clamp(3rem,12vw,10rem)] text-white">Every Officer.</h1>
+            <h1 className="text-[clamp(3rem,12vw,10rem)] text-neutral-500">Every Call.</h1>
+            <h1 className="text-[clamp(3rem,12vw,10rem)] text-white hover:text-[#FF3B30] hover:scale-105 transition-all duration-700 ease-out">Never Alone.</h1>
+          </div>
         </div>
 
         {/* Description grounded in specific features */}
