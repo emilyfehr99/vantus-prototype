@@ -2,38 +2,46 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Logo } from './Logo';
 
-const FooterLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
+const FooterLink: React.FC<{ href?: string; onClick?: () => void; children: React.ReactNode }> = ({ href, onClick, children }) => {
   const MotionDiv = motion.div as any;
+  const content = (
+    <span className="text-neutral-600 transition-colors duration-300 group-hover:text-white flex items-center gap-2 cursor-pointer">
+      {children}
+      <MotionDiv
+        className="absolute bottom-0 left-0 w-full h-[1px] bg-[#00FF41] shadow-[0_0_8px_#00FF41]"
+        initial={{ x: '-105%' }}
+        whileHover={{ x: '0%' }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      />
+    </span>
+  );
+
   return (
     <motion.li className="relative inline-block overflow-hidden py-1 group">
-      <a
-        href={href}
-        className="text-neutral-600 transition-colors duration-300 group-hover:text-white flex items-center gap-2"
-      >
-        {children}
-        <MotionDiv
-          className="absolute bottom-0 left-0 w-full h-[1px] bg-[#00FF41] shadow-[0_0_8px_#00FF41]"
-          initial={{ x: '-105%' }}
-          whileHover={{ x: '0%' }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        />
-      </a>
+      {href ? (
+        <a href={href}>{content}</a>
+      ) : (
+        <button onClick={onClick} className="text-left w-full">{content}</button>
+      )}
     </motion.li>
   );
 };
 
-const LegalLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
+const LegalLink: React.FC<{ href?: string; onClick?: () => void; children: React.ReactNode }> = ({ href, onClick, children }) => {
   const MotionDiv = motion.div as any;
-  return (
-    <a
-      href={href}
-      className="relative group text-neutral-700 hover:text-white transition-colors duration-300 py-1"
-    >
+  const content = (
+    <span className="relative group text-neutral-700 hover:text-white transition-colors duration-300 py-1 cursor-pointer">
       {children}
       <MotionDiv
         className="absolute -bottom-1 left-0 w-0 h-[1px] bg-[#00FF41]/60 group-hover:w-full transition-all duration-300 shadow-[0_0_4px_#00FF41]"
       />
-    </a>
+    </span>
+  );
+
+  return href ? (
+    <a href={href} className="inline-block">{content}</a>
+  ) : (
+    <button onClick={onClick} className="inline-block">{content}</button>
   );
 };
 
@@ -67,11 +75,11 @@ export const Footer: React.FC<{
 
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between gap-12 relative z-10">
         <div className="space-y-6 max-w-xs">
-          <div className="flex items-center gap-3">
-            <Logo className="h-6 w-auto text-white group-hover:text-[#00FF41] transition-colors duration-500" />
+          <div className="flex items-center gap-4">
+            <Logo className="h-10 w-auto text-white group-hover:text-[#00FF41] transition-colors duration-500" />
             <div className="flex flex-col leading-none">
-              <span className="font-bold tracking-tighter text-xl uppercase">Vantus</span>
-              <span className="font-mono text-[7px] text-neutral-500 tracking-[0.3em] uppercase mt-0.5">Safety Systems</span>
+              <span className="font-bold tracking-tighter text-2xl uppercase">Vantus</span>
+              <span className="font-mono text-[8px] text-neutral-500 tracking-[0.3em] uppercase mt-0.5">Safety Systems</span>
             </div>
           </div>
           <p className="text-neutral-400 text-base font-medium leading-relaxed tracking-tight italic">
@@ -97,16 +105,16 @@ export const Footer: React.FC<{
           <div className="space-y-4">
             <h4 className="font-mono text-xs uppercase text-neutral-400 tracking-widest border-l border-[#00FF41]/40 pl-3">Company</h4>
             <ul className="flex flex-col space-y-1 text-sm font-medium">
-              <FooterLink href="#">Our Mission</FooterLink>
-              <FooterLink href="#">Careers</FooterLink>
-              <FooterLink href="#">Contact</FooterLink>
+              <FooterLink onClick={() => scrollToSection('mission')}>Our Mission</FooterLink>
+              <FooterLink onClick={onOpenCareers}>Careers</FooterLink>
+              <FooterLink onClick={onOpenContact}>Contact</FooterLink>
             </ul>
           </div>
         </div >
       </div >
 
       <div className="max-w-6xl mx-auto mt-20 text-center relative z-10 border border-neutral-800 bg-neutral-950 p-12 rounded-lg shadow-[0_0_50px_rgba(0,255,65,0.05)]">
-        <Logo className="h-8 w-auto text-[#00FF41] mx-auto mb-6 opacity-80" />
+        <Logo className="h-12 w-auto text-[#00FF41] mx-auto mb-6 opacity-80" />
         <h4 className="text-2xl font-black uppercase text-white mb-4 tracking-tight">Ready to enhance officer safety?</h4>
         <button onClick={onOpenWaitlist} className="mt-4 px-10 py-4 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs hover:bg-white transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(0,255,65,0.2)]">
           Get a Free Demo

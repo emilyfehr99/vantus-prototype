@@ -289,7 +289,7 @@ export const Product: React.FC = () => {
   const MotionP = motion.p as any;
 
   return (
-    <section className="py-40 px-6 bg-[#000000] border-t border-neutral-900 overflow-hidden relative">
+    <section className="py-20 md:pt-40 md:pb-12 px-6 bg-[#000000] border-t border-neutral-900 overflow-hidden relative">
       {/* Decorative Blur Backgrounds */}
       <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-[#00FF41]/5 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-[#00FF41]/3 blur-[100px] rounded-full pointer-events-none" />

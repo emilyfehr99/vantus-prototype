@@ -19,7 +19,7 @@ export const Physics: React.FC = () => {
   const scaleSchema = useTransform(smoothProgress, [0, 0.5, 1], [0.8, 1, 0.8]);
 
   return (
-    <section ref={sectionRef} className="py-40 px-6 bg-[#000000] overflow-hidden relative">
+    <section ref={sectionRef} className="py-12 md:pt-0 md:pb-40 px-6 bg-[#000000] overflow-hidden relative">
       <div className="max-w-7xl mx-auto">
         <MotionDiv
           initial={{ opacity: 0, y: 60 }}

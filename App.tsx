@@ -97,51 +97,53 @@ const Header = ({
 
   return (
     <nav className="fixed top-0 left-0 w-full z-[100] transition-all duration-700 py-6 bg-black/40 backdrop-blur-md border-b border-white/5">
-      <div className="max-w-[1600px] mx-auto px-10 flex items-center justify-between">
-        {/* Brand */}
+      <div className="max-w-[1600px] mx-auto px-10 grid grid-cols-3 items-center">
+        {/* Left: Brand */}
         <div
           onClick={() => {
             if (activeTab !== 'landing' && setActiveTab) setActiveTab('landing');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className="flex items-center gap-4 group cursor-pointer relative z-[110]"
+          className="flex items-center gap-5 group cursor-pointer relative z-[110] justify-self-start"
         >
-          <Logo className="h-6 w-auto text-white group-hover:text-[#00FF41] transition-colors duration-500" />
+          <Logo className="h-10 w-auto text-white group-hover:text-[#00FF41] transition-colors duration-500" />
           <div className="flex flex-col leading-none">
-            <span className="font-black tracking-[-0.04em] text-2xl uppercase group-hover:translate-x-1 transition-transform duration-500">Vantus</span>
-            <span className="font-mono text-[7px] text-neutral-500 tracking-[0.3em] uppercase mt-1 font-bold group-hover:text-neutral-300 transition-colors duration-500">Safety Systems</span>
+            <span className="font-black tracking-[-0.04em] text-3xl uppercase group-hover:translate-x-1 transition-transform duration-500">Vantus</span>
+            <span className="font-mono text-[8px] text-neutral-500 tracking-[0.3em] uppercase mt-1 font-bold group-hover:text-neutral-300 transition-colors duration-500">Safety Systems</span>
           </div>
         </div>
 
-        {/* Navigation Links */}
-        <div className="hidden lg:flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-full backdrop-blur-md">
-          {!isLoggedIn ? (
-            <>
-              <NavLink onClick={() => scrollToSection('mission')} index="01">The Problem</NavLink>
-              <NavLink onClick={() => scrollToSection('features')} index="02">Our Solution</NavLink>
-              <NavLink onClick={onOpenFAQ} index="03">FAQ</NavLink>
-            </>
-          ) : (
-            <>
-              <NavLink onClick={() => setActiveTab?.('landing')} index="01">
-                <div className="flex items-center gap-2">
-                  <Layout size={10} className={activeTab === 'landing' ? 'text-[#00FF41]' : ''} />
-                  Dashboard
-                </div>
-              </NavLink>
-              <NavLink onClick={() => setActiveTab?.('audio')} index="02">
-                <div className="flex items-center gap-2">
-                  <Mic size={10} className={activeTab === 'audio' ? 'text-[#00FF41]' : ''} />
-                  Audio Mode
-                </div>
-              </NavLink>
-              <NavLink onClick={onOpenFAQ} index="03">FAQ</NavLink>
-            </>
-          )}
+        {/* Center: Navigation Links */}
+        <div className="flex items-center justify-center">
+          <div className="flex items-center gap-1 bg-white/10 border border-white/10 p-1 rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(255,255,255,0.05)]">
+            {!isLoggedIn ? (
+              <>
+                <NavLink onClick={() => scrollToSection('mission')} index="01">The Problem</NavLink>
+                <NavLink onClick={() => scrollToSection('features')} index="02">Our Solution</NavLink>
+                <NavLink onClick={onOpenFAQ} index="03">FAQ</NavLink>
+              </>
+            ) : (
+              <>
+                <NavLink onClick={() => setActiveTab?.('landing')} index="01">
+                  <div className="flex items-center gap-2">
+                    <Layout size={10} className={activeTab === 'landing' ? 'text-[#00FF41]' : ''} />
+                    Dashboard
+                  </div>
+                </NavLink>
+                <NavLink onClick={() => setActiveTab?.('audio')} index="02">
+                  <div className="flex items-center gap-2">
+                    <Mic size={10} className={activeTab === 'audio' ? 'text-[#00FF41]' : ''} />
+                    Audio Mode
+                  </div>
+                </NavLink>
+                <NavLink onClick={onOpenFAQ} index="03">FAQ</NavLink>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* CTA Button & Mobile Toggle */}
-        <div className="flex items-center gap-8 relative z-[110]">
+        {/* Right: CTA Button & Mobile Toggle */}
+        <div className="flex items-center gap-8 relative z-[110] justify-self-end">
           {!isLoggedIn ? (
             <div className="hidden md:flex items-center gap-4">
               <MotionButton
