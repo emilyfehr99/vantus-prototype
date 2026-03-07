@@ -6,7 +6,7 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  type: 'login' | 'waitlist' | 'faq' | 'opioid' | 'careers' | 'whitepaper' | 'contact' | 'privacy' | 'terms' | 'mission';
+  type: 'login' | 'waitlist' | 'faq' | 'opioid' | 'careers' | 'whitepaper' | 'contact' | 'privacy' | 'terms';
   children?: React.ReactNode;
 }
 
@@ -65,7 +65,6 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                   {type === 'contact' && <Mail size={20} />}
                   {type === 'privacy' && <Lock size={20} />}
                   {type === 'terms' && <FileText size={20} />}
-                  {type === 'mission' && <Target size={20} />}
                 </div>
                 <div>
                   <h3 className="text-2xl font-black tracking-tight uppercase">{title}</h3>
@@ -127,37 +126,6 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                       <div className="space-y-4">
                         <h5 className="text-[#00FF41] uppercase tracking-widest font-bold">3. Limitation of Liability</h5>
                         <p>Vantus Safety Systems provides an assistive technological layer. It is not a replacement for officer judgment, training, or established departmental protocols. Vantus shall not be held liable for operational outcomes resulting from the use or inability to use the system.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {type === 'mission' && (
-                    <div className="space-y-12 max-w-4xl mx-auto py-10 text-center">
-                      <div className="space-y-6">
-                        <span className="font-mono text-[#00FF41] text-[10px] tracking-[0.5em] uppercase font-black">Strategic Intent</span>
-                        <h4 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none">Intelligence that acts.<br /><span className="text-[#00FF41]">Backup that arrives.</span></h4>
-                      </div>
-
-                      <div className="grid md:grid-cols-2 gap-12 text-left">
-                        <div className="space-y-6 border-l border-neutral-800 pl-8">
-                          <h5 className="text-white font-black uppercase tracking-widest text-sm">The Philosophy</h5>
-                          <p className="text-neutral-400 font-mono text-xs leading-relaxed">
-                            We believe that technology shouldn't just record the tragedy—it should prevent it. Vantus exists to bridge the staffing gap with autonomous intelligence that acts as a force multiplier for every officer on the line.
-                          </p>
-                        </div>
-                        <div className="space-y-6 border-l border-neutral-800 pl-8">
-                          <h5 className="text-white font-black uppercase tracking-widest text-sm">The Objective</h5>
-                          <p className="text-neutral-400 font-mono text-xs leading-relaxed">
-                            Our goal is to ensure that no first responder ever stands alone. By automating documentation and triaging threats in real-time, we return 30% of an officer's time to the community while ensuring backup is always a heartbeat away.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="pt-8 border-t border-neutral-900 group">
-                        <p className="text-neutral-500 font-mono text-[10px] uppercase tracking-[0.3em] mb-4">Core Directive</p>
-                        <blockquote className="text-2xl font-light italic text-white/80 max-w-2xl mx-auto leading-relaxed">
-                          "To engineer a world where operational silence is replaced by unwavering support, and every hero returns home."
-                        </blockquote>
                       </div>
                     </div>
                   )}

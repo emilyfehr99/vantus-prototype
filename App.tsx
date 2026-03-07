@@ -1,14 +1,16 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, useScroll, useSpring, AnimatePresence, useMotionValue } from 'framer-motion';
 import { Hero } from './components/Hero';
+import { TrustBanner } from './components/TrustBanner';
 import { Problem } from './components/Problem';
+import { Mission } from './components/Mission';
 import { Product } from './components/Product';
 import { Physics } from './components/Physics';
 import { Dashboard } from './components/Dashboard';
 import { Footer } from './components/Footer';
 import { Logo } from './components/Logo';
 import { TacticalOverlay } from './components/Modals';
-import { Radio, Menu, X, Signal, Target, LogOut, Mic, Layout, Shield } from 'lucide-react';
+import { Radio, Menu, X, Signal, Target, LogOut, Mic, Layout, Shield, ShieldAlert, Lock, Search, FileText } from 'lucide-react';
 import { Login } from './components/Login';
 import { AudioDemo } from './components/AudioDemo';
 
@@ -118,7 +120,7 @@ const Header = ({
           <div className="flex items-center gap-1 bg-white/10 border border-white/10 p-1 rounded-full backdrop-blur-xl shadow-[0_0_30px_rgba(255,255,255,0.05)]">
             {!isLoggedIn ? (
               <>
-                <NavLink onClick={() => scrollToSection('mission')} index="01">The Problem</NavLink>
+                <NavLink onClick={() => scrollToSection('problem')} index="01">The Problem</NavLink>
                 <NavLink onClick={() => scrollToSection('features')} index="02">Our Solution</NavLink>
                 <NavLink onClick={onOpenFAQ} index="03">FAQ</NavLink>
               </>
@@ -240,7 +242,7 @@ const Header = ({
                         transition={{ delay: idx * 0.1 }}
                       >
                         <button
-                          onClick={() => item === 'FAQ' ? onOpenFAQ() : scrollToSection(sectionId === 'the-problem' ? 'mission' : sectionId === 'our-solution' ? 'features' : '')}
+                          onClick={() => item === 'FAQ' ? onOpenFAQ() : scrollToSection(sectionId === 'the-problem' ? 'problem' : sectionId === 'our-solution' ? 'features' : '')}
                           className="text-3xl font-black uppercase tracking-tighter hover:text-[#00FF41] transition-colors"
                         >
                           {item}
@@ -367,13 +369,18 @@ const App: React.FC = () => {
               onOpenLogin={() => setModalType('login')}
               onOpenWhitepaper={() => setModalType('whitepaper')}
             />
-            <div id="mission"><Problem /></div>
+            <TrustBanner />
+            <div id="problem"><Problem /></div>
+            <Mission />
             <div id="features"><Product /></div>
             <Physics />
             {isLoggedIn && <div id="dashboard"><Dashboard /></div>}
             <Footer
               onOpenWaitlist={() => setModalType('waitlist')}
-              onOpenMission={() => setModalType('mission')}
+              onOpenMission={() => {
+                const element = document.getElementById('mission');
+                element?.scrollIntoView({ behavior: 'smooth' });
+              }}
               onOpenCareers={() => setModalType('careers')}
               onOpenFAQ={() => setModalType('faq')}
               onOpenWhitepaper={() => setModalType('whitepaper')}
@@ -394,7 +401,7 @@ const App: React.FC = () => {
             <div className="mt-20">
               <Footer
                 onOpenWaitlist={() => setModalType('waitlist')}
-                onOpenMission={() => setModalType('mission')}
+                onOpenMission={() => setActiveTab('landing')}
                 onOpenCareers={() => setModalType('careers')}
                 onOpenFAQ={() => setModalType('faq')}
                 onOpenWhitepaper={() => setModalType('whitepaper')}
