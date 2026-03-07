@@ -225,25 +225,30 @@ export const AudioDemo: React.FC = () => {
         // #13: Foot pursuit suppresses heavy breathing / struggle sounds
         if (pursuitMode && model === 'struggle') return { suppress: true, reason: 'Foot Pursuit Active — Motion/Audio baseline suppressed' };
 
+        // #9: Low Light / Night Mode — Boost audio sensitivity because video is degraded
+        const effectiveConfidence = lowLightMode ? confidence + 15 : confidence;
+        const threshold = lowLightMode ? 80 : 95;
+
         // #17: Environmental noise mimicking distress
-        if (weatherNoise && model !== 'keyword' && confidence < 95) {
+        if (weatherNoise && model !== 'keyword' && effectiveConfidence < 95) {
             return { suppress: true, reason: 'Environmental/Weather Disturbance Flag Active — Low confidence audio suppressed' };
         }
 
         // #11, #12: Domestic/EDP require higher certainty to prevent false positives from yelling
-        if ((cadDomestic || cadEDP) && model === 'struggle' && confidence < 98) {
-            return { suppress: false, reason: `CAD Profile (Domestic/EDP) Active — Multi-modal confirmation required (Conf ${confidence}% < 98%)` };
+        if ((cadDomestic || cadEDP) && model === 'struggle' && effectiveConfidence < 98) {
+            return { suppress: false, reason: `CAD Profile (Domestic/EDP) Active — Multi-modal confirmation required (Conf ${effectiveConfidence}% < 98%)` };
         }
 
         // #20: Swatting / High-risk profiling boosts sensitivity
-        if (cadHighRisk && confidence >= 85) {
+        if (cadHighRisk && effectiveConfidence >= 85) {
             return { suppress: false, reason: `CAD High-Risk/Swat Profile — Sensitivity Boosted (Auto-Dispatch at 85% instead of 95%)` };
         }
 
         // #5/#10: Confidence gating — require >95% for auto-dispatch, otherwise silent supervisor flag
-        if (confidence < 95 && model !== 'keyword') {
+        if (effectiveConfidence < threshold && model !== 'keyword') {
             const fatigueNote = lateShift ? ' (Late Shift Active — Lowering supervisor threshold)' : '';
-            return { suppress: false, reason: `Confidence ${confidence}% < 95% threshold — flagged for supervisor review only${fatigueNote}` };
+            const lightNote = lowLightMode ? ' (Low-Light Sensitivity Boost Active)' : '';
+            return { suppress: false, reason: `Confidence ${effectiveConfidence}% < ${threshold}% threshold — flagged for supervisor review only${fatigueNote}${lightNote}` };
         }
 
         // #7: Ambient noise spike detection
@@ -253,7 +258,7 @@ export const AudioDemo: React.FC = () => {
 
         const primingNote = primedContext ? ` [Context Primed: ${primedContext}]` : '';
         return { suppress: false, reason: primingNote };
-    }, [cancelOverride, trainingMode, soloMode, nearbyUnits, ambientBaseline, custodyMode, pursuitMode, weatherNoise, cadDomestic, cadEDP, cadHighRisk, lateShift, primedContext]);
+    }, [cancelOverride, trainingMode, soloMode, nearbyUnits, ambientBaseline, custodyMode, pursuitMode, weatherNoise, cadDomestic, cadEDP, cadHighRisk, lateShift, primedContext, lowLightMode]);
 
     // ── Ambient Noise Baseline Tracker (#7) ──
     const updateAmbientBaseline = useCallback((maxVal: number) => {
@@ -279,6 +284,12 @@ export const AudioDemo: React.FC = () => {
                 setTranscriber(() => asr);
 
                 setModelLoading(false);
+
+                // #9: Auto-detect Low Light based on system time (19:00 - 06:00)
+                const hour = new Date().getHours();
+                if (hour >= 19 || hour < 6) {
+                    setLowLightMode(true);
+                }
             } catch (err) {
                 console.error("Failed to load models:", err);
             }
@@ -849,9 +860,12 @@ export const AudioDemo: React.FC = () => {
                         <p className="text-[9px] text-neutral-500 font-mono">Suppress Dispatches</p>
                     </div>
 
-                    <div className={`p-4 rounded-xl border transition-all ${lowLightMode ? 'bg-[#00FF41]/5 border-[#00FF41]/20' : 'bg-white/5 border-white/10'}`}>
+                    <div className={`p-4 rounded-xl border transition-all ${lowLightMode ? 'bg-[#00FF41]/5 border-[#00FF41]/20 shadow-[0_0_15px_rgba(0,255,65,0.05)]' : 'bg-white/5 border-white/10'}`}>
                         <div className="flex items-center justify-between mb-2">
-                            <EyeOff className={`w-4 h-4 ${lowLightMode ? 'text-[#00FF41]' : 'text-neutral-500'}`} />
+                            <div className="flex items-center gap-2">
+                                <EyeOff className={`w-4 h-4 ${lowLightMode ? 'text-[#00FF41]' : 'text-neutral-500'}`} />
+                                {lowLightMode && <span className="text-[8px] font-black bg-[#00FF41]/10 text-[#00FF41] px-1.5 py-0.5 rounded-full border border-[#00FF41]/20 uppercase">Auto</span>}
+                            </div>
                             <input type="checkbox" checked={lowLightMode} onChange={(e) => setLowLightMode(e.target.checked)} className="accent-[#00FF41]" />
                         </div>
                         <p className="text-[10px] font-bold text-white uppercase mb-1">Low-Light</p>
