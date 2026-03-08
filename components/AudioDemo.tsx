@@ -1153,7 +1153,7 @@ export const AudioDemo: React.FC = () => {
             )}
 
             {/* ── Situational Filters Panel (#1-#10) ── */}
-            <div className="bg-neutral-900/40 backdrop-blur-md p-6 rounded-2xl border border-white/5 space-y-4">
+            <div className={`bg-neutral-900/40 backdrop-blur-md p-6 rounded-2xl border border-white/5 space-y-4 ${displayMode === 'pilot' ? 'hidden' : ''}`}>
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                         <Shield className="w-4 h-4 text-[#00FF41]" />
@@ -1222,7 +1222,7 @@ export const AudioDemo: React.FC = () => {
             </div>
 
             {/* ── Advanced CAD & Context Integrations (#11-20) ── */}
-            <div className="bg-neutral-900/40 backdrop-blur-md p-6 rounded-2xl border border-white/5 space-y-4">
+            <div className={`bg-neutral-900/40 backdrop-blur-md p-6 rounded-2xl border border-white/5 space-y-4 ${displayMode === 'pilot' ? 'hidden' : ''}`}>
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                         <Radio className="w-4 h-4 text-blue-400" />
