@@ -921,6 +921,220 @@ export const AudioDemo: React.FC = () => {
                 ))}
             </div>
 
+            {/* ── Pilot P1: Axon API Workflow (only shown in pilot mode) ── */}
+            {displayMode === 'pilot' && (
+                <div className="space-y-8">
+                    {/* Axon Ingestion Pipeline */}
+                    <div className="bg-neutral-900/40 backdrop-blur-xl p-8 rounded-3xl border border-white/10">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-blue-500/10 rounded-xl">
+                                    <Radio className="w-5 h-5 text-blue-400" />
+                                </div>
+                                <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Axon API Ingestion Pipeline</h3>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setAxonIngestion(prev => ({ ...prev, isActive: !prev.isActive, currentStep: 0 }));
+                                    if (!axonIngestion.isActive) {
+                                        // Simulate the workflow
+                                        const workflow = async () => {
+                                            for (let i = 0; i < axonIngestion.steps.length; i++) {
+                                                await new Promise(resolve => setTimeout(resolve, 3000));
+                                                setAxonIngestion(prev => ({ ...prev, currentStep: i + 1 }));
+                                                
+                                                // Generate mock events at specific steps
+                                                if (i === 2) { // After running detection models
+                                                    generateMockEvents();
+                                                }
+                                                if (i === 4) { // After generating timeline
+                                                    generateDispatchEvent();
+                                                }
+                                            }
+                                            setAxonIngestion(prev => ({ ...prev, isActive: false, currentStep: 0 }));
+                                        };
+                                        workflow();
+                                    }
+                                }}
+                                className={`px-6 py-3 text-[11px] font-black uppercase tracking-[0.2em] rounded-full transition-all ${
+                                    axonIngestion.isActive 
+                                        ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
+                                        : 'bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20'
+                                }`}
+                            >
+                                {axonIngestion.isActive ? 'Stop Ingestion' : 'Start 12AM Ingestion'}
+                            </button>
+                        </div>
+
+                        {/* Workflow Steps */}
+                        <div className="space-y-3">
+                            {axonIngestion.steps.map((step, index) => (
+                                <div key={index} className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
+                                    index < axonIngestion.currentStep 
+                                        ? 'bg-green-500/5 border-green-500/20' 
+                                        : index === axonIngestion.currentStep && axonIngestion.isActive
+                                        ? 'bg-blue-500/10 border-blue-500/30 animate-pulse'
+                                        : 'bg-white/5 border-white/10'
+                                }`}>
+                                    <div className="flex-shrink-0 w-8 text-center">
+                                        {index < axonIngestion.currentStep ? (
+                                            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                                <span className="text-[10px] text-white">✓</span>
+                                            </div>
+                                        ) : index === axonIngestion.currentStep && axonIngestion.isActive ? (
+                                            <div className="w-6 h-6 bg-blue-500 rounded-full animate-ping" />
+                                        ) : (
+                                            <div className="w-6 h-6 bg-neutral-700 rounded-full flex items-center justify-center">
+                                                <span className="text-[10px] text-neutral-400">{index + 1}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className={`text-sm font-medium ${
+                                            index < axonIngestion.currentStep 
+                                                ? 'text-green-400' 
+                                                : index === axonIngestion.currentStep && axonIngestion.isActive
+                                                ? 'text-blue-400'
+                                                : 'text-neutral-400'
+                                        }`}>
+                                            {step}
+                                        </p>
+                                        {index < axonIngestion.currentStep && (
+                                            <p className="text-[10px] text-neutral-500 mt-1">Completed at {new Date().toLocaleTimeString()}</p>
+                                        )}
+                                    </div>
+                                    {index === axonIngestion.currentStep && axonIngestion.isActive && (
+                                        <div className="text-[10px] text-blue-400 font-mono">Processing...</div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Incident Detection Summary */}
+                    <div className="bg-neutral-900/40 backdrop-blur-xl p-8 rounded-3xl border border-white/10">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2.5 bg-amber-500/10 rounded-xl">
+                                <AlertTriangle className="w-5 h-5 text-amber-400" />
+                            </div>
+                            <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Incident Detection Summary</h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
+                                <div className="flex items-center justify-between mb-4">
+                                    <p className="text-[9px] font-mono text-neutral-500 uppercase">Officer</p>
+                                    <p className="text-lg font-black text-white">417</p>
+                                </div>
+                                <p className="text-sm text-neutral-400">Shift: Feb 23</p>
+                                <p className="text-[10px] text-[#00FF41] mt-2">Detected Events: {detectedEvents.length}</p>
+                            </div>
+
+                            <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
+                                <p className="text-[9px] font-mono text-neutral-500 uppercase mb-4">Success Metrics</p>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between">
+                                        <span className="text-xs text-neutral-400">Total Incidents</span>
+                                        <span className="text-sm font-black text-white">{incidentMetrics.totalIncidents}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-xs text-neutral-400">False Positives</span>
+                                        <span className="text-sm font-black text-red-400">{incidentMetrics.falsePositives}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-xs text-neutral-400">Confirmed</span>
+                                        <span className="text-sm font-black text-green-400">{incidentMetrics.confirmedIncidents}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-xs text-neutral-400">Reviews Saved</span>
+                                        <span className="text-sm font-black text-blue-400">{incidentMetrics.manualReviewsSaved}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
+                                <p className="text-[9px] font-mono text-neutral-500 uppercase mb-4">Escalation Pattern</p>
+                                <div className="space-y-2">
+                                    <div className={`p-2 rounded-lg text-center text-[10px] font-black uppercase ${
+                                        escalationPattern === 'normal' ? 'bg-green-500/10 text-green-400' :
+                                        escalationPattern === 'raised' ? 'bg-amber-500/10 text-amber-400' :
+                                        escalationPattern === 'commands' ? 'bg-orange-500/10 text-orange-400' :
+                                        'bg-red-500/10 text-red-400'
+                                    }`}>
+                                        {escalationPattern}
+                                    </div>
+                                    <p className="text-xs text-neutral-500">Current escalation state</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Detected Events */}
+                        {detectedEvents.length > 0 && (
+                            <div className="space-y-4">
+                                <h4 className="text-sm font-bold text-white uppercase tracking-wider">Detected Events</h4>
+                                {detectedEvents.map((event, index) => (
+                                    <div key={index} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div>
+                                                <p className="text-sm font-black text-white">{event.type}</p>
+                                                <p className="text-[10px] text-neutral-400">Time: {event.time}</p>
+                                                <p className="text-[10px] text-neutral-400">Trigger: {event.trigger}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-lg font-black text-[#00FF41]">{(event.confidence * 100).toFixed(0)}%</p>
+                                                <p className="text-[9px] text-neutral-500">Confidence</p>
+                                            </div>
+                                        </div>
+                                        <div className="p-3 bg-black/40 rounded-lg">
+                                            <p className="text-[10px] text-amber-400">Action: {event.action}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Simulated Dispatch Events */}
+                    {dispatchEvents.length > 0 && (
+                        <div className="bg-neutral-900/40 backdrop-blur-xl p-8 rounded-3xl border border-white/10">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2.5 bg-red-500/10 rounded-xl">
+                                    <Siren className="w-5 h-5 text-red-400" />
+                                </div>
+                                <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Simulated Dispatch Events</h3>
+                            </div>
+
+                            {dispatchEvents.map((dispatch, index) => (
+                                <div key={index} className="p-6 rounded-2xl bg-red-500/5 border border-red-500/20">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div>
+                                            <p className="text-sm font-black text-red-400">Backup Unit Requested</p>
+                                            <p className="text-[10px] text-neutral-400">Time: {dispatch.time}</p>
+                                            <p className="text-[10px] text-neutral-400">Reason: {dispatch.reason}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-lg font-black text-red-400">{(dispatch.confidence * 100).toFixed(0)}%</p>
+                                            <p className="text-[9px] text-neutral-500">Confidence</p>
+                                        </div>
+                                    </div>
+                                    <div className="p-4 bg-black/40 rounded-lg">
+                                        <p className="text-sm text-white mb-2">Recommended Action:</p>
+                                        <p className="text-[10px] text-neutral-300 leading-relaxed">{dispatch.recommendation}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── Demo Mode Content (only shown in demo mode) ── */}
+            {displayMode === 'demo' && (
+                <div className="space-y-8">
+                    {/* Demo content will go here - keeping filters only for demo mode */}
+                </div>
+            )}
+
             {/* ── Situational Filters Panel (#1-#10) ── */}
             <div className="bg-neutral-900/40 backdrop-blur-md p-6 rounded-2xl border border-white/5 space-y-4">
                 <div className="flex items-center justify-between mb-2">
