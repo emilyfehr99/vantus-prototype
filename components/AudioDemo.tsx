@@ -940,6 +940,108 @@ export const AudioDemo: React.FC = () => {
         sampleRate: number;
     }
 
+    // ── Advanced Attention Mechanism for Audio Feature Focusing ──
+    
+    // Multi-Head Attention for Audio Features
+    const computeMultiHeadAttention = (features: number[], numHeads: number = 4): number[] => {
+        const featureDim = features.length;
+        const headDim = Math.floor(featureDim / numHeads);
+        
+        // Split features into multiple heads
+        const heads: number[][] = [];
+        for (let i = 0; i < numHeads; i++) {
+            const start = i * headDim;
+            const end = start + headDim;
+            heads.push(features.slice(start, end));
+        }
+        
+        // Compute attention weights for each head
+        const attendedHeads = heads.map(head => {
+            // Self-attention: Q, K, V are all the same for simplicity
+            const attentionWeights = computeAttentionWeights(head, head);
+            return applyAttentionWeights(head, attentionWeights);
+        });
+        
+        // Concatenate attended heads
+        return attendedHeads.flat();
+    };
+    
+    // Compute attention weights using scaled dot-product attention
+    const computeAttentionWeights = (query: number[], key: number[]): number[] => {
+        const dim = query.length;
+        const scaled = query.map((q, i) => q * key[i] / Math.sqrt(dim));
+        
+        // Apply softmax
+        const max = Math.max(...scaled);
+        const exp = scaled.map(s => Math.exp(s - max));
+        const sum = exp.reduce((a, b) => a + b, 0);
+        
+        return exp.map(e => e / sum);
+    };
+    
+    // Apply attention weights to values
+    const applyAttentionWeights = (values: number[], weights: number[]): number[] => {
+        return values.map((v, i) => v * weights[i]);
+    };
+    
+    // Frequency-focused attention for threat detection
+    const computeThreatFocusedAttention = (features: any): any => {
+        const { mfcc, gfcc, spectral, zeroCrossingRate, rmsEnergy } = features;
+        
+        // Create attention map based on threat-relevant frequency ranges
+        const threatAttentionMap = {
+            // High frequencies (gunshots, impacts)
+            highFreq: spectral.centroid > 2000 ? 1.5 : 0.8,
+            // Mid frequencies (human speech, screams)
+            midFreq: spectral.centroid > 800 && spectral.centroid < 2500 ? 1.3 : 0.9,
+            // Low frequencies (struggle, movement)
+            lowFreq: spectral.centroid < 800 ? 1.2 : 0.7,
+            // Percussive content
+            percussive: zeroCrossingRate > 0.1 ? 1.4 : 0.8,
+            // Energy levels
+            energy: rmsEnergy > 0.2 ? 1.3 : 0.9
+        };
+        
+        // Apply attention weights to features
+        const attendedMFCC = mfcc.map((val: number, i: number) => {
+            const freqWeight = i < 6 ? threatAttentionMap.lowFreq : 
+                            i < 10 ? threatAttentionMap.midFreq : 
+                            threatAttentionMap.highFreq;
+            return val * freqWeight;
+        });
+        
+        const attendedGFCC = gfcc.map((val: number) => val * threatAttentionMap.percussive);
+        
+        return {
+            ...features,
+            mfcc: attendedMFCC,
+            gfcc: attendedGFCC,
+            attentionWeights: threatAttentionMap,
+            attentionScore: Object.values(threatAttentionMap).reduce((a, b) => a + b, 0) / 5
+        };
+    };
+    
+    // Temporal attention for escalation detection
+    const computeTemporalAttention = (eventHistory: any[]): any[] => {
+        if (eventHistory.length === 0) return [];
+        
+        // Weight recent events more heavily
+        const timeDecay = 0.8; // Decay factor for older events
+        const attendedHistory = eventHistory.map((event, index) => {
+            const recencyWeight = Math.pow(timeDecay, eventHistory.length - 1 - index);
+            const confidenceWeight = event.confidence || 0.5;
+            const combinedWeight = recencyWeight * confidenceWeight;
+            
+            return {
+                ...event,
+                attentionWeight: combinedWeight,
+                attendedConfidence: event.confidence * combinedWeight
+            };
+        });
+        
+        return attendedHistory;
+    };
+
     // ── Advanced Feature Integration for Pilot P1 ──
     const extractComprehensiveFeatures = (data: Float32Array) => {
         // Extract all features
@@ -952,7 +1054,7 @@ export const AudioDemo: React.FC = () => {
         const gfcc = getGFCC(data);
         
         // Combine into feature vector
-        return {
+        const baseFeatures = {
             mfcc,
             chroma,
             spectral,
@@ -970,6 +1072,22 @@ export const AudioDemo: React.FC = () => {
             chromaEntropy: calculateEntropy(chroma),
             energyRatio: rms / (Math.max(...data) || 1)
         };
+        
+        // Apply threat-focused attention
+        const attendedFeatures = computeThreatFocusedAttention(baseFeatures);
+        
+        // Apply multi-head attention to MFCC and GFCC
+        const attendedMFCC = computeMultiHeadAttention(attendedFeatures.mfcc, 4);
+        const attendedGFCC = computeMultiHeadAttention(attendedFeatures.gfcc, 3);
+        
+        return {
+            ...attendedFeatures,
+            mfcc: attendedMFCC,
+            gfcc: attendedGFCC,
+            // Attention-enhanced statistics
+            attentionEnhancedMFCCMean: attendedMFCC.reduce((a, b) => a + b, 0) / attendedMFCC.length,
+            attentionEnhancedGFCCMean: attendedGFCC.reduce((a, b) => a + b, 0) / attendedGFCC.length
+        };
     };
     
     // Calculate entropy
@@ -985,17 +1103,20 @@ export const AudioDemo: React.FC = () => {
 
     // ── Advanced Feature Analysis for Pilot P1 ──
     const analyzeAdvancedFeatures = (features: any) => {
-        // Gunshot detection using MFCC + GFCC + PLP
+        // Gunshot detection using attention-enhanced MFCC + GFCC + PLP
         const gunshotScore = analyzeGunshotFeatures(features);
         
-        // Struggle detection using Chroma + ZCR + RMS
+        // Struggle detection using attention-enhanced Chroma + ZCR + RMS
         const struggleScore = analyzeStruggleFeatures(features);
         
-        // Stress level analysis
+        // Stress level analysis with attention weights
         const stressScore = analyzeStressFeatures(features);
         
-        // Escalation detection
+        // Escalation detection with temporal attention
         const escalationResult = analyzeEscalationPattern(features);
+        
+        // Apply temporal attention to escalation history
+        const attendedHistory = computeTemporalAttention(escalationHistory);
         
         return {
             gunshotThreat: gunshotScore,
@@ -1005,12 +1126,17 @@ export const AudioDemo: React.FC = () => {
             escalationLevel: escalationResult.level,
             confidence: Math.max(gunshotScore, struggleScore, stressScore),
             featureVector: {
-                mfccEnergy: features.mfccMean,
+                mfccEnergy: features.attentionEnhancedMFCCMean || features.mfccMean,
                 spectralBrightness: features.spectralCentroid / 1000,
                 harmonicContent: features.chromaEntropy,
                 percussiveness: features.zeroCrossingRate * 100,
-                loudness: features.rmsEnergy * 100
-            }
+                loudness: features.rmsEnergy * 100,
+                attentionScore: features.attentionScore || 0,
+                attentionWeights: features.attentionWeights || {}
+            },
+            // Attention-enhanced metrics
+            attentionEnhanced: true,
+            temporalAttentionWeights: attendedHistory.map(e => e.attentionWeight || 1)
         };
     };
     
@@ -1018,15 +1144,21 @@ export const AudioDemo: React.FC = () => {
     const analyzeGunshotFeatures = (features: any): number => {
         let score = 0;
         
-        // MFCC characteristics of gunshots
-        if (features.mfccMean > 0.5 && features.mfccStd > 0.3) {
+        // MFCC characteristics of gunshots (attention-enhanced)
+        const mfccMean = features.attentionEnhancedMFCCMean || features.mfccMean;
+        if (mfccMean > 0.5 && features.mfccStd > 0.3) {
             score += 25;
         }
         
-        // GFCC impulsive characteristics
-        const gfccEnergy = features.gfcc.reduce((sum: number, val: number) => sum + Math.abs(val), 0);
+        // GFCC impulsive characteristics (attention-enhanced)
+        const gfccEnergy = (features.gfcc || []).reduce((sum: number, val: number) => sum + Math.abs(val), 0);
         if (gfccEnergy > 10) {
             score += 20;
+        }
+        
+        // Attention bonus for high-frequency focus
+        if (features.attentionWeights?.highFreq > 1.2) {
+            score += 15;
         }
         
         // PLP spectral characteristics
@@ -1048,6 +1180,11 @@ export const AudioDemo: React.FC = () => {
         // Zero crossing rate (impulsive sounds)
         if (features.zeroCrossingRate > 0.1) {
             score += 10;
+        }
+        
+        // Attention score bonus
+        if (features.attentionScore > 1.1) {
+            score += Math.round((features.attentionScore - 1.0) * 20);
         }
         
         return Math.min(100, score);
