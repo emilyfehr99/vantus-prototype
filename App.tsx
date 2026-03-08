@@ -13,7 +13,7 @@ import { TacticalOverlay } from './components/Modals';
 import { Radio, Menu, X, Signal, Target, LogOut, Mic, Layout, Shield, ShieldAlert, Lock, Search, FileText } from 'lucide-react';
 import { Login } from './components/Login';
 import { AudioDemo } from './components/AudioDemo';
-import { VantusErrorBoundary, GDPRBanner } from './components/Security';
+import { VantusErrorBoundary, GDPRBanner } from './components/Security.tsx';
 
 // Use React.FC to ensure children prop is correctly handled by the JSX parser and TypeScript
 const NavLink: React.FC<{ onClick: () => void; children: React.ReactNode; index: string }> = ({ onClick, children, index }) => {
