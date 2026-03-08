@@ -1138,60 +1138,119 @@ export const AudioDemo: React.FC = () => {
 
             setTranscript(p => [...p, { time: Date.now(), text: 'Extracting 16kHz audio slices...' }]);
 
-            // Run Inference
-            const { g, s } = await runYamnet(float32Data);
+            // Run Inference - Mode-specific processing
+            if (displayMode === 'pilot') {
+                // Pilot P1: Advanced Feature Extraction
+                setTranscript(p => [...p, { time: Date.now(), text: 'Running Pilot P1 Advanced Feature Extraction...' }]);
+                
+                // Extract comprehensive features
+                const advancedFeatures = extractComprehensiveFeatures(float32Data);
+                
+                // Analyze with advanced algorithms
+                const pilotAnalysis = analyzeAdvancedFeatures(advancedFeatures);
+                
+                // Update models with advanced analysis results
+                if (pilotAnalysis.gunshotThreat > 15) {
+                    setModel('gunshot', { 
+                        status: 'THREAT DETECTED', 
+                        confidence: Math.round(pilotAnalysis.gunshotThreat), 
+                        color: 'red', 
+                        lastDetection: now() 
+                    });
+                    addLog({ 
+                        model: 'gunshot', 
+                        threat: `Gunshot (Advanced Analysis: ${pilotAnalysis.gunshotThreat.toFixed(1)}%) - MFCC+GFCC+PLP`, 
+                        confidence: Math.round(pilotAnalysis.gunshotThreat), 
+                        level: 'red', 
+                        scenario: 'Pilot P1 File Upload' 
+                    });
+                } else {
+                    setModel('gunshot', { status: 'Normal', confidence: Math.round(pilotAnalysis.gunshotThreat), color: 'green', lastDetection: now() });
+                }
 
-            const confG = Math.round(g * 100);
-            const confS = Math.round(s * 100);
+                if (pilotAnalysis.struggleThreat > 15) {
+                    setModel('struggle', { 
+                        status: 'THREAT DETECTED', 
+                        confidence: Math.round(pilotAnalysis.struggleThreat), 
+                        color: 'red', 
+                        lastDetection: now() 
+                    });
+                    addLog({ 
+                        model: 'struggle', 
+                        threat: `Physical Struggle (Advanced: ${pilotAnalysis.struggleThreat.toFixed(1)}%) - Chroma+ZCR+RMS`, 
+                        confidence: Math.round(pilotAnalysis.struggleThreat), 
+                        level: 'red', 
+                        scenario: 'Pilot P1 File Upload' 
+                    });
+                } else {
+                    setModel('struggle', { status: 'Normal', confidence: Math.round(pilotAnalysis.struggleThreat), color: 'green', lastDetection: now() });
+                }
 
-            if (confG > 10) {
-                setModel('gunshot', { status: 'THREAT DETECTED', confidence: confG, color: 'red', lastDetection: now() });
-                addLog({ model: 'gunshot', threat: 'Gunshot identified via YAMNet', confidence: confG, level: 'red', scenario: 'File Upload' });
+                // Advanced stress detection
+                if (pilotAnalysis.stressLevel > 20) {
+                    setModel('stress', { 
+                        status: 'ELEVATED STRESS', 
+                        confidence: Math.min(95, Math.round(pilotAnalysis.stressLevel)), 
+                        color: 'orange', 
+                        lastDetection: now() 
+                    });
+                }
+
+                // Add feature analysis details to transcript
+                setTranscript(p => [...p, { 
+                    time: Date.now(), 
+                    text: `Advanced Analysis Complete: MFCC=${pilotAnalysis.featureVector.mfccEnergy.toFixed(2)}, Spectral=${pilotAnalysis.featureVector.spectralBrightness.toFixed(2)}, Harmonic=${pilotAnalysis.featureVector.harmonicContent.toFixed(2)}` 
+                }]);
+                
             } else {
-                setModel('gunshot', { status: 'Normal', confidence: confG, color: 'green', lastDetection: now() });
-            }
+                // Demo Mode: Original YAMNet processing
+                const { g, s } = await runYamnet(float32Data);
+                const confG = Math.round(g * 100);
+                const confS = Math.round(s * 100);
 
-            if (confS > 10) {
-                setModel('struggle', { status: 'THREAT DETECTED', confidence: confS, color: 'red', lastDetection: now() });
-                addLog({ model: 'struggle', threat: 'Struggle/Screaming identified', confidence: confS, level: 'red', scenario: 'File Upload' });
-            } else {
-                setModel('struggle', { status: 'Normal', confidence: confS, color: 'green', lastDetection: now() });
-            }
+                if (confG > 10) {
+                    setModel('gunshot', { status: 'THREAT DETECTED', confidence: confG, color: 'red', lastDetection: now() });
+                    addLog({ model: 'gunshot', threat: 'Gunshot identified via YAMNet', confidence: confG, level: 'red', scenario: 'File Upload' });
+                } else {
+                    setModel('gunshot', { status: 'Normal', confidence: confG, color: 'green', lastDetection: now() });
+                }
 
-            let keywordThreat = null;
-            let confK = 0;
+                if (confS > 10) {
+                    setModel('struggle', { status: 'THREAT DETECTED', confidence: confS, color: 'red', lastDetection: now() });
+                    addLog({ model: 'struggle', threat: 'Struggle/Screaming identified', confidence: confS, level: 'red', scenario: 'File Upload' });
+                } else {
+                    setModel('struggle', { status: 'Normal', confidence: confS, color: 'green', lastDetection: now() });
+                }
 
-            if (transcriber) {
-                setTranscript(p => [...p, { time: Date.now(), text: 'Running offline Whisper speech recognition...' }]);
+                let keywordThreat = null;
+                let confK = 0;
 
-                const result = await transcriber(float32Data);
-                const text = result.text.toLowerCase();
+                if (transcriber) {
+                    setTranscript(p => [...p, { time: Date.now(), text: 'Running offline Whisper speech recognition...' }]);
 
-                setTranscript(p => [...p, { time: Date.now(), text: `Transcribed: "${result.text}"` }]);
+                    const result = await transcriber(float32Data);
+                    const text = result.text.toLowerCase();
 
-                for (const kw of THREAT_KW) {
-                    if (text.includes(kw)) {
-                        const isUrgent = URGENT_KW.includes(kw);
-                        confK = 85 + Math.floor(Math.random() * 10);
-                        keywordThreat = { threat: `Keyword — "${kw}"`, level: isUrgent ? 'red' : 'yellow' as const, conf: confK };
-                        break;
+                    const detected = URGENT_KW.find(kw => text.includes(kw));
+                    if (detected) {
+                        keywordThreat = { threat: `Keyword: "${detected}"`, conf: 95, level: 'red' as const };
+                        setModel('keyword', { status: 'THREAT DETECTED', confidence: 95, color: 'red', lastDetection: now() });
+                        addLog({ model: 'keyword', threat: `Keyword: "${detected}" detected in speech`, confidence: 95, level: 'red', scenario: 'File Upload (Whisper)' });
                     }
                 }
-            } else {
-                setTranscript(p => [...p, { time: Date.now(), text: '⚠ Whisper model not loaded.' }]);
-            }
 
-            setTranscript(p => [...p, { time: Date.now(), text: 'Edge AI Analysis Complete.' }]);
+                setTranscript(p => [...p, { time: Date.now(), text: 'Edge AI Analysis Complete.' }]);
 
-            if (keywordThreat) {
-                setModel('keyword', { status: keywordThreat.level === 'red' ? 'THREAT DETECTED' : 'Possible Threat', confidence: keywordThreat.conf, color: keywordThreat.level, lastDetection: now() });
-                addLog({ model: 'keyword', threat: keywordThreat.threat, confidence: keywordThreat.conf, level: keywordThreat.level, scenario: 'File Upload (Whisper)' });
-            } else {
-                setModel('keyword', { status: 'Normal', confidence: 0, color: 'green', lastDetection: now() });
-            }
+                if (keywordThreat) {
+                    setModel('keyword', { status: keywordThreat.level === 'red' ? 'THREAT DETECTED' : 'Possible Threat', confidence: keywordThreat.conf, color: keywordThreat.level, lastDetection: now() });
+                    addLog({ model: 'keyword', threat: keywordThreat.threat, confidence: keywordThreat.conf, level: keywordThreat.level, scenario: 'File Upload (Whisper)' });
+                } else {
+                    setModel('keyword', { status: 'Normal', confidence: 0, color: 'green', lastDetection: now() });
+                }
 
-            if (confG <= 10 && confS <= 10 && !keywordThreat) {
-                addLog({ model: 'system', threat: `"${f.name}" — No threats`, confidence: 100, level: 'green', scenario: 'File Upload' });
+                if (confG <= 10 && confS <= 10 && !keywordThreat) {
+                    addLog({ model: 'system', threat: `"${f.name}" — No threats`, confidence: 100, level: 'green', scenario: 'File Upload' });
+                }
             }
 
         } catch (err: any) {
@@ -1200,7 +1259,7 @@ export const AudioDemo: React.FC = () => {
         }
 
         setIsPlaying(false);
-    }, [tfModel, reset, setModel, addLog, runYamnet, transcriber]);
+    }, [tfModel, reset, setModel, addLog, runYamnet, transcriber, displayMode, extractComprehensiveFeatures, analyzeAdvancedFeatures]);
 
     // Mic
     const toggleMic = useCallback(async () => {
