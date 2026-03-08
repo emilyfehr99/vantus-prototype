@@ -415,6 +415,496 @@ export const AudioDemo: React.FC = () => {
         return (sumSq / n) - (mean * mean);
     };
 
+    // ── Advanced Audio Feature Extraction for Pilot P1 ──
+    
+    // MFCC (Mel-Frequency Cepstral Coefficients) - 13 coefficients
+    const getMFCC13 = (data: Float32Array): number[] => {
+        const frameSize = 1024;
+        const numCoefficients = 13;
+        const sampleRate = 16000;
+        const melFilters = createMelFilterBank(frameSize, sampleRate, numCoefficients + 1);
+        
+        // Compute power spectrum
+        const fftResult = computeFFT(data.slice(0, frameSize));
+        const powerSpectrum = fftResult.map(val => val * val);
+        
+        // Apply mel filter bank
+        const melEnergies = melFilters.map(filter => 
+            filter.reduce((sum, weight, idx) => sum + weight * powerSpectrum[idx], 0)
+        );
+        
+        // Log compression
+        const logMelEnergies = melEnergies.map(energy => Math.log(Math.max(energy, 1e-10)));
+        
+        // DCT to get MFCC
+        return computeDCT(logMelEnergies).slice(0, numCoefficients);
+    };
+    
+    // Create mel filter bank
+    const createMelFilterBank = (frameSize: number, sampleRate: number, numFilters: number): number[][] => {
+        const melLow = hzToMel(0);
+        const melHigh = hzToMel(sampleRate / 2);
+        const melPoints = Array.from({length: numFilters + 2}, (_, i) => 
+            melToHz(melLow + (melHigh - melLow) * i / (numFilters + 1))
+        );
+        
+        const fftBins = Array.from({length: frameSize / 2 + 1}, (_, i) => i * sampleRate / frameSize);
+        
+        return melPoints.slice(0, -1).map((mel, i) => 
+            fftBins.map(bin => {
+                const left = melPoints[i];
+                const center = melPoints[i + 1];
+                const right = melPoints[i + 2];
+                
+                if (bin <= left || bin >= right) return 0;
+                if (bin <= center) return (bin - left) / (center - left);
+                return (right - bin) / (right - center);
+            })
+        );
+    };
+    
+    // Mel frequency conversion
+    const hzToMel = (hz: number): number => 2595 * Math.log10(1 + hz / 700);
+    const melToHz = (mel: number): number => 700 * (Math.pow(10, mel / 2595) - 1);
+    
+    // Simplified FFT (Power of 2 only)
+    const computeFFT = (data: Float32Array): Float32Array => {
+        const N = data.length;
+        const result = new Float32Array(N);
+        
+        for (let k = 0; k < N; k++) {
+            let real = 0;
+            let imag = 0;
+            for (let n = 0; n < N; n++) {
+                const angle = -2 * Math.PI * k * n / N;
+                real += data[n] * Math.cos(angle);
+                imag += data[n] * Math.sin(angle);
+            }
+            result[k] = Math.sqrt(real * real + imag * imag);
+        }
+        return result;
+    };
+    
+    // Discrete Cosine Transform
+    const computeDCT = (data: number[]): number[] => {
+        const N = data.length;
+        const result = new Array(N);
+        
+        for (let k = 0; k < N; k++) {
+            let sum = 0;
+            for (let n = 0; n < N; n++) {
+                sum += data[n] * Math.cos(Math.PI * k * (n + 0.5) / N);
+            }
+            result[k] = sum * Math.sqrt(2 / N);
+        }
+        return result;
+    };
+    
+    // Chroma Features (12 pitch classes)
+    const getChromaFeatures = (data: Float32Array): number[] => {
+        const sampleRate = 16000;
+        const frameSize = 2048;
+        const chroma = new Array(12).fill(0);
+        
+        // Compute FFT
+        const fftResult = computeFFT(data.slice(0, frameSize));
+        const powerSpectrum = fftResult.map(val => val * val);
+        
+        // Map frequency bins to chroma
+        for (let i = 1; i < powerSpectrum.length / 2; i++) {
+            const freq = i * sampleRate / frameSize;
+            if (freq > 80 && freq < 2000) { // Musical range
+                const pitch = 12 * Math.log2(freq / 440) + 69; // MIDI note number
+                const chromaIndex = Math.round(pitch) % 12;
+                chroma[chromaIndex] += powerSpectrum[i];
+            }
+        }
+        
+        // Normalize
+        const sum = chroma.reduce((a, b) => a + b, 0);
+        return sum > 0 ? chroma.map(val => val / sum) : chroma;
+    };
+    
+    // Spectral Features (Centroid, Bandwidth, Roll-off)
+    const getSpectralFeatures = (data: Float32Array) => {
+        const frameSize = 2048;
+        const sampleRate = 16000;
+        const fftResult = computeFFT(data.slice(0, frameSize));
+        const powerSpectrum = fftResult.map(val => val * val);
+        
+        // Spectral centroid
+        let numerator = 0;
+        let denominator = 0;
+        for (let i = 0; i < powerSpectrum.length / 2; i++) {
+            const freq = i * sampleRate / frameSize;
+            numerator += freq * powerSpectrum[i];
+            denominator += powerSpectrum[i];
+        }
+        const centroid = denominator > 0 ? numerator / denominator : 0;
+        
+        // Spectral bandwidth
+        let bandwidthNum = 0;
+        for (let i = 0; i < powerSpectrum.length / 2; i++) {
+            const freq = i * sampleRate / frameSize;
+            bandwidthNum += Math.pow(freq - centroid, 2) * powerSpectrum[i];
+        }
+        const bandwidth = denominator > 0 ? Math.sqrt(bandwidthNum / denominator) : 0;
+        
+        // Spectral roll-off (85% energy point)
+        let cumulativeEnergy = 0;
+        const totalEnergy = powerSpectrum.reduce((a, b) => a + b, 0);
+        let rollOffBin = 0;
+        for (let i = 0; i < powerSpectrum.length / 2; i++) {
+            cumulativeEnergy += powerSpectrum[i];
+            if (cumulativeEnergy >= 0.85 * totalEnergy) {
+                rollOffBin = i;
+                break;
+            }
+        }
+        const rollOff = rollOffBin * sampleRate / frameSize;
+        
+        return { centroid, bandwidth, rollOff };
+    };
+    
+    // Zero-Crossing Rate
+    const getZeroCrossingRate = (data: Float32Array): number => {
+        let crossings = 0;
+        for (let i = 1; i < data.length; i++) {
+            if ((data[i - 1] >= 0 && data[i] < 0) || (data[i - 1] < 0 && data[i] >= 0)) {
+                crossings++;
+            }
+        }
+        return crossings / data.length;
+    };
+    
+    // RMS Energy
+    const getRMSEnergy = (data: Float32Array): number => {
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+            sum += data[i] * data[i];
+        }
+        return Math.sqrt(sum / data.length);
+    };
+    
+    // Perceptual Linear Prediction (PLP)
+    const getPLP = (data: Float32Array): number[] => {
+        const frameSize = 512;
+        const numCoeffs = 13;
+        const sampleRate = 16000;
+        
+        // Compute power spectrum
+        const fftResult = computeFFT(data.slice(0, frameSize));
+        const powerSpectrum = fftResult.map(val => val * val);
+        
+        // Critical band integration (simplified Bark scale)
+        const barkBands = integrateCriticalBands(powerSpectrum, sampleRate);
+        
+        // Equal-loudness pre-emphasis
+        const equalized = barkBands.map((energy, i) => 
+            energy * (i < 15 ? Math.pow((i + 1) / 15, 0.5) : 1)
+        );
+        
+        // Log compression and inverse DCT
+        const logEqualized = equalized.map(energy => Math.log(Math.max(energy, 1e-10)));
+        const plpCoeffs = computeDCT(logEqualized).slice(0, numCoeffs);
+        
+        return plpCoeffs;
+    };
+    
+    // Critical band integration (simplified Bark scale)
+    const integrateCriticalBands = (powerSpectrum: Float32Array, sampleRate: number): number[] => {
+        const numBands = 24; // Bark scale bands
+        const bands = new Array(numBands).fill(0);
+        const nyquist = sampleRate / 2;
+        
+        for (let i = 0; i < powerSpectrum.length / 2; i++) {
+            const freq = i * nyquist / (powerSpectrum.length / 2);
+            const barkIndex = Math.min(Math.floor(13 * Math.atan(0.00076 * freq) + 3.5 * Math.atan((freq / 7500) * (freq / 7500))), numBands - 1);
+            bands[barkIndex] += powerSpectrum[i];
+        }
+        
+        return bands;
+    };
+    
+    // Gammatone Frequency Cepstral Coefficients (GFCCs)
+    const getGFCC = (data: Float32Array): number[] => {
+        const numCoeffs = 13;
+        const sampleRate = 16000;
+        
+        // Create gammatone filter bank
+        const gammatoneFilters = createGammatoneFilterBank(sampleRate, numCoeffs + 1);
+        
+        // Apply filters and compute envelope
+        const envelopes = gammatoneFilters.map(filter => {
+            const filtered = applyGammatoneFilter(data, filter);
+            return computeEnvelope(filtered);
+        });
+        
+        // Log compression
+        const logEnvelopes = envelopes.map(env => Math.log(Math.max(env, 1e-10)));
+        
+        // DCT to get GFCC
+        return computeDCT(logEnvelopes).slice(0, numCoeffs);
+    };
+    
+    // Create gammatone filter bank
+    const createGammatoneFilterBank = (sampleRate: number, numFilters: number): GammatoneFilter[] => {
+        const minFreq = 50;
+        const maxFreq = sampleRate / 2;
+        
+        return Array.from({length: numFilters}, (_, i) => {
+            const centerFreq = minFreq * Math.pow(maxFreq / minFreq, i / (numFilters - 1));
+            const bandwidth = 1.019 * (24.7 + 4.37 * centerFreq / 1000);
+            
+            return {
+                centerFreq,
+                bandwidth,
+                order: 4,
+                sampleRate
+            };
+        });
+    };
+    
+    // Apply gammatone filter
+    const applyGammatoneFilter = (data: Float32Array, filter: GammatoneFilter): Float32Array => {
+        // Simplified gammatone filter implementation
+        const result = new Float32Array(data.length);
+        const dt = 1 / filter.sampleRate;
+        const bw = 2 * Math.PI * filter.bandwidth;
+        const cf = 2 * Math.PI * filter.centerFreq;
+        
+        for (let i = 0; i < data.length; i++) {
+            // Simplified gammatone response
+            const response = data[i] * Math.exp(-bw * i * dt) * Math.cos(cf * i * dt);
+            result[i] = response;
+        }
+        
+        return result;
+    };
+    
+    // Compute envelope
+    const computeEnvelope = (data: Float32Array): number => {
+        // Hilbert envelope approximation
+        let envelope = 0;
+        for (let i = 0; i < data.length; i++) {
+            envelope += Math.abs(data[i]);
+        }
+        return envelope / data.length;
+    };
+    
+    // Types for gammatone filters
+    interface GammatoneFilter {
+        centerFreq: number;
+        bandwidth: number;
+        order: number;
+        sampleRate: number;
+    }
+
+    // ── Advanced Feature Integration for Pilot P1 ──
+    const extractComprehensiveFeatures = (data: Float32Array) => {
+        // Extract all features
+        const mfcc = getMFCC13(data);
+        const chroma = getChromaFeatures(data);
+        const spectral = getSpectralFeatures(data);
+        const zcr = getZeroCrossingRate(data);
+        const rms = getRMSEnergy(data);
+        const plp = getPLP(data);
+        const gfcc = getGFCC(data);
+        
+        // Combine into feature vector
+        return {
+            mfcc,
+            chroma,
+            spectral,
+            zeroCrossingRate: zcr,
+            rmsEnergy: rms,
+            plp,
+            gfcc,
+            // Derived features
+            spectralCentroid: spectral.centroid,
+            spectralBandwidth: spectral.bandwidth,
+            spectralRollOff: spectral.rollOff,
+            // Feature statistics
+            mfccMean: mfcc.reduce((a, b) => a + b, 0) / mfcc.length,
+            mfccStd: Math.sqrt(mfcc.reduce((sum, val) => sum + Math.pow(val - (mfcc.reduce((a, b) => a + b, 0) / mfcc.length), 2), 0) / mfcc.length),
+            chromaEntropy: calculateEntropy(chroma),
+            energyRatio: rms / (Math.max(...data) || 1)
+        };
+    };
+    
+    // Calculate entropy
+    const calculateEntropy = (data: number[]): number => {
+        const sum = data.reduce((a, b) => a + b, 0);
+        if (sum === 0) return 0;
+        
+        return -data.reduce((entropy, val) => {
+            const p = val / sum;
+            return p > 0 ? entropy + p * Math.log2(p) : entropy;
+        }, 0);
+    };
+
+    // ── Advanced Feature Analysis for Pilot P1 ──
+    const analyzeAdvancedFeatures = (features: any) => {
+        // Gunshot detection using MFCC + GFCC + PLP
+        const gunshotScore = analyzeGunshotFeatures(features);
+        
+        // Struggle detection using Chroma + ZCR + RMS
+        const struggleScore = analyzeStruggleFeatures(features);
+        
+        // Stress level analysis
+        const stressScore = analyzeStressFeatures(features);
+        
+        // Escalation detection
+        const escalationResult = analyzeEscalationPattern(features);
+        
+        return {
+            gunshotThreat: gunshotScore,
+            struggleThreat: struggleScore,
+            stressLevel: stressScore,
+            escalationDetected: escalationResult.detected,
+            escalationLevel: escalationResult.level,
+            confidence: Math.max(gunshotScore, struggleScore, stressScore),
+            featureVector: {
+                mfccEnergy: features.mfccMean,
+                spectralBrightness: features.spectralCentroid / 1000,
+                harmonicContent: features.chromaEntropy,
+                percussiveness: features.zeroCrossingRate * 100,
+                loudness: features.rmsEnergy * 100
+            }
+        };
+    };
+    
+    // Gunshot analysis using advanced features
+    const analyzeGunshotFeatures = (features: any): number => {
+        let score = 0;
+        
+        // MFCC characteristics of gunshots
+        if (features.mfccMean > 0.5 && features.mfccStd > 0.3) {
+            score += 25;
+        }
+        
+        // GFCC impulsive characteristics
+        const gfccEnergy = features.gfcc.reduce((sum: number, val: number) => sum + Math.abs(val), 0);
+        if (gfccEnergy > 10) {
+            score += 20;
+        }
+        
+        // PLP spectral characteristics
+        const plpSlope = features.plp[1] - features.plp[0];
+        if (Math.abs(plpSlope) > 0.5) {
+            score += 15;
+        }
+        
+        // Spectral centroid (gunshots have high frequency content)
+        if (features.spectralCentroid > 2000) {
+            score += 20;
+        }
+        
+        // Spectral roll-off
+        if (features.spectralRollOff > 4000) {
+            score += 10;
+        }
+        
+        // Zero crossing rate (impulsive sounds)
+        if (features.zeroCrossingRate > 0.1) {
+            score += 10;
+        }
+        
+        return Math.min(100, score);
+    };
+    
+    // Struggle analysis using advanced features
+    const analyzeStruggleFeatures = (features: any): number => {
+        let score = 0;
+        
+        // Chroma features (human vocal patterns)
+        const chromaPeak = Math.max(...features.chroma);
+        if (chromaPeak > 0.3) {
+            score += 20;
+        }
+        
+        // MFCC vocal characteristics
+        if (features.mfccMean > 0.3 && features.mfccMean < 0.8) {
+            score += 15;
+        }
+        
+        // Zero crossing rate (irregular vocal patterns)
+        if (features.zeroCrossingRate > 0.05 && features.zeroCrossingRate < 0.15) {
+            score += 15;
+        }
+        
+        // RMS energy (raised voices)
+        if (features.rmsEnergy > 0.2) {
+            score += 20;
+        }
+        
+        // Spectral centroid (human voice range)
+        if (features.spectralCentroid > 800 && features.spectralCentroid < 2500) {
+            score += 15;
+        }
+        
+        // Chroma entropy (chaotic vocal patterns)
+        if (features.chromaEntropy > 2.5) {
+            score += 15;
+        }
+        
+        return Math.min(100, score);
+    };
+    
+    // Stress analysis
+    const analyzeStressFeatures = (features: any): number => {
+        let score = 0;
+        
+        // MFCC variability (stress indicators)
+        if (features.mfccStd > 0.4) {
+            score += 25;
+        }
+        
+        // Spectral bandwidth (stress causes wider bandwidth)
+        if (features.spectralBandwidth > 1500) {
+            score += 20;
+        }
+        
+        // Energy ratio (stress affects energy distribution)
+        if (features.energyRatio > 0.6) {
+            score += 20;
+        }
+        
+        // Zero crossing rate (stress increases vocal irregularity)
+        if (features.zeroCrossingRate > 0.08) {
+            score += 15;
+        }
+        
+        // PLP characteristics (stress affects vocal tract)
+        const plpVariation = Math.max(...features.plp) - Math.min(...features.plp);
+        if (plpVariation > 2) {
+            score += 20;
+        }
+        
+        return Math.min(100, score);
+    };
+    
+    // Escalation pattern analysis
+    const analyzeEscalationPattern = (features: any) => {
+        const currentLevel = features.zeroCrossingRate + features.rmsEnergy;
+        
+        let detected = false;
+        let level: 'normal' | 'raised' | 'commands' | 'struggle' = 'normal';
+        
+        if (currentLevel > 0.3) {
+            detected = true;
+            if (features.chromaEntropy > 3 && features.zeroCrossingRate > 0.1) {
+                level = 'struggle';
+            } else if (features.spectralCentroid > 1500) {
+                level = 'commands';
+            } else if (features.rmsEnergy > 0.15) {
+                level = 'raised';
+            }
+        }
+        
+        return { detected, level };
+    };
+
     // ── Inference Helper ──
     const runYamnet = async (float32Data: Float32Array) => {
         let maxGunshot = 0;
@@ -476,9 +966,74 @@ export const AudioDemo: React.FC = () => {
             const padded = new Float32Array(BUFFER_SIZE);
             padded.set(float32Data.subarray(0, Math.min(float32Data.length, BUFFER_SIZE)));
 
-            const { g, s } = await runYamnet(padded);
-            const confG = Math.round(g * 100);
-            const confS = Math.round(s * 100);
+            // ── Pilot P1: Advanced Feature Extraction ──
+            if (displayMode === 'pilot') {
+                const advancedFeatures = extractComprehensiveFeatures(padded);
+                
+                // Advanced threat detection using multiple feature sets
+                const pilotAnalysis = analyzeAdvancedFeatures(advancedFeatures);
+                
+                // Update models with advanced analysis
+                if (pilotAnalysis.gunshotThreat > 15) {
+                    const filter = shouldSuppressAlert(pilotAnalysis.gunshotThreat, 'gunshot');
+                    if (!filter.suppress) {
+                        setModel('gunshot', { 
+                            status: 'THREAT DETECTED', 
+                            confidence: pilotAnalysis.gunshotThreat, 
+                            color: 'red', 
+                            lastDetection: now() 
+                        });
+                        addLog({ 
+                            model: 'gunshot', 
+                            threat: `Gunshot (Advanced Analysis: ${pilotAnalysis.gunshotThreat.toFixed(1)}%) - MFCC+GFCC+PLP`, 
+                            confidence: Math.round(pilotAnalysis.gunshotThreat), 
+                            level: 'red', 
+                            scenario: 'Pilot P1 Advanced' 
+                        });
+                        addToTimeline('Gunshot Detected - Multi-Feature Analysis', 'SIGNAL', Math.round(pilotAnalysis.gunshotThreat));
+                        if (pilotAnalysis.gunshotThreat > 85) triggerDispatch('Advanced Acoustic Gunshot Signature');
+                    }
+                }
+                
+                if (pilotAnalysis.struggleThreat > 15) {
+                    const filter = shouldSuppressAlert(pilotAnalysis.struggleThreat, 'struggle');
+                    if (!filter.suppress) {
+                        setModel('struggle', { 
+                            status: 'THREAT DETECTED', 
+                            confidence: pilotAnalysis.struggleThreat, 
+                            color: 'red', 
+                            lastDetection: now() 
+                        });
+                        addLog({ 
+                            model: 'struggle', 
+                            threat: `Physical Struggle (Advanced: ${pilotAnalysis.struggleThreat.toFixed(1)}%) - Chroma+ZCR+RMS`, 
+                            confidence: Math.round(pilotAnalysis.struggleThreat), 
+                            level: 'red', 
+                            scenario: 'Pilot P1 Advanced' 
+                        });
+                        addToTimeline('Struggle Detected - Multi-Feature Analysis', 'SIGNAL', Math.round(pilotAnalysis.struggleThreat));
+                    }
+                }
+                
+                // Advanced speaker/stress detection
+                if (pilotAnalysis.stressLevel > 20) {
+                    setModel('stress', { 
+                        status: 'ELEVATED STRESS', 
+                        confidence: Math.min(95, pilotAnalysis.stressLevel), 
+                        color: 'orange', 
+                        lastDetection: now() 
+                    });
+                }
+                
+                // Update escalation pattern based on advanced features
+                if (pilotAnalysis.escalationDetected) {
+                    setEscalationPattern(pilotAnalysis.escalationLevel);
+                }
+            } else {
+                // ── Demo Mode: Original YAMNet Processing ──
+                const { g, s } = await runYamnet(padded);
+                const confG = Math.round(g * 100);
+                const confS = Math.round(s * 100);
 
             if (confG > 10) {
                 const filter = shouldSuppressAlert(confG, 'gunshot');
@@ -504,6 +1059,7 @@ export const AudioDemo: React.FC = () => {
                     addLog({ model: 'struggle', threat: `Struggle/Screaming (${confS}%)${explainability}`, confidence: confS, level: 'red', scenario: 'Live Edge Model' });
                     addToTimeline('Physical Struggle / Screaming Detected', 'SIGNAL', confS);
                 }
+            }
             }
 
             // ── Speaker & Stress Detection (Spectral Analysis) ──
@@ -552,7 +1108,7 @@ export const AudioDemo: React.FC = () => {
         }
 
         rafRef.current = setTimeout(processAudioBuffer, 250); // 4Hz poll
-    }, [tfModel, isRecording, setModel, addLog, runYamnet]);
+    }, [tfModel, isRecording, setModel, addLog, runYamnet, displayMode, extractComprehensiveFeatures, analyzeAdvancedFeatures, setEscalationPattern]);
 
 
 
