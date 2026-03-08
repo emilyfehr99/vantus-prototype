@@ -32,7 +32,9 @@ import {
     CloudRain,
     Footprints,
     Lock,
-    ShieldAlert
+    ShieldAlert,
+    TrendingUp,
+    ThumbsUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // ── TF.js YAMNet Config ──
@@ -205,6 +207,244 @@ export const AudioDemo: React.FC = () => {
     });
     const [currentIncident, setCurrentIncident] = useState<any>(null);
     const [dispatchEvents, setDispatchEvents] = useState<any[]>([]);
+
+    // ── Pilot P1: Advanced Incident Management ──
+    const [officerMetadata] = useState({
+        officerId: '417',
+        shiftDate: new Date().toISOString().split('T')[0],
+        location: 'Sector 7 - Downtown',
+        cameraId: 'CAM-0417'
+    });
+
+    // ── Escalation Detection & Classification ──
+    const [escalationHistory, setEscalationHistory] = useState<any[]>([]);
+    const [threatEvents, setThreatEvents] = useState<any[]>([]);
+    const [falsePositiveTracking, setFalsePositiveTracking] = useState({
+        totalIncidents: 0,
+        falsePositives: 0,
+        confirmedIncidents: 0,
+        manualReviewsSaved: 0
+    });
+
+    // Threat Classification System
+    const classifyThreat = (features: any, pilotAnalysis: any, keywords: string[] = []): any => {
+        // Multi-factor threat classification
+        let threatType = 'Unknown';
+        let confidence = 0;
+        let severity = 'low';
+        let action = 'Monitor';
+        
+        // Weapon Threat Detection
+        if (pilotAnalysis.gunshotThreat > 70 || 
+            keywords.includes('knife') ||
+            keywords.includes('gun')) {
+            threatType = 'Weapon threat';
+            confidence = Math.max(pilotAnalysis.gunshotThreat, 85);
+            severity = 'critical';
+            action = 'Immediate backup required';
+        }
+        // Physical Struggle Detection
+        else if (pilotAnalysis.struggleThreat > 60 &&
+                 pilotAnalysis.featureVector.percussiveness > 8) {
+            threatType = 'Physical struggle';
+            confidence = pilotAnalysis.struggleThreat;
+            severity = 'high';
+            action = 'Backup recommended';
+        }
+        // Verbal Escalation Detection
+        else if (pilotAnalysis.stressLevel > 40 &&
+                 pilotAnalysis.featureVector.harmonicContent > 2.0) {
+            threatType = 'Verbal escalation';
+            confidence = pilotAnalysis.stressLevel;
+            severity = 'medium';
+            action = 'Monitor for escalation';
+        }
+        // Officer Distress Detection
+        else if (pilotAnalysis.stressLevel > 70 &&
+                 pilotAnalysis.escalationDetected) {
+            threatType = 'Officer distress';
+            confidence = pilotAnalysis.stressLevel;
+            severity = 'high';
+            action = 'Immediate check-in required';
+        }
+        // Gunshot (specific)
+        else if (pilotAnalysis.gunshotThreat > 85) {
+            threatType = 'Gunshot';
+            confidence = pilotAnalysis.gunshotThreat;
+            severity = 'critical';
+            action = 'Emergency dispatch activated';
+        }
+        
+        return {
+            threatType,
+            confidence: confidence / 100, // Convert to 0-1 scale
+            severity,
+            action,
+            trigger: determineTrigger(features, keywords),
+            stressLevel: pilotAnalysis.stressLevel > 50 ? 'high' : pilotAnalysis.stressLevel > 25 ? 'medium' : 'low'
+        };
+    };
+
+    // Determine trigger for threat event
+    const determineTrigger = (features: any, keywords: string[] = []): string => {
+        const triggers = [];
+        
+        if (keywords && keywords.length > 0) {
+            triggers.push(`Keyword: "${keywords[0]}"`);
+        }
+        
+        if (features.spectralCentroid > 2000) {
+            triggers.push('High frequency impulse');
+        }
+        
+        if (features.zeroCrossingRate > 0.1) {
+            triggers.push('Impulsive sound pattern');
+        }
+        
+        if (features.rmsEnergy > 0.3) {
+            triggers.push('Elevated volume');
+        }
+        
+        if (features.chromaEntropy > 2.5) {
+            triggers.push('Chaotic vocal pattern');
+        }
+        
+        return triggers.length > 0 ? triggers.join(' + ') : 'Acoustic anomaly detected';
+    };
+
+    // Escalation Pattern Detection
+    const detectEscalationPattern = (currentEvent: any): any => {
+        const history = [...escalationHistory, currentEvent].slice(-5); // Last 5 events
+        
+        if (history.length < 2) return { pattern: 'normal', confidence: 0.5 };
+        
+        // Pattern analysis
+        let escalationLevel = 'normal';
+        let patternConfidence = 0;
+        
+        // Check for escalation progression
+        const stressLevels = history.map(e => e.stressLevel || 'low');
+        const confidences = history.map(e => e.confidence || 0);
+        
+        // Escalation detection logic
+        if (stressLevels.includes('high') && confidences.some(c => c > 0.8)) {
+            escalationLevel = 'struggle';
+            patternConfidence = 0.9;
+        } else if (stressLevels.includes('medium') && confidences.some(c => c > 0.6)) {
+            escalationLevel = 'commands';
+            patternConfidence = 0.7;
+        } else if (stressLevels.includes('medium')) {
+            escalationLevel = 'raised';
+            patternConfidence = 0.6;
+        }
+        
+        return {
+            pattern: escalationLevel,
+            confidence: patternConfidence,
+            progression: getEscalationProgression(history)
+        };
+    };
+
+    // Get escalation progression timeline
+    const getEscalationProgression = (history: any[]): string => {
+        const progression = [];
+        
+        history.forEach((event, index) => {
+            const time = new Date(event.timestamp).toLocaleTimeString('en-US', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            progression.push(`${time}: ${event.threatType}`);
+        });
+        
+        return progression.join(' → ');
+    };
+
+    // Generate Simulated Dispatch Event
+    const generateDispatchEvent = (threatEvent: any): any => {
+        const dispatchTime = new Date();
+        const timeString = dispatchTime.toLocaleTimeString('en-US', { 
+            hour12: false, 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        
+        return {
+            time: timeString,
+            reason: `${threatEvent.threatType} detected`,
+            confidence: threatEvent.confidence,
+            recommendedAction: generateDispatchNarrative(threatEvent, dispatchTime),
+            officerId: officerMetadata.officerId,
+            location: officerMetadata.location,
+            cameraId: officerMetadata.cameraId
+        };
+    };
+
+    // Generate dispatch narrative
+    const generateDispatchNarrative = (threatEvent: any, dispatchTime: Date): string => {
+        const timeString = dispatchTime.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        
+        let narrative = `At approximately ${timeString} hours the officer`;
+        
+        switch (threatEvent.threatType) {
+            case 'Weapon threat':
+                narrative += ` issued verbal commands instructing a suspect to drop a ${threatEvent.trigger.includes('knife') ? 'knife' : 'weapon'}. Audio analysis detected elevated stress levels and multiple verbal commands consistent with a high-risk encounter.`;
+                break;
+            case 'Physical struggle':
+                narrative += ` engaged in a physical struggle. Audio analysis detected impact sounds, elevated stress levels, and chaotic vocal patterns consistent with a violent encounter.`;
+                break;
+            case 'Verbal escalation':
+                narrative += ` encountered verbal escalation. Audio analysis detected raised voices, increased vocal stress, and aggressive language patterns.`;
+                break;
+            case 'Gunshot':
+                narrative += ` reported a gunshot. Audio analysis detected a high-frequency impulse consistent with firearm discharge.`;
+                break;
+            case 'Officer distress':
+                narrative += ` exhibited signs of distress. Audio analysis detected elevated stress levels and unusual vocal patterns requiring immediate check-in.`;
+                break;
+            default:
+                narrative += ` encountered an unusual situation requiring attention.`;
+        }
+        
+        return narrative;
+    };
+
+    // Officer Feedback System
+    const handleOfficerFeedback = (eventId: string, feedback: 'correct' | 'false' | 'missed') => {
+        // Update false positive tracking
+        setFalsePositiveTracking(prev => {
+            const updated = { ...prev };
+            
+            if (feedback === 'correct') {
+                updated.confirmedIncidents++;
+            } else if (feedback === 'false') {
+                updated.falsePositives++;
+            } else if (feedback === 'missed') {
+                // This would be handled differently in a real system
+                updated.totalIncidents++;
+            }
+            
+            return updated;
+        });
+        
+        // Update event with feedback
+        setThreatEvents(prev => prev.map(event => 
+            event.id === eventId 
+                ? { ...event, officerFeedback: feedback, feedbackTimestamp: new Date().toISOString() }
+                : event
+        ));
+        
+        // Calculate manual reviews saved
+        setFalsePositiveTracking(prev => ({
+            ...prev,
+            manualReviewsSaved: prev.confirmedIncidents * 15 // Estimate: 15 minutes saved per confirmed incident
+        }));
+    };
 
     // ── Edge Case Mitigation State ──
     const [soloMode, setSoloMode] = useState(true);           // #1/#2: GPS proximity gate
@@ -1580,7 +1820,13 @@ export const AudioDemo: React.FC = () => {
                                                     generateMockEvents();
                                                 }
                                                 if (i === 4) { // After generating timeline
-                                                    generateDispatchEvent();
+                                                    const mockThreatEvent = {
+                                                        threatType: 'Physical struggle',
+                                                        confidence: 0.85,
+                                                        trigger: 'Impact sounds + stress audio'
+                                                    };
+                                                    const dispatchEvent = generateDispatchEvent(mockThreatEvent);
+                                                    setDispatchEvents(prev => [...prev, dispatchEvent]);
                                                 }
                                             }
                                             setAxonIngestion(prev => ({ ...prev, isActive: false, currentStep: 0 }));
@@ -1755,6 +2001,179 @@ export const AudioDemo: React.FC = () => {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    )}
+
+                    {/* ── Pilot P1: Comprehensive Incident Management ── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* False Positive Tracking & Metrics */}
+                        <div className="bg-neutral-900/40 backdrop-blur-xl p-6 rounded-3xl border border-white/10">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2.5 bg-green-500/10 rounded-xl">
+                                    <TrendingUp className="w-5 h-5 text-green-400" />
+                                </div>
+                                <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Phase 1 Success Metrics</h3>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4 mb-6">
+                                <div className="bg-black/40 p-4 rounded-xl">
+                                    <p className="text-2xl font-black text-white">{falsePositiveTracking.totalIncidents}</p>
+                                    <p className="text-[10px] text-neutral-400 uppercase tracking-wider">Total Incidents</p>
+                                </div>
+                                <div className="bg-black/40 p-4 rounded-xl">
+                                    <p className="text-2xl font-black text-red-400">{falsePositiveTracking.falsePositives}</p>
+                                    <p className="text-[10px] text-neutral-400 uppercase tracking-wider">False Positives</p>
+                                </div>
+                                <div className="bg-black/40 p-4 rounded-xl">
+                                    <p className="text-2xl font-black text-green-400">{falsePositiveTracking.confirmedIncidents}</p>
+                                    <p className="text-[10px] text-neutral-400 uppercase tracking-wider">Confirmed Incidents</p>
+                                </div>
+                                <div className="bg-black/40 p-4 rounded-xl">
+                                    <p className="text-2xl font-black text-blue-400">{falsePositiveTracking.manualReviewsSaved}</p>
+                                    <p className="text-[10px] text-neutral-400 uppercase tracking-wider">Minutes Saved</p>
+                                </div>
+                            </div>
+                            
+                            <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
+                                <p className="text-xs font-black text-blue-400 uppercase tracking-wider mb-2">Real Metric: AI vs Manual Review</p>
+                                <p className="text-sm text-white">
+                                    <span className="text-green-400 font-black">{falsePositiveTracking.confirmedIncidents}</span> incidents found by AI that supervisors would have manually reviewed
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Officer Metadata */}
+                        <div className="bg-neutral-900/40 backdrop-blur-xl p-6 rounded-3xl border border-white/10">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2.5 bg-purple-500/10 rounded-xl">
+                                    <User className="w-5 h-5 text-purple-400" />
+                                </div>
+                                <h3 className="text-xs font-black text-white uppercase tracking-[0.2em">Officer Metadata</h3>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-black/40 p-3 rounded-lg">
+                                        <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Officer ID</p>
+                                        <p className="text-sm font-black text-white">{officerMetadata.officerId}</p>
+                                    </div>
+                                    <div className="bg-black/40 p-3 rounded-lg">
+                                        <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Shift Date</p>
+                                        <p className="text-sm font-black text-white">{officerMetadata.shiftDate}</p>
+                                    </div>
+                                    <div className="bg-black/40 p-3 rounded-lg">
+                                        <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Location</p>
+                                        <p className="text-sm font-black text-white">{officerMetadata.location}</p>
+                                    </div>
+                                    <div className="bg-black/40 p-3 rounded-lg">
+                                        <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Camera ID</p>
+                                        <p className="text-sm font-black text-white">{officerMetadata.cameraId}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ── Escalation Detection & Pattern Analysis ── */}
+                    <div className="bg-neutral-900/40 backdrop-blur-xl p-6 rounded-3xl border border-white/10">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2.5 bg-orange-500/10 rounded-xl">
+                                <Activity className="w-5 h-5 text-orange-400" />
+                            </div>
+                            <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Escalation Pattern Detection</h3>
+                        </div>
+                        
+                        <div className="bg-black/40 p-4 rounded-xl mb-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-sm font-black text-white">Current Pattern</p>
+                                <span className={`px-3 py-1 text-[10px] font-black uppercase rounded-full ${
+                                    escalationPattern === 'normal' ? 'bg-green-500/20 text-green-400' :
+                                    escalationPattern === 'raised' ? 'bg-yellow-500/20 text-yellow-400' :
+                                    escalationPattern === 'commands' ? 'bg-orange-500/20 text-orange-400' :
+                                    'bg-red-500/20 text-red-400'
+                                }`}>
+                                    {escalationPattern}
+                                </span>
+                            </div>
+                            <p className="text-[10px] text-neutral-400">
+                                Pattern: Normal conversation → raised voices → verbal commands → struggle sounds
+                            </p>
+                        </div>
+
+                        {escalationHistory.length > 0 && (
+                            <div className="space-y-2">
+                                <p className="text-sm font-black text-white">Escalation Timeline</p>
+                                {escalationHistory.slice(-3).map((event, index) => (
+                                    <div key={index} className="bg-black/40 p-3 rounded-lg flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs text-white">{event.threatType}</p>
+                                            <p className="text-[10px] text-neutral-400">{new Date(event.timestamp).toLocaleTimeString()}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-black text-white">{(event.confidence * 100).toFixed(0)}%</p>
+                                            <p className="text-[9px] text-neutral-500">Confidence</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ── Officer Feedback Loop ── */}
+                    {threatEvents.length > 0 && (
+                        <div className="bg-neutral-900/40 backdrop-blur-xl p-6 rounded-3xl border border-white/10">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2.5 bg-amber-500/10 rounded-xl">
+                                    <ThumbsUp className="w-5 h-5 text-amber-400" />
+                                </div>
+                                <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Officer Feedback Loop</h3>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                {threatEvents.slice(-3).map((event, index) => (
+                                    <div key={event.id || index} className="bg-black/40 p-4 rounded-xl">
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div>
+                                                <p className="text-sm font-black text-white">{event.threatType}</p>
+                                                <p className="text-[10px] text-neutral-400">Time: {new Date(event.timestamp).toLocaleTimeString()}</p>
+                                                <p className="text-[10px] text-neutral-400">Trigger: {event.trigger}</p>
+                                                <p className="text-[10px] text-neutral-400">Stress Level: {event.stressLevel}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-lg font-black text-[#00FF41]">{(event.confidence * 100).toFixed(0)}%</p>
+                                                <p className="text-[9px] text-neutral-500">Confidence</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-center justify-between">
+                                            <div className="p-3 bg-white/5 rounded-lg">
+                                                <p className="text-[10px] text-amber-400">Action: {event.action}</p>
+                                            </div>
+                                            
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleOfficerFeedback(event.id, 'correct')}
+                                                    className="px-3 py-1 text-[9px] font-black uppercase bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors"
+                                                >
+                                                    ✓ Correct
+                                                </button>
+                                                <button
+                                                    onClick={() => handleOfficerFeedback(event.id, 'false')}
+                                                    className="px-3 py-1 text-[9px] font-black uppercase bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+                                                >
+                                                    ✗ False Alert
+                                                </button>
+                                                <button
+                                                    onClick={() => handleOfficerFeedback(event.id, 'missed')}
+                                                    className="px-3 py-1 text-[9px] font-black uppercase bg-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/30 transition-colors"
+                                                >
+                                                    + Missed
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -2217,17 +2636,5 @@ ${timeline.map(e => `[${e.timestamp}] ${e.label} (${e.type})`).join('\n')}
             manualReviewsSaved: 3
         }));
         setEscalationPattern('struggle');
-    };
-
-    // Helper function to generate dispatch event
-    const generateDispatchEvent = () => {
-        const dispatchEvent = {
-            time: '14:02:17',
-            reason: 'Weapon threat detected',
-            confidence: 0.85,
-            recommendation: `At approximately 14:02 hours the officer issued verbal commands instructing a suspect to drop a knife. Audio analysis detected elevated stress levels and multiple verbal commands consistent with a high-risk encounter.`
-        };
-
-        setDispatchEvents([dispatchEvent]);
     };
 };
