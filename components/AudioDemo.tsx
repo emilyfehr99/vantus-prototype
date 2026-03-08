@@ -189,6 +189,23 @@ export const AudioDemo: React.FC = () => {
     const [pastedText, setPastedText] = useState('');
     const [displayMode, setDisplayMode] = useState<'demo' | 'pilot'>('pilot'); // Default to pilot mode
 
+    // ── Pilot P1 Axon API Workflow State ──
+    const [axonIngestion, setAxonIngestion] = useState({
+        isActive: false,
+        currentStep: 0,
+        steps: ['Ingest new recordings', 'Extract audio', 'Run detection models', 'Classify incidents', 'Generate timeline', 'Simulate dispatch', 'Generate report', 'Store results']
+    });
+    const [detectedEvents, setDetectedEvents] = useState<any[]>([]);
+    const [escalationPattern, setEscalationPattern] = useState<'normal' | 'raised' | 'commands' | 'struggle'>('normal');
+    const [incidentMetrics, setIncidentMetrics] = useState({
+        totalIncidents: 0,
+        falsePositives: 0,
+        confirmedIncidents: 0,
+        manualReviewsSaved: 0
+    });
+    const [currentIncident, setCurrentIncident] = useState<any>(null);
+    const [dispatchEvents, setDispatchEvents] = useState<any[]>([]);
+
     // ── Edge Case Mitigation State ──
     const [soloMode, setSoloMode] = useState(true);           // #1/#2: GPS proximity gate
     const [trainingMode, setTrainingMode] = useState(false);  // #3: Suppress alerts during drills
@@ -1549,4 +1566,53 @@ ${timeline.map(e => `[${e.timestamp}] ${e.label} (${e.type})`).join('\n')}
             </div>
         </div>
     );
+
+    // Helper function to generate mock events
+    const generateMockEvents = () => {
+        const mockEvents = [
+            {
+                type: 'Verbal escalation',
+                time: '14:02:11',
+                trigger: 'elevated voice + keyword',
+                confidence: 0.75,
+                action: 'Monitor for escalation'
+            },
+            {
+                type: 'Weapon threat',
+                time: '14:02:15',
+                trigger: 'keyword "knife"',
+                confidence: 0.82,
+                action: 'Backup recommended'
+            },
+            {
+                type: 'Physical struggle',
+                time: '14:02:38',
+                trigger: 'impact sounds + stress audio',
+                confidence: 0.91,
+                action: 'Immediate backup required'
+            }
+        ];
+
+        setDetectedEvents(mockEvents);
+        setIncidentMetrics(prev => ({
+            ...prev,
+            totalIncidents: 3,
+            confirmedIncidents: 2,
+            falsePositives: 1,
+            manualReviewsSaved: 3
+        }));
+        setEscalationPattern('struggle');
+    };
+
+    // Helper function to generate dispatch event
+    const generateDispatchEvent = () => {
+        const dispatchEvent = {
+            time: '14:02:17',
+            reason: 'Weapon threat detected',
+            confidence: 0.85,
+            recommendation: `At approximately 14:02 hours the officer issued verbal commands instructing a suspect to drop a knife. Audio analysis detected elevated stress levels and multiple verbal commands consistent with a high-risk encounter.`
+        };
+
+        setDispatchEvents([dispatchEvent]);
+    };
 };
