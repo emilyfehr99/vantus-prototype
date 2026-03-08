@@ -2,38 +2,61 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Logo } from './Logo';
 
-const FooterLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
+const FooterLink: React.FC<{ href?: string; onClick?: () => void; children: React.ReactNode }> = ({ href, onClick, children }) => {
   const MotionDiv = motion.div as any;
+  const content = (
+    <>
+      {children}
+      <MotionDiv
+        className="absolute bottom-0 left-0 w-full h-[1px] bg-[#00FF41]"
+        initial={{ x: '-105%' }}
+        whileHover={{ x: '0%' }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      />
+    </>
+  );
+
+  const className = "text-neutral-600 transition-colors duration-300 group-hover:text-white flex items-center gap-2 w-full text-left";
+
   return (
     <motion.li className="relative inline-block overflow-hidden py-1 group">
-      <a
-        href={href}
-        className="text-neutral-600 transition-colors duration-300 group-hover:text-white flex items-center gap-2"
-      >
-        {children}
-        <MotionDiv
-          className="absolute bottom-0 left-0 w-full h-[1px] bg-[#00FF41] shadow-[0_0_8px_#00FF41]"
-          initial={{ x: '-105%' }}
-          whileHover={{ x: '0%' }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        />
-      </a>
+      {href ? (
+        <a href={href} className={className}>
+          {content}
+        </a>
+      ) : (
+        <button onClick={onClick} className={className}>
+          {content}
+        </button>
+      )}
     </motion.li>
   );
 };
 
-const LegalLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
+const LegalLink: React.FC<{ href?: string; onClick?: () => void; children: React.ReactNode }> = ({ href, onClick, children }) => {
   const MotionDiv = motion.div as any;
-  return (
-    <a
-      href={href}
-      className="relative group text-neutral-700 hover:text-white transition-colors duration-300 py-1"
-    >
+  const className = "relative group text-neutral-700 hover:text-white transition-colors duration-300 py-1";
+  const content = (
+    <>
       {children}
       <MotionDiv
         className="absolute -bottom-1 left-0 w-0 h-[1px] bg-[#00FF41]/60 group-hover:w-full transition-all duration-300 shadow-[0_0_4px_#00FF41]"
       />
-    </a>
+    </>
+  );
+
+  if (href) {
+    return (
+      <a href={href} className={className}>
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <button onClick={onClick} className={className}>
+      {content}
+    </button>
   );
 };
 

@@ -6,7 +6,7 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  type: 'login' | 'waitlist' | 'faq' | 'opioid' | 'careers' | 'whitepaper' | 'contact' | 'privacy' | 'terms';
+  type: 'login' | 'waitlist' | 'faq' | 'opioid' | 'careers' | 'whitepaper' | 'contact' | 'privacy' | 'terms' | 'mission';
   children?: React.ReactNode;
 }
 

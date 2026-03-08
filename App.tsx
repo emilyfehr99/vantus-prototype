@@ -13,6 +13,7 @@ import { TacticalOverlay } from './components/Modals';
 import { Radio, Menu, X, Signal, Target, LogOut, Mic, Layout, Shield, ShieldAlert, Lock, Search, FileText } from 'lucide-react';
 import { Login } from './components/Login';
 import { AudioDemo } from './components/AudioDemo';
+import { VantusErrorBoundary, GDPRBanner } from './components/Security';
 
 // Use React.FC to ensure children prop is correctly handled by the JSX parser and TypeScript
 const NavLink: React.FC<{ onClick: () => void; children: React.ReactNode; index: string }> = ({ onClick, children, index }) => {
@@ -312,7 +313,7 @@ const Header = ({
 };
 
 const App: React.FC = () => {
-  const [modalType, setModalType] = useState<'faq' | 'login' | 'waitlist' | 'careers' | 'whitepaper' | 'contact' | 'privacy' | 'terms' | null>(null);
+  const [modalType, setModalType] = useState<'faq' | 'login' | 'waitlist' | 'careers' | 'whitepaper' | 'contact' | 'privacy' | 'terms' | 'mission' | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState<'landing' | 'audio'>('landing');
 
@@ -336,72 +337,52 @@ const App: React.FC = () => {
   };
 
   return (
-    <main className="bg-black text-white selection:bg-[#00FF41] selection:text-black min-h-screen relative overflow-x-hidden">
-      <Header
-        onOpenFAQ={() => setModalType('faq')}
-        onOpenWaitlist={() => setModalType('waitlist')}
-        onOpenLogin={() => setModalType('login')}
-        onLogout={handleLogout}
-        isLoggedIn={isLoggedIn}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        mobileMenuOpen={mobileMenuOpen}
-        setMobileMenuOpen={setMobileMenuOpen}
-      />
+    <VantusErrorBoundary>
+      <main className="bg-black text-white selection:bg-[#00FF41] selection:text-black min-h-screen relative overflow-x-hidden">
+        <Header
+          onOpenFAQ={() => setModalType('faq')}
+          onOpenWaitlist={() => setModalType('waitlist')}
+          onOpenLogin={() => setModalType('login')}
+          onLogout={handleLogout}
+          isLoggedIn={isLoggedIn}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          mobileMenuOpen={mobileMenuOpen}
+          setMobileMenuOpen={setMobileMenuOpen}
+        />
 
-      <AnimatePresence mode="wait">
-        {activeTab === 'landing' ? (
-          <MotionDiv
-            key="landing"
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: 1,
-              scale: mobileMenuOpen ? 0.94 : 1,
-              filter: mobileMenuOpen ? 'blur(10px)' : 'blur(0px)',
-              y: mobileMenuOpen ? 20 : 0
-            }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ type: 'spring', damping: 30, stiffness: 200 }}
-            className="relative z-10 origin-top"
-          >
-            <Hero
-              onOpenWaitlist={() => setModalType('waitlist')}
-              onOpenLogin={() => setModalType('login')}
-              onOpenWhitepaper={() => setModalType('whitepaper')}
-            />
-            <TrustBanner />
-            <div id="problem"><Problem /></div>
-            <Mission />
-            <div id="features"><Product /></div>
-            <Physics />
-            {isLoggedIn && <div id="dashboard"><Dashboard /></div>}
-            <Footer
-              onOpenWaitlist={() => setModalType('waitlist')}
-              onOpenMission={() => {
-                const element = document.getElementById('mission');
-                element?.scrollIntoView({ behavior: 'smooth' });
+        <AnimatePresence mode="wait">
+          {activeTab === 'landing' ? (
+            <MotionDiv
+              key="landing"
+              initial={{ opacity: 0 }}
+              animate={{
+                opacity: 1,
+                scale: mobileMenuOpen ? 0.94 : 1,
+                filter: mobileMenuOpen ? 'blur(10px)' : 'blur(0px)',
+                y: mobileMenuOpen ? 20 : 0
               }}
-              onOpenCareers={() => setModalType('careers')}
-              onOpenFAQ={() => setModalType('faq')}
-              onOpenWhitepaper={() => setModalType('whitepaper')}
-              onOpenContact={() => setModalType('contact')}
-              onOpenPrivacy={() => setModalType('privacy')}
-              onOpenTerms={() => setModalType('terms')}
-            />
-          </MotionDiv>
-        ) : (
-          <MotionDiv
-            key="audio"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="relative z-10 pt-32 px-10 min-h-screen"
-          >
-            <AudioDemo />
-            <div className="mt-20">
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ type: 'spring', damping: 30, stiffness: 200 }}
+              className="relative z-10 origin-top"
+            >
+              <Hero
+                onOpenWaitlist={() => setModalType('waitlist')}
+                onOpenLogin={() => setModalType('login')}
+                onOpenWhitepaper={() => setModalType('whitepaper')}
+              />
+              <TrustBanner />
+              <div id="problem"><Problem /></div>
+              <Mission />
+              <div id="features"><Product /></div>
+              <Physics />
+              {isLoggedIn && <div id="dashboard"><Dashboard /></div>}
               <Footer
                 onOpenWaitlist={() => setModalType('waitlist')}
-                onOpenMission={() => setActiveTab('landing')}
+                onOpenMission={() => {
+                  const element = document.getElementById('mission');
+                  element?.scrollIntoView({ behavior: 'smooth' });
+                }}
                 onOpenCareers={() => setModalType('careers')}
                 onOpenFAQ={() => setModalType('faq')}
                 onOpenWhitepaper={() => setModalType('whitepaper')}
@@ -409,25 +390,48 @@ const App: React.FC = () => {
                 onOpenPrivacy={() => setModalType('privacy')}
                 onOpenTerms={() => setModalType('terms')}
               />
-            </div>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+            </MotionDiv>
+          ) : (
+            <MotionDiv
+              key="audio"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="relative z-10 pt-32 px-10 min-h-screen"
+            >
+              <AudioDemo />
+              <div className="mt-20">
+                <Footer
+                  onOpenWaitlist={() => setModalType('waitlist')}
+                  onOpenMission={() => setActiveTab('landing')}
+                  onOpenCareers={() => setModalType('careers')}
+                  onOpenFAQ={() => setModalType('faq')}
+                  onOpenWhitepaper={() => setModalType('whitepaper')}
+                  onOpenContact={() => setModalType('contact')}
+                  onOpenPrivacy={() => setModalType('privacy')}
+                  onOpenTerms={() => setModalType('terms')}
+                />
+              </div>
+            </MotionDiv>
+          )}
+        </AnimatePresence>
 
-      <TacticalOverlay isOpen={modalType === 'login'} onClose={() => setModalType(null)} title="Tactical Authentication" type="login">
-        <Login onLogin={handleLogin} />
-      </TacticalOverlay>
+        <TacticalOverlay isOpen={modalType === 'login'} onClose={() => setModalType(null)} title="Tactical Authentication" type="login">
+          <Login onLogin={handleLogin} />
+        </TacticalOverlay>
 
-      <TacticalOverlay isOpen={modalType === 'waitlist'} onClose={() => setModalType(null)} title="Free Demo Scheduling" type="waitlist" />
-      <TacticalOverlay isOpen={modalType === 'faq'} onClose={() => setModalType(null)} title="Tactical Protocol FAQ" type="faq" />
-      <TacticalOverlay isOpen={modalType === 'careers'} onClose={() => setModalType(null)} title="Join The Mission" type="careers" />
-      <TacticalOverlay isOpen={modalType === 'whitepaper'} onClose={() => setModalType(null)} title="Technical Whitepaper" type="whitepaper" />
-      <TacticalOverlay isOpen={modalType === 'contact'} onClose={() => setModalType(null)} title="Contact Us" type="contact" />
-      <TacticalOverlay isOpen={modalType === 'privacy'} onClose={() => setModalType(null)} title="Privacy Policy" type="privacy" />
-      <TacticalOverlay isOpen={modalType === 'terms'} onClose={() => setModalType(null)} title="Terms of Use" type="terms" />
-      <TacticalOverlay isOpen={modalType === 'mission'} onClose={() => setModalType(null)} title="Our Mission" type="mission" />
+        <TacticalOverlay isOpen={modalType === 'waitlist'} onClose={() => setModalType(null)} title="Free Demo Scheduling" type="waitlist" />
+        <TacticalOverlay isOpen={modalType === 'faq'} onClose={() => setModalType(null)} title="Tactical Protocol FAQ" type="faq" />
+        <TacticalOverlay isOpen={modalType === 'careers'} onClose={() => setModalType(null)} title="Join The Mission" type="careers" />
+        <TacticalOverlay isOpen={modalType === 'whitepaper'} onClose={() => setModalType(null)} title="Technical Whitepaper" type="whitepaper" />
+        <TacticalOverlay isOpen={modalType === 'contact'} onClose={() => setModalType(null)} title="Contact Us" type="contact" />
+        <TacticalOverlay isOpen={modalType === 'privacy'} onClose={() => setModalType(null)} title="Privacy Policy" type="privacy" />
+        <TacticalOverlay isOpen={modalType === 'terms'} onClose={() => setModalType(null)} title="Terms of Use" type="terms" />
+        <TacticalOverlay isOpen={modalType === 'mission'} onClose={() => setModalType(null)} title="Our Mission" type="mission" />
 
-    </main >
+        <GDPRBanner />
+      </main >
+    </VantusErrorBoundary>
   );
 };
 

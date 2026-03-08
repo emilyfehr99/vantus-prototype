@@ -17,9 +17,12 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         setError('');
         setIsLoading(true);
 
-        // Simulated authentication
+        // Simulated authentication (Using environment variables for security)
+        const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'admin@vantus.ai';
+        const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'vantus2026';
+
         setTimeout(() => {
-            if (email === 'admin@vantus.ai' && password === 'vantus2026') {
+            if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
                 onLogin();
             } else {
                 setError('Invalid tactical credentials. Access denied.');
