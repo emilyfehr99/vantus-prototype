@@ -13,7 +13,112 @@ import { TacticalOverlay } from './components/Modals';
 import { Radio, Menu, X, Signal, Target, LogOut, Mic, Layout, Shield, ShieldAlert, Lock, Search, FileText } from 'lucide-react';
 import { Login } from './components/Login';
 import { AudioDemo } from './components/AudioDemo';
-import { VantusErrorBoundary, GDPRBanner } from './components/Security';
+
+// Temporarily inline Security components to bypass import issue
+const GDPRBanner: React.FC = () => {
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        const consent = localStorage.getItem('vantus_consent');
+        if (!consent) {
+            const timer = setTimeout(() => setIsVisible(true), 1500);
+            return () => clearTimeout(timer);
+        }
+    }, []);
+
+    const accept = () => {
+        localStorage.setItem('vantus_consent', 'accepted');
+        setIsVisible(false);
+    };
+
+    return (
+        <AnimatePresence>
+            {isVisible && (
+                <motion.div
+                    initial={{ y: 100, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 100, opacity: 0 }}
+                    className="fixed bottom-6 left-6 right-6 z-[300] md:left-auto md:max-w-md"
+                >
+                    <div className="bg-[#080808]/90 backdrop-blur-xl border border-white/10 p-6 rounded-sm shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+                        <div className="flex items-start gap-4">
+                            <div className="flex-shrink-0">
+                                <Shield size={20} className="text-[#00FF41]" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-white font-semibold mb-2">Tactical Data Processing</h3>
+                                <p className="text-[10px] font-mono text-neutral-400 leading-relaxed mb-4">
+                                    This system processes audio data using advanced AI models for threat detection and officer safety enhancement.
+                                </p>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={accept}
+                                        className="px-4 py-2 bg-[#00FF41] text-black font-mono text-[10px] uppercase tracking-[0.2em] hover:bg-[#00CC33] transition-colors"
+                                    >
+                                        Accept
+                                    </button>
+                                    <button
+                                        onClick={() => setIsVisible(false)}
+                                        className="p-2.5 bg-neutral-900 text-neutral-500 hover:text-white transition-colors"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};
+
+interface ErrorBoundaryProps {
+    children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+    hasError: boolean;
+}
+
+class VantusErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+    constructor(props: ErrorBoundaryProps) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError(_: Error): ErrorBoundaryState {
+        return { hasError: true };
+    }
+
+    componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+        console.error("🔒 SECURE_ERROR_CAPTURE:", error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-center">
+                    <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center text-red-500 mb-6 animate-pulse">
+                        <Lock size={32} />
+                    </div>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter text-white mb-2">Tactical System Override</h2>
+                    <p className="text-[10px] font-mono text-neutral-500 uppercase tracking-[0.3em] max-w-md">
+                        The application has encountered a critical fault. For security, session has been terminated to prevent data leak. Re-initialize pipeline.
+                    </p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="mt-6 px-6 py-3 bg-red-500 text-black font-mono text-[10px] uppercase tracking-[0.2em] hover:bg-red-600 transition-colors"
+                    >
+                        Re-Initialize System
+                    </button>
+                </div>
+            );
+        }
+
+        return this.props.children;
+    }
+}
 
 // Use React.FC to ensure children prop is correctly handled by the JSX parser and TypeScript
 const NavLink: React.FC<{ onClick: () => void; children: React.ReactNode; index: string }> = ({ onClick, children, index }) => {
