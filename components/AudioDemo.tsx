@@ -482,7 +482,13 @@ type AdditionalScenarioKey =
     // ── Human-in-the-Loop Logic Gaps (Batch 4) ──
     | 'bathroomBreak' | 'undercoverSafeWord' | 'firmwareBug' | 'tacticalBreathing' | 'handcuffClicks'
     // ── Smart City Interference (Batch 4) ──
-    | 'droneInterference' | 'evPedestrianAlert' | 'smartDoorbellCrosstalk' | 'mirrorIncident' | 'crowdPanicApp';
+    | 'droneInterference' | 'evPedestrianAlert' | 'smartDoorbellCrosstalk' | 'mirrorIncident' | 'crowdPanicApp'
+    // ── Adversarial & Intentional Manipulation (Batch 5) ──
+    | 'externalVoiceTrigger' | 'audioMaskingDetection'
+    // ── High-Velocity & Physics (Batch 5) ──
+    | 'vehicleBailoutLogic'
+    // ── System & Legal Compliance (Batch 5) ──
+    | 'sensitiveLocationMasking' | 'spatialClusterEngine' | 'stealthModeSuppression';
 
 interface AdditionalScenarioProfile {
     label: string;
@@ -1298,6 +1304,62 @@ const ADDITIONAL_SCENARIO_PROFILES: Record<AdditionalScenarioKey, AdditionalScen
         education: 'Consumer panic apps (SafeTrek, Noonlight, connected protest apps) can be triggered by large groups simultaneously. 50 protest attendees activating their panic app at the same moment generates 50 automated location pings, which a naive aggregation system could interpret as a mass-casualty event. The key discriminating factor: authentic mass-casualty events are corroborated by at least one of: (1) BWC audio detection from an officer at the scene, (2) 911 call influx, (3) CAD officer-reported distress. A cluster of consumer app pings with zero corroborating officer-side signals is classified as a coordinated consumer app event, not a mass-casualty incident. The dispatcher is notified of the ping cluster with a "consumer app — verify before dispatch" note.',
         defaultActive: false,
     },
+
+    // ════════ BATCH 5: ADVERSARIAL, TACTICAL, & COMPLIANCE ════════
+
+    // ── Adversarial & Intentional Manipulation ──
+    externalVoiceTrigger: {
+        label: 'Audio Injection / Swatting FP', category: 'network',
+        detection: 'Loud "Officer Down!" or "Help!" keyword detected, but Speaker ID / Voice Biometrics profile does not match the BWC wearer or any registered BT Mesh partner.',
+        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 25 },
+        suppressModels: [],
+        education: 'Suspects may attempt to trigger a massive police response by playing high-fidelity recordings of police distress calls from a Bluetooth speaker during an ambush. The system uses Speaker ID to cross-reference the distress shout against the officer\'s enrolled voiceprint and the voiceprints of known partners on the mesh. If the voice is external, it is flagged as an EXTERNAL_VOICE_TRIGGER and treated as a Priority 2 intelligence event rather than an immediate Priority 1 auto-dispatch, preventing the dispatcher from sending units blindly into a trap.',
+        defaultActive: false,
+    },
+    audioMaskingDetection: {
+        label: 'Acoustic Jamming / Masking', category: 'environmental',
+        detection: 'Persistent broadband white noise or heavy metal music played at >90dB specifically to oversaturate the BWC microphone payload, clipping the audio sensor.',
+        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
+        suppressModels: ['gunshot', 'struggle', 'keyword'],
+        education: 'Adversaries may use noise generators or loud music to "blind" acoustic sensors. When the YAMNet layer detects intentional audio masking (sustained >90dB broadband noise with zero dynamic range), it inhibits audio-based dispatch entirely and alerts the officer via haptic feedback that "Audio sensors are obstructed—Visual-only mode active." This forces the system to rely entirely on Computer Vision (weapon detection) and the IMU (struggle telemetry).',
+        defaultActive: false,
+    },
+
+    // ── High-Velocity Motion & Physics ──
+    vehicleBailoutLogic: {
+        label: 'Vehicle Bail-Out / Foot Pursuit', category: 'physiological',
+        detection: 'CAN_BUS telemetry indicates the patrol vehicle is still in "Drive" or moving >10mph, while the officer\'s BWC IMU registers a violent >4G lateral exit spike followed by rapid foot-movement cadence.',
+        thresholdAdjust: { gunshot: 0, struggle: -20, keyword: -15 },
+        suppressModels: [], // Enhances dispatch!
+        education: 'When an officer bails out of a moving vehicle to chase a suspect, the violent physical action and slamming door routinely mimic a struggle or a percussive gunshot. However, this specific sequence—vehicle in drive, explosive exit, immediate foot strike—is a 99% indicator of a highly volatile, high-stress emergency. Instead of suppressing the alert, this physics-based sequence drastically LOWERS the dispatch threshold for struggle and keywords, proactively queuing backup for the foot pursuit.',
+        defaultActive: false,
+    },
+
+    // ── System & Legal Compliance ──
+    sensitiveLocationMasking: {
+        label: 'Privacy Geofence (Hospital/School)', category: 'physiological',
+        detection: 'GPS correlates with a known sensitive location (Hospital ER, religious site, school) where continuous video recording may violate department policy or HIPAA.',
+        thresholdAdjust: { gunshot: 15, struggle: 15, keyword: 20 },
+        suppressModels: [], // Redacts video stream
+        education: 'Officers frequently operate in sensitive locations where live-streaming BWC video to dispatch without a warrant or active threat is a policy violation. When entering a SENSITIVE_LOCATION geofence, Vantus automatically redacts/blurs the live video feed visible to the dispatcher. The AI continues to listen for "Shots Fired" or monitor the IMU for struggles. The video un-blurs ONLY if a lethal threat (fusion score > dispatch threshold) is confirmed, balancing privacy with immediate officer safety.',
+        defaultActive: false,
+    },
+    spatialClusterEngine: {
+        label: 'Fleet-Wide Mass Event Correlation', category: 'network',
+        detection: '15+ BWC units within a 2-block radius simultaneously trigger acoustic alerts (e.g., an explosion, gas leak hiss, or crowd panic) within a 5-second window.',
+        thresholdAdjust: { gunshot: 5, struggle: 5, keyword: 5 },
+        suppressModels: [],
+        education: 'In a mass-casualty event or industrial accident (e.g., a massive explosion), every BWC in the vicinity will trigger a separate "Officer in Distress" or "Gunshot" alert. Without spatial clustering, a single explosion would flood the CAD screen with 15 individual, uncoordinated Priority 1 alerts. The Spatial Cluster Engine aggregates these simultaneous, geographically concentrated triggers and rolls them up into a single, massive "Major Incident / Mass Event" alert polygon on the dispatcher\'s map.',
+        defaultActive: false,
+    },
+    stealthModeSuppression: {
+        label: 'Tactical Silence / Search Mode', category: 'temporal',
+        detection: 'Officer is dispatched on a CAD "Search Warrant" or "Building Clearance" code where stealth is required.',
+        thresholdAdjust: { gunshot: 10, struggle: 10, keyword: 10 },
+        suppressModels: [], // AI still works, but BWC is silent
+        education: 'During tactical operations (clearing a dark building, executing a warrant), an officer might whisper "Gun" to a partner to indicate a found weapon. If the AI detects this and sends a standard "Alert Confirmed" haptic vibration or audible chirp back to the BWC, it could immediately compromise the officer\'s position to the suspect. When CAD flags STEALTH_MODE, all haptic and audio feedback from the BWC to the officer is strictly killed. The AI silently "whispers" its telemetry to Dispatch without ever making the officer a target.',
+        defaultActive: false,
+    }
 };
 
 // Additional scenario flag type (active/inactive per scenario)
@@ -2286,6 +2348,18 @@ export const AudioDemo: React.FC = () => {
                 next.smartDoorbellCrosstalk = additionalFlags.hospitalPatrol && !vehicleDetected;
                 next.mirrorIncident = lowLightMode && !vehicleDetected;
                 next.crowdPanicApp = additionalFlags.cityEvent && sceneOfficers.length > 0;
+
+                // ── Adversarial & Intentional Manipulation (Batch 5) ──
+                next.externalVoiceTrigger = activeSceneId !== null && !soloDetection.isSolo && !cadHighRisk;
+                next.audioMaskingDetection = additionalFlags.loudMusicVibration && cadHighRisk;
+
+                // ── High-Velocity Motion & Physics (Batch 5) ──
+                next.vehicleBailoutLogic = pursuitMode && vehicleDetected;
+
+                // ── System & Legal Compliance (Batch 5) ──
+                next.sensitiveLocationMasking = additionalFlags.hospitalPatrol || inStationGeofence;
+                next.spatialClusterEngine = additionalFlags.cityEvent && sceneOfficers.length > 0 && cadHighRisk;
+                next.stealthModeSuppression = cadHighRisk && !vehicleDetected && !!activeSceneId;
 
                 // ── D: Network ──
                 const newLag = systemHealth === 'degraded' ? 90000 + Math.random() * 90000 :
@@ -4473,7 +4547,7 @@ export const AudioDemo: React.FC = () => {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-black uppercase tracking-tighter text-white">
-                        {displayMode === 'pilot' ? 'Pilot Phase 1: Audit Terminal' : displayMode === 'pilot2' ? 'Pilot Phase 2: Real-Time Dispatch' : 'Audio Threat Detection'}
+                        {displayMode === 'pilot' ? 'Phase 1: Audio-Only Live Dispatch' : displayMode === 'pilot2' ? 'Phase 2: Audio & Visual Live Dispatch' : 'Audio Threat Detection'}
                     </h2>
                     <div className="flex items-center gap-4 mt-1">
                         <p className="text-[10px] font-mono text-neutral-500 uppercase tracking-[0.3em] italic">
@@ -6188,7 +6262,7 @@ ${timeline.map(e => `[${e.timestamp}] ${e.label} (${e.type})`).join('\n')}
                                         <ShieldAlert size={20} className="text-blue-400" />
                                     </div>
                                     <div>
-                                        <h3 className="text-sm font-black uppercase tracking-widest text-white">Pilot Phase 1 Report</h3>
+                                        <h3 className="text-sm font-black uppercase tracking-widest text-white">Phase 1: Audio-Only Report</h3>
                                         <p className="text-[10px] text-neutral-500 font-mono">Axon Evidence.com Export - Forensic Audit v1.0</p>
                                     </div>
                                 </div>
