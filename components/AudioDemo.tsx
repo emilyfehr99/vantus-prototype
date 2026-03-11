@@ -43,6 +43,7 @@ import {
     WifiOff,
     Timer,
     MapPin,
+    Eye,
     CheckCircle,
     XCircle,
     ArrowUpCircle,
@@ -4597,14 +4598,18 @@ export const AudioDemo: React.FC = () => {
                 <div className="space-y-6">
 
                     {/* Phase 1/2 intro banner */}
-                    <div className="bg-purple-950/30 border border-purple-500/20 rounded-2xl p-5 flex items-start gap-4">
-                        <div className="p-2.5 bg-purple-500/10 rounded-xl shrink-0 mt-0.5">
-                            <Siren className="w-5 h-5 text-purple-400" />
+                    <div className={displayMode === 'pilot' ? "bg-blue-950/30 border border-blue-500/20 rounded-2xl p-5 flex items-start gap-4" : "bg-purple-950/30 border border-purple-500/20 rounded-2xl p-5 flex items-start gap-4"}>
+                        <div className={displayMode === 'pilot' ? "p-2.5 bg-blue-500/10 rounded-xl shrink-0 mt-0.5" : "p-2.5 bg-purple-500/10 rounded-xl shrink-0 mt-0.5"}>
+                            {displayMode === 'pilot' ? <Mic className="w-5 h-5 text-blue-400" /> : <Video className="w-5 h-5 text-purple-400" />}
                         </div>
                         <div>
-                            <p className="text-xs font-black text-purple-300 uppercase tracking-[0.2em] mb-1">Live Production Dispatch Deployment</p>
+                            <p className={displayMode === 'pilot' ? "text-xs font-black text-blue-300 uppercase tracking-[0.2em] mb-1" : "text-xs font-black text-purple-300 uppercase tracking-[0.2em] mb-1"}>
+                                {displayMode === 'pilot' ? 'Phase 1: Audio-Only Infrastructure' : 'Phase 2: Multi-Modal Fusion (Audio + Visual)'}
+                            </p>
                             <p className="text-[10px] text-neutral-400 leading-relaxed">
-                                Phase 2 extends Phase 1 from a post-shift audit tool to a <span className="text-purple-300 font-bold">live dispatch integration</span>. All 67 scenario suppression rules, multi-modal fusion, event horizon, and flag decay run in real-time on the BWC edge compute unit. CAD integration closes the loop — alerts are sent directly to dispatch with a <span className="text-purple-300 font-bold">60-second cancel window</span> before a call for service is generated.
+                                {displayMode === 'pilot' 
+                                    ? <span>Phase 1 utilizes edge-computed audio inference to detect threats and dispatch backup with a 60-second cancel window, respecting privacy by <span className="text-blue-300 font-bold">not analyzing visual data</span> unless a threat is verified.</span>
+                                    : <span>Phase 2 introduces <span className="text-purple-300 font-bold">continuous computer vision fusion</span>, processing video frames via edge GPUs on the BWC to detect weapons, bladed stances, and physical altercations, fused with audio for ultra-low false positive rates.</span>}
                             </p>
                         </div>
                     </div>
@@ -4681,36 +4686,83 @@ export const AudioDemo: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Phase 2 Roadmap */}
-                    <div className="bg-neutral-900/40 backdrop-blur-xl p-6 rounded-2xl border border-white/10">
-                        <div className="flex items-center gap-3 mb-5">
-                            <div className="p-2.5 bg-purple-500/10 rounded-xl">
-                                <Target className="w-5 h-5 text-purple-400" />
-                            </div>
-                            <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Phase 2 Integration Roadmap</h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {[
-                                { title: 'Axon Body 4 Live SDK', desc: 'Real BWC stream via Axon DEMS API — audio/video frames pushed to edge compute at 140ms latency', icon: Video, status: 'planned' },
-                                { title: 'CAD Real-Time Webhook', desc: 'Axon CAD v3 webhook for call type, officer status, scene updates in <2s', icon: Radio, status: 'planned' },
-                                { title: 'Evidence.com Dispatch Logging', desc: 'Automatic case file creation with AI audit trail, suppression reason, and officer confidence history', icon: FileText, status: 'planned' },
-                                { title: 'Supervisor Real-Time Dashboard', desc: 'Supervisor console shows live fusion score, active scenario flags, and cancel window countdown per officer', icon: Shield, status: 'planned' },
-                                { title: 'BT Mesh Dedup Server', desc: 'Cloud dedup service receives all BWC scene reports — ensures single dispatch per incident with P1–P5 rules', icon: Wifi, status: 'planned' },
-                                { title: 'Multi-Modal GPU Inference', desc: 'On-device NVIDIA Jetson Orin or cloud GPU cluster for simultaneous YAMNet + Whisper + CV at <200ms total pipeline', icon: Cpu, status: 'planned' },
-                            ].map(item => (
-                                <div key={item.title} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                                    <div className="p-1.5 bg-purple-500/10 rounded-lg shrink-0">
-                                        <item.icon className="w-3 h-3 text-purple-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[8px] font-bold text-white mb-0.5">{item.title}</p>
-                                        <p className="text-[7px] text-neutral-500 leading-relaxed">{item.desc}</p>
-                                    </div>
-                                    <span className="text-[6px] font-black uppercase text-purple-400/60 shrink-0 mt-0.5">Planned</span>
+                    {/* Phase 2 Roadmap (Only visible in Phase 1) */}
+                    {displayMode === 'pilot' && (
+                        <div className="bg-neutral-900/40 backdrop-blur-xl p-6 rounded-2xl border border-white/10">
+                            <div className="flex items-center gap-3 mb-5">
+                                <div className="p-2.5 bg-blue-500/10 rounded-xl">
+                                    <Target className="w-5 h-5 text-blue-400" />
                                 </div>
-                            ))}
+                                <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Phase 2 Integration Roadmap</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {[
+                                    { title: 'Axon Body 4 Live SDK', desc: 'Real BWC stream via Axon DEMS API — audio/video frames pushed to edge compute at 140ms latency', icon: Video, status: 'planned' },
+                                    { title: 'CAD Real-Time Webhook', desc: 'Axon CAD v3 webhook for call type, officer status, scene updates in <2s', icon: Radio, status: 'planned' },
+                                    { title: 'Evidence.com Dispatch Logging', desc: 'Automatic case file creation with AI audit trail, suppression reason, and officer confidence history', icon: FileText, status: 'planned' },
+                                    { title: 'Supervisor Real-Time Dashboard', desc: 'Supervisor console shows live fusion score, active scenario flags, and cancel window countdown per officer', icon: Shield, status: 'planned' },
+                                    { title: 'BT Mesh Dedup Server', desc: 'Cloud dedup service receives all BWC scene reports — ensures single dispatch per incident with P1–P5 rules', icon: Wifi, status: 'planned' },
+                                    { title: 'Multi-Modal GPU Inference', desc: 'On-device NVIDIA Jetson Orin or cloud GPU cluster for simultaneous YAMNet + Whisper + CV at <200ms total pipeline', icon: Cpu, status: 'planned' },
+                                ].map(item => (
+                                    <div key={item.title} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                                        <div className="p-1.5 bg-blue-500/10 rounded-lg shrink-0">
+                                            <item.icon className="w-3 h-3 text-blue-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[8px] font-bold text-white mb-0.5">{item.title}</p>
+                                            <p className="text-[7px] text-neutral-500 leading-relaxed">{item.desc}</p>
+                                        </div>
+                                        <span className="text-[6px] font-black uppercase text-blue-400/60 shrink-0 mt-0.5">Planned</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
+
+                    {/* Phase 2 Visual Elements (Only visible in Phase 2) */}
+                    {displayMode === 'pilot2' && (
+                        <div className="bg-neutral-900/40 backdrop-blur-xl p-6 rounded-2xl border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.05)]">
+                            <div className="flex items-center gap-3 mb-5">
+                                <div className="p-2.5 bg-emerald-500/10 rounded-xl">
+                                    <Eye className="w-5 h-5 text-emerald-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Computer Vision Analysis (Phase 2 Active)</h3>
+                                    <p className="text-[9px] text-neutral-500">Live scene weapon and postural recognition via edge-deployed MobileNet CV</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                <div className="p-3 border border-emerald-500/20 bg-emerald-500/5 rounded-xl flex flex-col justify-between">
+                                    <p className="text-[8px] font-black uppercase text-emerald-400 mb-2 tracking-widest">Weapon Detect</p>
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs text-white font-mono font-bold">CLEAR</p>
+                                        <div className="flex gap-1"><div className="w-1 h-3 bg-emerald-500/50 rounded-full" /><div className="w-1 h-3 bg-emerald-500/20 rounded-full" /><div className="w-1 h-3 bg-emerald-500/20 rounded-full" /></div>
+                                    </div>
+                                </div>
+                                <div className="p-3 border border-emerald-500/20 bg-emerald-500/5 rounded-xl flex flex-col justify-between">
+                                    <p className="text-[8px] font-black uppercase text-emerald-400 mb-2 tracking-widest">Stance Analysis</p>
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs text-white font-mono font-bold">RELAXED</p>
+                                        <div className="flex gap-1"><div className="w-1 h-3 bg-emerald-500/50 rounded-full" /><div className="w-1 h-3 bg-emerald-500/20 rounded-full" /><div className="w-1 h-3 bg-emerald-500/20 rounded-full" /></div>
+                                    </div>
+                                </div>
+                                <div className="p-3 border border-emerald-500/20 bg-emerald-500/5 rounded-xl flex flex-col justify-between">
+                                    <p className="text-[8px] font-black uppercase text-emerald-400 mb-2 tracking-widest">Human Count</p>
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs text-white font-mono font-bold">{soloDetection.isSolo ? '1 DETECTED' : '2+ DETECTED'}</p>
+                                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                    </div>
+                                </div>
+                                <div className="p-3 border border-emerald-500/20 bg-emerald-500/5 rounded-xl flex flex-col justify-between">
+                                    <p className="text-[8px] font-black uppercase text-emerald-400 mb-2 tracking-widest">Horizon State</p>
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs text-white font-mono font-bold">UPRIGHT</p>
+                                        <div className="flex gap-1"><div className="w-1 h-3 bg-emerald-500/50 rounded-full" /><div className="w-1 h-3 bg-emerald-500/50 rounded-full" /><div className="w-1 h-3 bg-emerald-500/50 rounded-full" /></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* ── Additional Scenario Auto-Detection (Active Context) ── */}
                     <div className="bg-neutral-900/40 backdrop-blur-xl p-6 rounded-3xl border border-white/10 mt-6 min-h-[350px]">
