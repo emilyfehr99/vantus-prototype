@@ -117,8 +117,8 @@ const AccordionItem: React.FC<{ title: string, badge?: string, defaultOpen?: boo
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ 
-              height: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
-              opacity: { duration: 0.3 }
+              height: { duration: 0.5, ease: [0.16, 1, 0.3, 1] },
+              opacity: { duration: 0.4, ease: "linear" }
             }}
             className="overflow-hidden"
           >
