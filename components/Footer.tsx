@@ -113,7 +113,7 @@ export const Footer: React.FC<{
           <div className="space-y-4">
             <h4 className="font-mono text-xs uppercase text-neutral-400 tracking-widest border-l border-[#00FF41]/40 pl-3">Resources</h4>
             <ul className="flex flex-col space-y-1 text-sm font-medium">
-              <FooterLink onClick={onOpenWaitlist}>Get a Free Demo</FooterLink>
+              <FooterLink onClick={onOpenWaitlist}>Book a Free Demo</FooterLink>
               <FooterLink onClick={onOpenFAQ}>FAQ</FooterLink>
               <FooterLink onClick={onOpenWhitepaper}>Technical Whitepaper</FooterLink>
 
@@ -134,7 +134,7 @@ export const Footer: React.FC<{
         <Logo className="h-12 w-auto text-[#00FF41] mx-auto mb-6 opacity-80" />
         <h4 className="text-2xl font-black uppercase text-white mb-4 tracking-tight">Ready to enhance officer safety?</h4>
         <button onClick={onOpenWaitlist} className="mt-4 px-10 py-4 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs hover:bg-white transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(0,255,65,0.2)]">
-          Get a Free Demo
+          Book a Free Demo
         </button>
       </div>
 

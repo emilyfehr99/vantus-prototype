@@ -260,7 +260,7 @@ const Header = ({
                 whileTap={{ scale: 0.95 }}
                 className="flex items-center px-8 py-3 bg-transparent border border-white/20 text-white font-black uppercase text-[10px] tracking-[0.2em] transition-all rounded-sm"
               >
-                Get a Free Demo
+                Book a Free Demo
               </MotionButton>
               <MotionButton
                 onClick={onOpenLogin}
@@ -392,7 +392,7 @@ const Header = ({
                         onClick={onOpenWaitlist}
                         className="px-12 py-5 bg-transparent border border-white/20 text-white font-black uppercase text-sm tracking-widest"
                       >
-                        Get a Free Demo
+                        Book a Free Demo
                       </button>
                       <button
                         onClick={onOpenLogin}

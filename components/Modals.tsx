@@ -10,6 +10,159 @@ interface ModalProps {
   children?: React.ReactNode;
 }
 
+const BookingCalendar = ({ onClose }: { onClose: () => void }) => {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+
+  const MotionDiv = motion.div as any;
+  const MotionButton = motion.button as any;
+
+  // Generate next 14 days
+  const upcomingDates = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i + 1); // Start from tomorrow
+    // Skip weekends
+    if (d.getDay() === 0 || d.getDay() === 6) {
+      return null;
+    }
+    return d;
+  }).filter(Boolean) as Date[];
+
+  // Time slots per day
+  const timeSlots = ['09:00 AM', '10:00 AM', '11:30 AM', '01:00 PM', '02:30 PM', '04:00 PM'];
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const subject = `Demo Request: ${formData.get('agency')} - ${selectedDate?.toLocaleDateString()} @ ${selectedTime}`;
+    const body = `Name: ${formData.get('name')}\nEmail: ${formData.get('email')}\nAgency/Department: ${formData.get('agency')}\n\nRequested Time: ${selectedDate?.toLocaleDateString()} at ${selectedTime}\n\nNotes:\n${formData.get('notes')}`;
+    window.location.href = `mailto:vantussafetysystems@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    onClose();
+  };
+
+  if (step === 1) {
+    return (
+      <div className="max-w-4xl mx-auto py-4">
+        <div className="text-center space-y-4 mb-10">
+          <div className="w-16 h-16 bg-[#00FF41]/10 border border-[#00FF41]/30 flex items-center justify-center text-[#00FF41] mx-auto rounded-full shadow-[0_0_20px_rgba(0,255,65,0.2)]">
+            <Target size={32} />
+          </div>
+          <h3 className="text-3xl font-black uppercase tracking-tight">Book a Free Demo</h3>
+          <p className="text-xs text-neutral-400 font-mono">Select a date and time for a live interactive walkthrough.</p>
+        </div>
+
+        <div className="grid md:grid-cols-[1fr_250px] gap-8 border border-neutral-900 bg-neutral-950/50 p-6">
+          {/* Calendar Side */}
+          <div className="space-y-6 border-r border-neutral-900 pr-8">
+            <h4 className="text-sm font-black uppercase text-white tracking-widest flex items-center gap-2">
+              <span className="w-2 h-2 bg-[#00FF41] block"></span>
+              Available Dates (Next 14 Days)
+            </h4>
+            <div className="grid grid-cols-4 gap-3">
+              {upcomingDates.slice(0, 8).map((date, idx) => {
+                const isSelected = selectedDate?.toDateString() === date.toDateString();
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                const dayNum = date.getDate();
+                const month = date.toLocaleDateString('en-US', { month: 'short' });
+                
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => { setSelectedDate(date); setSelectedTime(null); }}
+                    className={`flex flex-col items-center justify-center p-3 border transition-all ${isSelected ? 'bg-[#00FF41] text-black border-[#00FF41] shadow-[0_0_15px_rgba(0,255,65,0.3)]' : 'bg-black border-neutral-800 text-neutral-400 hover:border-neutral-500 hover:text-white'}`}
+                  >
+                    <span className={`text-[10px] font-mono uppercase tracking-widest ${isSelected ? 'text-black' : 'text-neutral-500'}`}>{month}</span>
+                    <span className={`text-xl font-black mt-1 ${isSelected ? 'text-black' : 'text-white'}`}>{dayNum}</span>
+                    <span className={`text-[10px] font-mono uppercase tracking-widest mt-1 ${isSelected ? 'text-black' : 'text-neutral-500'}`}>{dayName}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Time Slots Side */}
+          <div className="space-y-6">
+            <h4 className="text-sm font-black uppercase text-white tracking-widest">
+              Time
+            </h4>
+            {selectedDate ? (
+              <div className="space-y-2">
+                {timeSlots.map((time, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedTime(time)}
+                    className={`block w-full text-center py-3 text-xs font-mono font-bold uppercase tracking-widest border transition-all ${selectedTime === time ? 'bg-white text-black border-white' : 'bg-black border-neutral-800 text-neutral-300 hover:border-[#00FF41] hover:text-[#00FF41]'}`}
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center border border-dashed border-neutral-800 bg-black/50 p-6 text-center">
+                <p className="text-[10px] font-mono text-neutral-600 uppercase tracking-widest">Select a date to view available times</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-8 flex justify-end">
+          <MotionButton
+            disabled={!selectedDate || !selectedTime}
+            onClick={() => setStep(2)}
+            whileHover={selectedDate && selectedTime ? { scale: 1.02, backgroundColor: '#ffffff', boxShadow: '0 0 30px rgba(0,255,65,0.2)' } : {}}
+            whileTap={selectedDate && selectedTime ? { scale: 0.98 } : {}}
+            className={`px-10 py-4 font-black uppercase tracking-widest text-xs transition-all ${selectedDate && selectedTime ? 'bg-[#00FF41] text-black cursor-pointer' : 'bg-neutral-900 text-neutral-600 cursor-not-allowed border border-neutral-800'}`}
+          >
+            Confirm Time
+          </MotionButton>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-xl mx-auto py-4">
+      <div className="mb-6 flex items-center justify-between">
+        <button onClick={() => setStep(1)} className="text-[10px] text-neutral-400 font-mono uppercase hover:text-[#00FF41] transition-colors flex items-center gap-2">
+           ← Back to Calendar
+        </button>
+        <span className="text-[10px] text-[#00FF41] font-mono uppercase border border-[#00FF41]/30 px-3 py-1 bg-[#00FF41]/5">
+          {selectedDate?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} @ {selectedTime}
+        </span>
+      </div>
+      
+      <div className="text-center space-y-2 mb-8 border-b border-neutral-900 pb-8">
+        <h3 className="text-3xl font-black uppercase tracking-tight">Operator Details</h3>
+        <p className="text-xs text-neutral-400 font-mono">Finalize your demo booking request.</p>
+      </div>
+
+      <form className="space-y-5" onSubmit={handleSubmit}>
+        <div className="space-y-1">
+          <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Full Name</label>
+          <input name="name" required type="text" placeholder="YOUR_NAME" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Work Email</label>
+          <input name="email" required type="email" placeholder="YOUR_EMAIL@AGENCY.GOV" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Agency / Department</label>
+          <input name="agency" required type="text" placeholder="e.g. LAPD, NYPD" className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-mono text-[#00FF41] uppercase tracking-widest">Questions / Areas of Focus</label>
+          <textarea name="notes" rows={3} placeholder="Any specific features you want to focus on during the demo?..." className="w-full bg-black border border-neutral-800 p-4 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all resize-none" />
+        </div>
+        
+        <MotionButton type="submit" whileHover={{ scale: 1.02, backgroundColor: '#ffffff', boxShadow: '0 0 30px rgba(0,255,65,0.2)' }} whileTap={{ scale: 0.98 }} className="w-full py-5 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs transition-all mt-4">
+          Complete Booking
+        </MotionButton>
+      </form>
+    </div>
+  );
+};
+
 const faqs = [
   {
     q: "Is this just Abel or Code Four?",
@@ -273,30 +426,7 @@ export const TacticalOverlay: React.FC<ModalProps> = ({ isOpen, onClose, title, 
                   )}
 
                   {type === 'waitlist' && (
-                    <div className="max-w-md mx-auto py-10 text-center space-y-8">
-                      <div className="space-y-4 group">
-                        <div className="w-16 h-16 bg-neutral-900 border border-neutral-800 flex items-center justify-center text-[#00FF41] mx-auto group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,255,65,0.2)] transition-all">
-                          <ShieldAlert size={32} />
-                        </div>
-                        <h3 className="text-2xl font-black uppercase">Get a Free Demo</h3>
-                        <p className="text-xs text-neutral-500 font-mono">Schedule a live demonstration of the Vantus Intelligent Safety platform.</p>
-                      </div>
-                      <form className="space-y-4 text-left" onSubmit={(e) => {
-                        e.preventDefault();
-                        const formData = new FormData(e.currentTarget);
-                        const subject = `Pilot Waitlist: ${formData.get('department')} Dept`;
-                        const body = `Name: ${formData.get('name')}\nEmail: ${formData.get('email')}\nDepartment: ${formData.get('department')}\nSize: ${formData.get('size')}`;
-                        window.location.href = `mailto:vantussafetysystems@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-                      }}>
-                        <input name="name" required type="text" placeholder="YOUR_NAME" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
-                        <input name="email" required type="email" placeholder="YOUR_EMAIL" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
-                        <input name="department" required type="text" placeholder="DEPARTMENT_NAME" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
-                        <input name="size" required type="number" placeholder="DEPARTMENT_SIZE (e.g. 50)" className="w-full bg-black border border-neutral-800 p-5 font-mono text-sm text-white outline-none focus:border-[#00FF41] focus:bg-[#00FF41]/[0.02] transition-all" />
-                        <MotionButton whileHover={{ scale: 1.02, backgroundColor: '#ffffff', boxShadow: '0 0 30px rgba(0,255,65,0.2)' }} whileTap={{ scale: 0.98 }} className="w-full py-5 bg-[#00FF41] text-black font-black uppercase tracking-widest text-xs transition-all mt-4">
-                          Submit Request
-                        </MotionButton>
-                      </form>
-                    </div>
+                    <BookingCalendar onClose={onClose} />
                   )}
 
                   {type === 'whitepaper' && (

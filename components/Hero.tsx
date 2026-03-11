@@ -78,9 +78,9 @@ export const Hero: React.FC<{
           </div>
 
           <div className="relative z-10 flex flex-col items-center leading-[0.82] tracking-[-0.05em] uppercase font-black">
-            <h1 className="text-[clamp(3rem,12vw,10rem)] text-white">Every Officer.</h1>
-            <h1 className="text-[clamp(3rem,12vw,10rem)] text-neutral-500">Every Call.</h1>
-            <h1 className="text-[clamp(3rem,12vw,10rem)] text-white hover:text-[#FF3B30] hover:scale-105 transition-all duration-700 ease-out">Never Alone.</h1>
+            <h1 className="text-[clamp(2.5rem,10vw,8rem)] text-white">Every Officer.</h1>
+            <h1 className="text-[clamp(2.5rem,10vw,8rem)] text-neutral-500">Every Call.</h1>
+            <h1 className="text-[clamp(2.5rem,10vw,8rem)] text-white hover:text-[#FF3B30] hover:scale-105 transition-all duration-700 ease-out">Never Alone.</h1>
           </div>
         </div>
 
