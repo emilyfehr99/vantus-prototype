@@ -67,7 +67,7 @@ export const Mission: React.FC = () => {
                         </div>
 
                         <div className="relative z-10">
-                            <p className="text-[#00FF41] font-mono text-[10px] uppercase tracking-[0.3em] mb-6">Core Directive // v4.2</p>
+                            <p className="text-[#00FF41] font-mono text-[10px] uppercase tracking-[0.3em] mb-6">Agency Partnership Core</p>
                             <blockquote className="text-2xl md:text-3xl font-light italic text-white/90 max-w-3xl mx-auto leading-relaxed">
                                 "To engineer a world where operational silence is replaced by unwavering support, and every hero returns home."
                             </blockquote>

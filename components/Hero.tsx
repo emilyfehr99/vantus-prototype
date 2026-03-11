@@ -51,7 +51,7 @@ export const Hero: React.FC<{
               className="w-1.5 h-1.5 bg-[#00FF41] rounded-full shadow-[0_0_8px_#00FF41]"
             />
             <span className="font-mono text-[11px] text-[#00FF41] font-bold uppercase tracking-[0.4em]">
-              Operational Interdiction Protocol Alpha
+              Real-Time Officer Safety Platform
             </span>
           </div>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#00FF41]/10 border border-[#00FF41]/30 rounded-full backdrop-blur-sm">
