@@ -1,13 +1,15 @@
 import React from 'react';
-import { Cpu, Activity, Zap, Mic2, FileText, CheckCircle2, XCircle, ArrowRight, ShieldAlert } from 'lucide-react';
+import { Cpu, Activity, Zap, Mic2, FileText, CheckCircle2, XCircle, ArrowRight, ShieldAlert, Eye, User } from 'lucide-react';
 
-export default function ArchitectureDiagram() {
+export default function ArchitectureDiagram({ mode }: { mode?: 'pilot' | 'pilot2' | 'demo' }) {
+    const isPhase2 = mode === 'pilot2';
+
     return (
         <div className="bg-neutral-900/40 backdrop-blur-md p-6 mt-6 rounded-2xl border border-white/5">
             <div className="flex items-center gap-2 mb-6">
                 <ShieldAlert className="w-5 h-5 text-[#00FF41]" />
                 <h3 className="text-xs font-bold text-white uppercase tracking-widest">
-                    Next-Gen Validation Architecture (Anti-Simulation Layer)
+                    {isPhase2 ? 'Next-Gen Validation Architecture (Multi-Modal CV Fusion)' : 'Next-Gen Validation Architecture (Audio-Only Anti-Simulation Layer)'}
                 </h3>
             </div>
 
@@ -17,7 +19,7 @@ export default function ArchitectureDiagram() {
                 <div className="flex-1 w-full bg-black/40 border border-white/5 rounded-xl p-4 text-center">
                     <Mic2 className="w-6 h-6 text-neutral-500 mx-auto mb-2" />
                     <h4 className="text-[11px] font-bold text-neutral-200">Raw Hardware Input</h4>
-                    <p className="text-[10px] text-neutral-500 mt-1">Dual-Mic Body Cam</p>
+                    <p className="text-[10px] text-neutral-500 mt-1">{isPhase2 ? 'Axon BWC Stream (Audio + Video)' : 'Axon BWC Stream (Audio Only)'}</p>
                 </div>
 
                 <ArrowRight className="w-5 h-5 text-neutral-700 hidden md:block" />
@@ -26,7 +28,7 @@ export default function ArchitectureDiagram() {
                 <div className="flex-1 w-full bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center">
                     <Activity className="w-6 h-6 text-red-500 mx-auto mb-2" />
                     <h4 className="text-[11px] font-bold text-red-100">Base ML Models</h4>
-                    <p className="text-[10px] text-red-400 mt-1">YAMNet / Whisper<br />(Outputs 99% Gunshot)</p>
+                    <p className="text-[10px] text-red-400 mt-1">{isPhase2 ? 'YAMNet + Whisper + MobileNet CV' : 'YAMNet + Whisper'}<br />(High Base Confidence)</p>
                 </div>
 
                 <ArrowRight className="w-5 h-5 text-neutral-700 hidden md:block" />
@@ -61,13 +63,32 @@ export default function ArchitectureDiagram() {
                                 <span className="text-[9px] text-neutral-500">Stereo 3D spatial separation</span>
                             </div>
                         </div>
-                        <div className="bg-black/40 p-2 rounded border border-white/5 flex items-start gap-2">
-                            <FileText className="w-3.5 h-3.5 text-purple-500 mt-0.5 shrink-0" />
-                            <div>
-                                <span className="text-[10px] font-bold text-neutral-200 block">LLM Context</span>
-                                <span className="text-[9px] text-neutral-500">Syntactical media vectoring</span>
+                            <div className="bg-black/40 p-2 rounded border border-white/5 flex items-start gap-2">
+                                <FileText className="w-3.5 h-3.5 text-purple-500 mt-0.5 shrink-0" />
+                                <div>
+                                    <span className="text-[10px] font-bold text-neutral-200 block">LLM Context</span>
+                                    <span className="text-[9px] text-neutral-500">Syntactical media vectoring</span>
+                                </div>
                             </div>
-                        </div>
+                        
+                        {isPhase2 && (
+                            <>
+                                <div className="bg-black/40 p-2 rounded border border-white/5 flex items-start gap-2">
+                                    <Eye className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
+                                    <div>
+                                        <span className="text-[10px] font-bold text-neutral-200 block">Weapon Bounding Box</span>
+                                        <span className="text-[9px] text-neutral-500">MobileNet CV Cross-Check</span>
+                                    </div>
+                                </div>
+                                <div className="bg-black/40 p-2 rounded border border-white/5 flex items-start gap-2">
+                                    <User className="w-3.5 h-3.5 text-pink-500 mt-0.5 shrink-0" />
+                                    <div>
+                                        <span className="text-[10px] font-bold text-neutral-200 block">Aggressive Stance</span>
+                                        <span className="text-[9px] text-neutral-500">Pose estimation validation</span>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
 

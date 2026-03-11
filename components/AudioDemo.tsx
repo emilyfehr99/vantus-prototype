@@ -4904,75 +4904,7 @@ export const AudioDemo: React.FC = () => {
                 )}
             </div>
 
-            {/* ── Advanced CAD & Context Integrations (#11-20) ── */}
-            <div className={`bg-neutral-900/40 backdrop-blur-md p-6 rounded-2xl border border-white/5 space-y-4`}>
-                <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                        <Radio className="w-4 h-4 text-blue-400" />
-                        <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.2em]">Advanced CAD & Context Links</h3>
-                    </div>
-                    {primedContext && (
-                        <button
-                            onClick={() => setPrimedContext(null)}
-                            className="text-[9px] font-black uppercase text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20"
-                        >
-                            <X size={10} /> Clear Context: {primedContext}
-                        </button>
-                    )}
-                </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                    <div className={`p-3 rounded-xl border transition-all ${cadDomestic ? 'bg-purple-500/5 border-purple-500/20' : 'bg-white/5 border-white/10'}`}>
-                        <div className="flex items-center justify-between mb-2">
-                            <Home className={`w-3.5 h-3.5 ${cadDomestic ? 'text-purple-400' : 'text-neutral-500'}`} />
-                            <input type="checkbox" checked={cadDomestic} onChange={(e) => setCadDomestic(e.target.checked)} className="accent-purple-500" />
-                        </div>
-                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">Domestic</p>
-                    </div>
-                    <div className={`p-3 rounded-xl border transition-all ${cadEDP ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-white/5 border-white/10'}`}>
-                        <div className="flex items-center justify-between mb-2">
-                            <Brain className={`w-3.5 h-3.5 ${cadEDP ? 'text-indigo-400' : 'text-neutral-500'}`} />
-                            <input type="checkbox" checked={cadEDP} onChange={(e) => setCadEDP(e.target.checked)} className="accent-indigo-500" />
-                        </div>
-                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">EDP/Mental</p>
-                    </div>
-                    <div className={`p-3 rounded-xl border transition-all ${cadHighRisk ? 'bg-red-500/5 border-red-500/20' : 'bg-white/5 border-white/10'}`}>
-                        <div className="flex items-center justify-between mb-2">
-                            <Siren className={`w-3.5 h-3.5 ${cadHighRisk ? 'text-red-500' : 'text-neutral-500'}`} />
-                            <input type="checkbox" checked={cadHighRisk} onChange={(e) => setCadHighRisk(e.target.checked)} className="accent-red-500" />
-                        </div>
-                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">High Risk</p>
-                    </div>
-                    <div className={`p-3 rounded-xl border transition-all ${lateShift ? 'bg-blue-400/5 border-blue-400/20' : 'bg-white/5 border-white/10'}`}>
-                        <div className="flex items-center justify-between mb-2">
-                            <Moon className={`w-3.5 h-3.5 ${lateShift ? 'text-blue-400' : 'text-neutral-500'}`} />
-                            <input type="checkbox" checked={lateShift} onChange={(e) => setLateShift(e.target.checked)} className="accent-blue-400" />
-                        </div>
-                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">Late Shift</p>
-                    </div>
-                    <div className={`p-3 rounded-xl border transition-all ${weatherNoise ? 'bg-cyan-500/5 border-cyan-500/20' : 'bg-white/5 border-white/10'}`}>
-                        <div className="flex items-center justify-between mb-2">
-                            <CloudRain className={`w-3.5 h-3.5 ${weatherNoise ? 'text-cyan-400' : 'text-neutral-500'}`} />
-                            <input type="checkbox" checked={weatherNoise} onChange={(e) => setWeatherNoise(e.target.checked)} className="accent-cyan-500" />
-                        </div>
-                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">Weather</p>
-                    </div>
-                    <div className={`p-3 rounded-xl border transition-all ${pursuitMode ? 'bg-orange-500/5 border-orange-500/20' : 'bg-white/5 border-white/10'}`}>
-                        <div className="flex items-center justify-between mb-2">
-                            <Footprints className={`w-3.5 h-3.5 ${pursuitMode ? 'text-orange-400' : 'text-neutral-500'}`} />
-                            <input type="checkbox" checked={pursuitMode} onChange={(e) => setPursuitMode(e.target.checked)} className="accent-orange-500" />
-                        </div>
-                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">Pursuit</p>
-                    </div>
-                    <div className={`p-3 rounded-xl border transition-all ${custodyMode ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-white/5 border-white/10'}`}>
-                        <div className="flex items-center justify-between mb-2">
-                            <Lock className={`w-3.5 h-3.5 ${custodyMode ? 'text-emerald-400' : 'text-neutral-500'}`} />
-                            <input type="checkbox" checked={custodyMode} onChange={(e) => setCustodyMode(e.target.checked)} className="accent-emerald-500" />
-                        </div>
-                        <p className="text-[9px] font-bold text-white uppercase mb-1 drop-shadow-sm">Custody</p>
-                    </div>
-                </div>
-            </div>
 
             {/* Controls + transcript */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -5301,7 +5233,8 @@ ${timeline.map(e => `[${e.timestamp}] ${e.label} (${e.type})`).join('\n')}
 
             {/* Anti-Simulation Validation Architecture */}
             <div className="pt-6">
-                <ArchitectureDiagram />
+                {/* Phase 1/2 distinction passed to internal components and layout */}
+            {displayMode === 'demo' ? <ArchitectureDiagram mode="demo" /> : <ArchitectureDiagram mode={displayMode} />}
             </div>
         </div>
     );
