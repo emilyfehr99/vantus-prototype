@@ -4790,7 +4790,7 @@ export const AudioDemo: React.FC = () => {
                     </div>
 
                     {/* ── Additional Scenario Auto-Detection (Active Context) ── */}
-                    <div className="bg-neutral-900/40 backdrop-blur-xl p-6 rounded-3xl border border-white/10 mt-6">
+                    <div className="bg-neutral-900/40 backdrop-blur-xl p-6 rounded-3xl border border-white/10 mt-6 min-h-[350px]">
                         <div className="flex items-center justify-between mb-5">
                             <div className="flex items-center gap-3">
                                 <div className="p-2.5 bg-violet-500/10 rounded-xl">
@@ -5310,7 +5310,7 @@ ${timeline.map(e => `[${e.timestamp}] ${e.label} (${e.type})`).join('\n')}
                         </button>
                     )}
                 </div>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="space-y-2 h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                     {log.length === 0
                         ? <div className="py-12 flex flex-col items-center justify-center opacity-20">
                             <Radio className="w-8 h-8 text-neutral-500 mb-2" />
