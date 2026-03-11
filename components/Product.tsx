@@ -94,9 +94,13 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, desc, color = "g
 const AccordionItem: React.FC<{ title: string, badge?: string, defaultOpen?: boolean, children: React.ReactNode }> = ({ title, badge, defaultOpen = false, children }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div className="border border-neutral-800 bg-neutral-950 mb-4 overflow-hidden rounded-sm">
+    <motion.div 
+      layout 
+      className="border border-neutral-800 bg-neutral-950 mb-4 overflow-hidden rounded-sm"
+      transition={{ layout: { duration: 0.5, ease: [0.32, 0.72, 0, 1] } }}
+    >
       <button
-        className="w-full flex items-center justify-between p-6 text-left hover:bg-neutral-900 transition-colors group"
+        className="w-full flex items-center justify-between p-6 text-left hover:bg-neutral-900 transition-colors group relative z-20"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex items-center gap-4">
@@ -110,25 +114,32 @@ const AccordionItem: React.FC<{ title: string, badge?: string, defaultOpen?: boo
           <ChevronDown className={`transition-colors duration-500 ${isOpen ? 'text-[#00FF41]' : 'text-neutral-500'}`} />
         </motion.div>
       </button>
-      <AnimatePresence initial={false}>
+      <AnimatePresence initial={false} mode="wait">
         {isOpen && (
           <motion.div
+            layout
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ 
-              height: { duration: 0.5, ease: [0.16, 1, 0.3, 1] },
-              opacity: { duration: 0.4, ease: "linear" }
+              height: { duration: 0.5, ease: [0.32, 0.72, 0, 1] },
+              opacity: { duration: 0.3 }
             }}
-            className="overflow-hidden"
+            className="overflow-hidden relative z-10"
           >
-            <div className="p-6 pt-0 border-t border-neutral-900 text-neutral-400 font-mono text-sm leading-relaxed">
+            <motion.div 
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -10, opacity: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="p-6 pt-0 border-t border-neutral-900 text-neutral-400 font-mono text-sm leading-relaxed"
+            >
               {children}
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 };
 
