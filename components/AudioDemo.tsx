@@ -4564,13 +4564,13 @@ export const AudioDemo: React.FC = () => {
                                 onClick={() => setDisplayMode('pilot')}
                                 className={`px-5 py-1 text-[10px] font-black uppercase tracking-[0.2em] rounded-full transition-all duration-300 ${displayMode === 'pilot' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'text-neutral-500 hover:text-white hover:bg-white/5'}`}
                             >
-                                Phase 1 Audit
+                                Phase 1
                             </button>
                             <button
                                 onClick={() => setDisplayMode('pilot2')}
                                 className={`px-5 py-1 text-[10px] font-black uppercase tracking-[0.2em] rounded-full transition-all duration-300 ${displayMode === 'pilot2' ? 'bg-purple-600 text-white shadow-[0_0_15px_rgba(147,51,234,0.4)]' : 'text-neutral-500 hover:text-white hover:bg-white/5'}`}
                             >
-                                Phase 2 Live
+                                Phase 2
                             </button>
                         </div>
                     </div>
@@ -5310,7 +5310,7 @@ ${timeline.map(e => `[${e.timestamp}] ${e.label} (${e.type})`).join('\n')}
                         </button>
                     )}
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                     {log.length === 0
                         ? <div className="py-12 flex flex-col items-center justify-center opacity-20">
                             <Radio className="w-8 h-8 text-neutral-500 mb-2" />
