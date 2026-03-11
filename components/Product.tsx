@@ -94,34 +94,42 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, desc, color = "g
 const AccordionItem: React.FC<{ title: string, badge?: string, defaultOpen?: boolean, children: React.ReactNode }> = ({ title, badge, defaultOpen = false, children }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div className="border border-neutral-800 bg-neutral-950 mb-4 overflow-hidden rounded-sm transition-all duration-300">
+    <div className="border border-neutral-800 bg-neutral-950 mb-4 overflow-hidden rounded-sm">
       <button
-        className="w-full flex items-center justify-between p-6 text-left hover:bg-neutral-900 transition-colors"
+        className="w-full flex items-center justify-between p-6 text-left hover:bg-neutral-900 transition-colors group"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex items-center gap-4">
-          <span className="font-black text-lg text-white uppercase">{title}</span>
+          <span className={`font-black text-lg uppercase tracking-tight transition-colors duration-500 ${isOpen ? 'text-[#00FF41]' : 'text-white'}`}>{title}</span>
           {badge && <span className="px-3 py-1 bg-neutral-800 text-[10px] font-mono text-neutral-400 rounded-sm">{badge}</span>}
         </div>
-        <div className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`}>
-          <ChevronDown className="text-neutral-500" />
-        </div>
+        <motion.div 
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        >
+          <ChevronDown className={`transition-colors duration-500 ${isOpen ? 'text-[#00FF41]' : 'text-neutral-500'}`} />
+        </motion.div>
       </button>
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ 
-              height: { duration: 0.5, ease: [0.04, 0.62, 0.23, 0.98] },
-              opacity: { duration: 0.25, delay: 0.1 }
+              height: { type: "spring", stiffness: 300, damping: 30 },
+              opacity: { duration: 0.2 }
             }}
             className="overflow-hidden"
           >
-            <div className="p-6 pt-0 border-t border-neutral-900 text-neutral-400 font-mono text-sm leading-relaxed">
+            <motion.div 
+              initial={{ y: -10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.1, duration: 0.3 }}
+              className="p-6 pt-0 border-t border-neutral-900 text-neutral-400 font-mono text-sm leading-relaxed"
+            >
               {children}
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
