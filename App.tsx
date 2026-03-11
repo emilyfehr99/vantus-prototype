@@ -46,7 +46,7 @@ const GDPRBanner: React.FC = () => {
                                 <Shield size={20} className="text-[#00FF41]" />
                             </div>
                             <div className="flex-1">
-                                <h3 className="text-white font-semibold mb-2">Tactical Data Processing</h3>
+                                <h3 className="text-white font-semibold mb-2">Officer Safety Data Processing</h3>
                                 <p className="text-[10px] font-mono text-neutral-400 leading-relaxed mb-4">
                                     This system processes audio data using advanced AI models for threat detection and officer safety enhancement.
                                 </p>
@@ -102,7 +102,7 @@ class VantusErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
                     <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center text-red-500 mb-6 animate-pulse">
                         <Lock size={32} />
                     </div>
-                    <h2 className="text-2xl font-black uppercase tracking-tighter text-white mb-2">Tactical System Override</h2>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter text-white mb-2">Secure Session Reset</h2>
                     <p className="text-[10px] font-mono text-neutral-500 uppercase tracking-[0.3em] max-w-md">
                         The application has encountered a critical fault. For security, session has been terminated to prevent data leak. Re-initialize pipeline.
                     </p>
@@ -521,12 +521,12 @@ const App: React.FC = () => {
           )}
         </AnimatePresence>
 
-        <TacticalOverlay isOpen={modalType === 'login'} onClose={() => setModalType(null)} title="Tactical Authentication" type="login">
+        <TacticalOverlay isOpen={modalType === 'login'} onClose={() => setModalType(null)} title="Secure Pilot Login" type="login">
           <Login onLogin={handleLogin} />
         </TacticalOverlay>
 
         <TacticalOverlay isOpen={modalType === 'waitlist'} onClose={() => setModalType(null)} title="Free Demo Scheduling" type="waitlist" />
-        <TacticalOverlay isOpen={modalType === 'faq'} onClose={() => setModalType(null)} title="Tactical Protocol FAQ" type="faq" />
+        <TacticalOverlay isOpen={modalType === 'faq'} onClose={() => setModalType(null)} title="Technical FAQ" type="faq" />
         <TacticalOverlay isOpen={modalType === 'careers'} onClose={() => setModalType(null)} title="Join The Mission" type="careers" />
         <TacticalOverlay isOpen={modalType === 'whitepaper'} onClose={() => setModalType(null)} title="Technical Whitepaper" type="whitepaper" />
         <TacticalOverlay isOpen={modalType === 'contact'} onClose={() => setModalType(null)} title="Contact Us" type="contact" />

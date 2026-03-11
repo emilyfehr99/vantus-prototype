@@ -139,14 +139,14 @@ interface LogEntry {
 }
 
 const DYNAMIC_MESSAGES = [
-  { type: 'SYS', text: 'Scanning env... Sector 4 clear.' },
-  { type: 'SYS', text: 'Peripheral motion: 6 o\'clock position.' },
+  { type: 'SYS', text: 'Environmental scan complete.' },
+  { type: 'SYS', text: "Rear peripheral motion detected." },
   { type: 'LOG', text: 'Biometric Alert: HR spike > 145 BPM.' },
   { type: 'SYS', text: 'Analyzing subject behavioral audio...' },
   { type: 'ALERT', text: 'THREAT DETECTED: BLADED STANCE.' },
   { type: 'LOG', text: 'Voice Stress: High Arousal Detected.' },
   { type: 'ALERT', text: 'WEAPON SIGNATURE: KNIFE (98%).' },
-  { type: 'SYS', text: 'Autonomous Lifeline Triggered.' },
+  { type: 'SYS', text: 'Emergency Assistance Dispatched.' },
   { type: 'LOG', text: 'Dispatch Notified: Priority 1 Backup.' },
   { type: 'SYS', text: 'GPS Coordinates Sent to CAD.' },
 

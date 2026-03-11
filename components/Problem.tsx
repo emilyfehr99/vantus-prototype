@@ -22,7 +22,7 @@ export const Problem: React.FC = () => {
           <div className="space-y-6">
             <span className="font-mono text-[#FF3B30] text-[10px] tracking-[0.5em] uppercase flex items-center gap-3">
               <span className="w-2 h-2 rounded-full bg-[#FF3B30] animate-pulse" />
-              Tactical Gap Report
+              Agency Staffing Report
             </span>
             <h2 className="text-6xl md:text-8xl font-black tracking-tighter uppercase leading-[0.9]">
               The Crisis of<br />
@@ -92,7 +92,7 @@ export const Problem: React.FC = () => {
 
             <div className="absolute inset-0 z-20 p-10 flex flex-col justify-between">
               <div className="bg-black/80 backdrop-blur-md p-4 border-l-2 border-[#FF3B30] self-start font-mono text-[10px] group-hover:bg-black/90 transition-colors">
-                <span className="text-neutral-500 block">THREAT_VECTOR</span>
+                <span className="text-neutral-500 block">THREAT_ANALYSIS</span>
                 <span className="text-white font-bold">SOLO_PATROL_VULNERABILITY</span>
               </div>
 
