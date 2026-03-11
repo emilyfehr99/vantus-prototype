@@ -4609,84 +4609,7 @@ export const AudioDemo: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* 3-column overview */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-                        {/* Live BWC Stream */}
-                        <div className="bg-neutral-900/40 backdrop-blur-xl p-5 rounded-2xl border border-white/10">
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="p-2 bg-emerald-500/10 rounded-xl">
-                                    <Video className="w-4 h-4 text-emerald-400" />
-                                </div>
-                                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-400">Live BWC Stream</p>
-                            </div>
-                            <div className="space-y-2">
-                                {[
-                                    { label: 'BWC Connection', value: 'Axon Body 4', status: 'live' },
-                                    { label: 'Stream Latency', value: '~140ms edge', status: 'live' },
-                                    { label: 'Audio Pipeline', value: 'YAMNet + Whisper', status: 'live' },
-                                    { label: 'CV Pipeline', value: displayMode === 'pilot' ? 'DISABLED (Audio-Only)' : 'MobileNet COCO-SSD', status: displayMode === 'pilot' ? 'offline' : 'live' },
-                                    { label: 'Officer ID', value: 'BADGE-4421', status: 'live' },
-                                    { label: 'Solo Status', value: soloDetection.isSolo ? 'SOLO UNIT' : 'PARTNERED', status: soloDetection.isSolo ? 'warn' : 'live' },
-                                ].map(r => (
-                                    <div key={r.label} className="flex items-center justify-between">
-                                        <span className={`text-[8px] ${r.status === 'offline' ? 'text-neutral-700' : 'text-neutral-500'}`}>{r.label}</span>
-                                        <span className={`text-[8px] font-bold font-mono ${r.status === 'live' ? 'text-emerald-400' : r.status === 'warn' ? 'text-amber-400' : r.status === 'offline' ? 'text-neutral-600' : 'text-red-400'}`}>{r.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* CAD Real-Time Loop */}
-                        <div className="bg-neutral-900/40 backdrop-blur-xl p-5 rounded-2xl border border-white/10">
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="p-2 bg-blue-500/10 rounded-xl">
-                                    <Radio className="w-4 h-4 text-blue-400" />
-                                </div>
-                                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-400">CAD Real-Time Loop</p>
-                            </div>
-                            <div className="space-y-2">
-                                {[
-                                    { label: 'CAD Provider', value: 'Axon CAD API v3', status: 'live' },
-                                    { label: 'Data Freshness', value: cadLagMs > 30000 ? `${Math.round(cadLagMs / 1000)}s lag` : '<5s lag', status: cadLagMs > 30000 ? 'warn' : 'live' },
-                                    { label: 'Call Type', value: cadHighRisk ? 'HIGH RISK' : cadDomestic ? 'DOMESTIC' : cadEDP ? 'EDP' : 'ROUTINE', status: cadHighRisk ? 'warn' : 'live' },
-                                    { label: 'Scene Officers', value: `${sceneOfficers.length + 1} BWC units`, status: 'live' },
-                                    { label: 'Dispatch Hold', value: '60s cancel window', status: 'live' },
-                                    { label: 'Dedup Window', value: `${deduplicationWindow / 1000}s active`, status: 'live' },
-                                ].map(r => (
-                                    <div key={r.label} className="flex items-center justify-between">
-                                        <span className="text-[8px] text-neutral-500">{r.label}</span>
-                                        <span className={`text-[8px] font-bold font-mono ${r.status === 'live' ? 'text-blue-400' : r.status === 'warn' ? 'text-amber-400' : 'text-red-400'}`}>{r.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Accuracy Engine Live */}
-                        <div className="bg-neutral-900/40 backdrop-blur-xl p-5 rounded-2xl border border-white/10">
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="p-2 bg-purple-500/10 rounded-xl">
-                                    <TrendingUp className="w-4 h-4 text-purple-400" />
-                                </div>
-                                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-purple-400">Accuracy Engine</p>
-                            </div>
-                            <div className="space-y-2 mb-3">
-                                {[
-                                    { label: 'Fusion Score', value: `${(fusionScore * 100).toFixed(0)}%`, status: fusionTier === 'dispatch' ? 'warn' : fusionTier === 'review' ? 'caution' : 'live' },
-                                    { label: 'Fusion Tier', value: fusionTier.toUpperCase(), status: fusionTier === 'dispatch' ? 'warn' : 'live' },
-                                    { label: 'Event Horizon', value: `${eventHorizon.length} events in 90s`, status: escalationBoost > 0 ? 'warn' : 'live' },
-                                    { label: 'Escalation', value: activeEscalationPattern || 'None', status: escalationBoost > 0 ? 'warn' : 'live' },
-                                    { label: 'Phoneme Check', value: lastKeywordPhrase && isPhoneticAmbiguous(lastKeywordPhrase) ? 'AMBIGUOUS' : 'Clear', status: lastKeywordPhrase && isPhoneticAmbiguous(lastKeywordPhrase) ? 'warn' : 'live' },
-                                    { label: 'Active Decay Flags', value: `${(Object.keys(FLAG_DECAY_WINDOWS) as AdditionalScenarioKey[]).filter(k => additionalFlags[k]).length} flags`, status: 'live' },
-                                ].map(r => (
-                                    <div key={r.label} className="flex items-center justify-between">
-                                        <span className="text-[8px] text-neutral-500">{r.label}</span>
-                                        <span className={`text-[8px] font-bold font-mono ${r.status === 'warn' ? 'text-amber-400' : r.status === 'caution' ? 'text-orange-400' : 'text-purple-400'}`}>{r.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
 
                     {/* Active Dispatch Decision */}
                     <div className="bg-neutral-900/40 backdrop-blur-xl p-6 rounded-2xl border border-white/10">
@@ -4898,7 +4821,7 @@ export const AudioDemo: React.FC = () => {
                     )}
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                     <div className={`p-4 rounded-xl border transition-all ${soloMode && nearbyUnits === 0 ? 'bg-[#00FF41]/5 border-[#00FF41]/20' : 'bg-white/5 border-white/10 opacity-50'}`}>
                         <div className="flex items-center justify-between mb-2">
                             <User className={`w-4 h-4 ${soloMode && nearbyUnits === 0 ? 'text-[#00FF41]' : 'text-neutral-500'}`} />
@@ -4915,27 +4838,6 @@ export const AudioDemo: React.FC = () => {
                         </div>
                         <p className="text-[10px] font-bold text-white uppercase mb-1">Training Mode</p>
                         <p className="text-[9px] text-neutral-500 font-mono">Suppress Dispatches</p>
-                    </div>
-
-                    <div className={`p-4 rounded-xl border transition-all ${lowLightMode ? 'bg-[#00FF41]/5 border-[#00FF41]/20 shadow-[0_0_15px_rgba(0,255,65,0.05)]' : 'bg-white/5 border-white/10'}`}>
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                                <EyeOff className={`w-4 h-4 ${lowLightMode ? 'text-[#00FF41]' : 'text-neutral-500'}`} />
-                                {lowLightMode && <span className="text-[8px] font-black bg-[#00FF41]/10 text-[#00FF41] px-1.5 py-0.5 rounded-full border border-[#00FF41]/20 uppercase">Auto</span>}
-                            </div>
-                            <input type="checkbox" checked={lowLightMode} onChange={(e) => setLowLightMode(e.target.checked)} className="accent-[#00FF41]" />
-                        </div>
-                        <p className="text-[10px] font-bold text-white uppercase mb-1">Low-Light</p>
-                        <p className="text-[9px] text-neutral-500 font-mono">Weight Audio Higher</p>
-                    </div>
-
-                    <div className={`p-4 rounded-xl border transition-all ${accelerometerFallback ? 'bg-red-500/5 border-red-500/20' : 'bg-white/5 border-white/10'}`}>
-                        <div className="flex items-center justify-between mb-2">
-                            <RotateCw className={`w-4 h-4 ${accelerometerFallback ? 'text-red-500' : 'text-neutral-500'}`} />
-                            <input type="checkbox" checked={accelerometerFallback} onChange={(e) => setAccelerometerFallback(e.target.checked)} className="accent-red-500" />
-                        </div>
-                        <p className="text-[10px] font-bold text-white uppercase mb-1">Camera Fail</p>
-                        <p className="text-[9px] text-neutral-500 font-mono">Motion Fallback</p>
                     </div>
                 </div>
 
