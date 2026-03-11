@@ -93,16 +93,17 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, desc, color = "g
 
 const AccordionItem: React.FC<{ title: string, badge?: string, defaultOpen?: boolean, children: React.ReactNode }> = ({ title, badge, defaultOpen = false, children }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+
   return (
     <motion.div 
       layout
-      className="border border-neutral-800 bg-neutral-950 mb-4 overflow-hidden rounded-sm cursor-pointer"
+      className="border border-neutral-800 bg-neutral-950 mb-4 overflow-hidden rounded-sm cursor-pointer group"
       transition={{ 
-        layout: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
+        layout: { duration: 0.6, ease: [0.04, 0.62, 0.23, 0.98] }
       }}
       onClick={() => setIsOpen(!isOpen)}
     >
-      <div className="w-full flex items-center justify-between p-6 text-left hover:bg-neutral-900/50 transition-colors group relative z-20">
+      <div className="w-full flex items-center justify-between p-6 text-left hover:bg-neutral-900/50 transition-colors relative z-20">
         <div className="flex items-center gap-4">
           <span className={`font-black text-lg uppercase tracking-tight transition-colors duration-500 ${isOpen ? 'text-[#00FF41]' : 'text-white'}`}>{title}</span>
           {badge && <span className="px-3 py-1 bg-neutral-800 text-[10px] font-mono text-neutral-400 rounded-sm">{badge}</span>}
@@ -116,21 +117,37 @@ const AccordionItem: React.FC<{ title: string, badge?: string, defaultOpen?: boo
       </div>
       
       <motion.div
-        layout
         initial={false}
-        animate={{ 
-          height: isOpen ? 'auto' : 0,
-          opacity: isOpen ? 1 : 0
-        }}
-        transition={{ 
-          duration: 0.6, 
-          ease: [0.22, 1, 0.36, 1]
+        animate={isOpen ? "open" : "closed"}
+        variants={{
+          open: { 
+            height: "auto", 
+            opacity: 1,
+            transition: {
+              height: { duration: 0.6, ease: [0.04, 0.62, 0.23, 0.98] },
+              opacity: { duration: 0.4, delay: 0.1 }
+            }
+          },
+          closed: { 
+            height: 0, 
+            opacity: 0,
+            transition: {
+              height: { duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] },
+              opacity: { duration: 0.2 }
+            }
+          }
         }}
         className="overflow-hidden relative z-10"
       >
-        <div className="p-6 pt-0 border-t border-neutral-900 text-neutral-400 font-mono text-sm leading-relaxed">
+        <motion.div 
+          variants={{
+            open: { y: 0, opacity: 1, transition: { duration: 0.5, delay: 0.2, ease: "easeOut" } },
+            closed: { y: -10, opacity: 0, transition: { duration: 0.3 } }
+          }}
+          className="p-6 pt-0 border-t border-neutral-900 text-neutral-400 font-mono text-sm leading-relaxed"
+        >
           {children}
-        </div>
+        </motion.div>
       </motion.div>
     </motion.div>
   );
