@@ -113,7 +113,10 @@ const AccordionItem: React.FC<{ title: string, badge?: string, defaultOpen?: boo
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ 
+              height: { duration: 0.5, ease: [0.04, 0.62, 0.23, 0.98] },
+              opacity: { duration: 0.25, delay: 0.1 }
+            }}
             className="overflow-hidden"
           >
             <div className="p-6 pt-0 border-t border-neutral-900 text-neutral-400 font-mono text-sm leading-relaxed">
@@ -159,7 +162,7 @@ export const Product: React.FC = () => {
   const MotionP = motion.p as any;
 
   return (
-    <section className="py-20 md:pt-40 md:pb-12 px-6 bg-[#000000] border-t border-neutral-900 overflow-hidden relative">
+    <section className="pt-12 pb-0 md:pt-12 md:pb-0 px-6 bg-[#000000] border-t border-neutral-900 overflow-hidden relative">
       {/* Decorative Blur Backgrounds */}
       <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-[#00FF41]/5 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-[#00FF41]/3 blur-[100px] rounded-full pointer-events-none" />

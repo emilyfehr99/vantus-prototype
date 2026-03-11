@@ -19,14 +19,14 @@ export const Physics: React.FC = () => {
   const scaleSchema = useTransform(smoothProgress, [0, 0.5, 1], [0.8, 1, 0.8]);
 
   return (
-    <section ref={sectionRef} className="py-20 md:pt-0 md:pb-12 px-6 bg-[#000000] overflow-hidden relative">
+    <section ref={sectionRef} className="pt-0 pb-12 px-6 bg-[#000000] overflow-hidden relative">
       <div className="max-w-7xl mx-auto">
         <MotionDiv
           initial={{ opacity: 0, y: 60 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-          className="bg-[#050505] border border-neutral-900 p-10 md:p-28 relative overflow-hidden rounded-sm shadow-[0_0_80px_rgba(0,0,0,1)]"
+          className="bg-[#050505] border border-neutral-900 p-10 md:p-20 relative overflow-hidden rounded-sm shadow-[0_0_80px_rgba(0,0,0,1)]"
         >
 
           {/* Kinetic Blueprint Schematic */}

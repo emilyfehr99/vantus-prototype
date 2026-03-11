@@ -7,7 +7,7 @@ export const Mission: React.FC = () => {
     const MotionDiv = motion.div as any;
 
     return (
-        <section id="mission" className="py-24 md:py-40 px-6 bg-[#050505] relative overflow-hidden border-b border-neutral-900">
+        <section id="mission" className="pt-24 pb-12 md:pt-40 md:pb-12 px-6 bg-[#050505] relative overflow-hidden border-b border-neutral-900">
             {/* HUD Accents */}
             <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none">
                 <div className="absolute top-10 left-10 w-24 h-24 border-t border-l border-[#00FF41]" />
@@ -54,7 +54,7 @@ export const Mission: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="relative pt-32 pb-32 px-8 mt-16 group overflow-hidden border border-neutral-900 rounded-sm bg-[#050505] shadow-[0_0_80px_rgba(0,0,0,1)]">
+                    <div className="relative pt-32 pb-12 px-8 mt-16 group overflow-hidden border border-neutral-900 rounded-sm bg-[#050505] shadow-[0_0_80px_rgba(0,0,0,1)]">
                         {/* Background Image Layer */}
                         <div className="absolute inset-0 z-0">
                             <img
