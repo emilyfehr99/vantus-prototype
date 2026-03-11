@@ -117,19 +117,14 @@ const AccordionItem: React.FC<{ title: string, badge?: string, defaultOpen?: boo
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ 
-              height: { type: "spring", stiffness: 300, damping: 30 },
-              opacity: { duration: 0.2 }
+              height: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
+              opacity: { duration: 0.3 }
             }}
             className="overflow-hidden"
           >
-            <motion.div 
-              initial={{ y: -10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.1, duration: 0.3 }}
-              className="p-6 pt-0 border-t border-neutral-900 text-neutral-400 font-mono text-sm leading-relaxed"
-            >
+            <div className="p-6 pt-0 border-t border-neutral-900 text-neutral-400 font-mono text-sm leading-relaxed">
               {children}
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
