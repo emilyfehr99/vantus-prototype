@@ -91,67 +91,107 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, desc, color = "g
   );
 };
 
-const AccordionItem: React.FC<{ title: string, badge?: string, defaultOpen?: boolean, children: React.ReactNode }> = ({ title, badge, defaultOpen = false, children }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
+const AccordionItem: React.FC<{ 
+  title: string, 
+  badge?: string, 
+  isOpen: boolean, 
+  onClick: () => void,
+  children: React.ReactNode 
+}> = ({ title, badge, isOpen, onClick, children }) => {
   return (
-    <motion.div 
-      layout
-      className="border border-neutral-800 bg-neutral-950 mb-4 overflow-hidden rounded-sm cursor-pointer group"
-      transition={{ 
-        layout: { duration: 0.6, ease: [0.04, 0.62, 0.23, 0.98] }
-      }}
-      onClick={() => setIsOpen(!isOpen)}
+    <div 
+      className="relative mb-2 last:mb-0"
+      onClick={onClick}
     >
-      <div className="w-full flex items-center justify-between p-6 text-left hover:bg-neutral-900/50 transition-colors relative z-20">
-        <div className="flex items-center gap-4">
-          <span className={`font-black text-lg uppercase tracking-tight transition-colors duration-500 ${isOpen ? 'text-[#00FF41]' : 'text-white'}`}>{title}</span>
-          {badge && <span className="px-3 py-1 bg-neutral-800 text-[10px] font-mono text-neutral-400 rounded-sm">{badge}</span>}
+      <div className="relative p-6 cursor-pointer group z-20">
+        {/* Shared Layout Highlighter */}
+        {isOpen && (
+          <motion.div
+            layoutId="tier-highlighter"
+            className="absolute inset-0 bg-[#00FF41]/5 border-l-2 border-[#00FF41] z-0"
+            initial={false}
+            transition={{
+              type: "spring",
+              stiffness: 500,
+              damping: 40
+            }}
+          />
+        )}
+
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className={`font-black text-lg uppercase tracking-tight transition-colors duration-300 ${isOpen ? 'text-[#00FF41]' : 'text-neutral-500 group-hover:text-white'}`}>
+              {title}
+            </span>
+            {badge && (
+              <span className={`px-3 py-1 text-[10px] font-mono rounded-sm transition-colors duration-300 ${isOpen ? 'bg-[#00FF41]/10 text-[#00FF41]' : 'bg-neutral-900 text-neutral-600'}`}>
+                {badge}
+              </span>
+            )}
+          </div>
+          <motion.div 
+            animate={{ rotate: isOpen ? 180 : 0, color: isOpen ? '#00FF41' : '#525252' }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          >
+            <ChevronDown size={20} />
+          </motion.div>
         </div>
-        <motion.div 
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ type: "spring", stiffness: 200, damping: 25 }}
-        >
-          <ChevronDown className={`transition-colors duration-500 ${isOpen ? 'text-[#00FF41]' : 'text-neutral-500'}`} />
-        </motion.div>
       </div>
       
-      <motion.div
-        initial={false}
-        animate={isOpen ? "open" : "closed"}
-        variants={{
-          open: { 
-            height: "auto", 
-            opacity: 1,
-            transition: {
-              height: { duration: 0.6, ease: [0.04, 0.62, 0.23, 0.98] },
-              opacity: { duration: 0.4, delay: 0.1 }
-            }
-          },
-          closed: { 
-            height: 0, 
-            opacity: 0,
-            transition: {
-              height: { duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] },
-              opacity: { duration: 0.2 }
-            }
-          }
-        }}
-        className="overflow-hidden relative z-10"
-      >
-        <motion.div 
-          variants={{
-            open: { y: 0, opacity: 1, transition: { duration: 0.5, delay: 0.2, ease: "easeOut" } },
-            closed: { y: -10, opacity: 0, transition: { duration: 0.3 } }
-          }}
-          className="p-6 pt-0 border-t border-neutral-900 text-neutral-400 font-mono text-sm leading-relaxed"
-        >
-          {children}
-        </motion.div>
-      </motion.div>
-    </motion.div>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            key="content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ 
+              height: "auto", 
+              opacity: 1,
+              transition: {
+                height: { duration: 0.5, ease: [0.5, 1, 0.89, 1] },
+                opacity: { duration: 0.3, delay: 0.1 }
+              }
+            }}
+            exit={{ 
+              height: 0, 
+              opacity: 0,
+              transition: {
+                height: { duration: 0.4, ease: [0.5, 1, 0.89, 1] },
+                opacity: { duration: 0.2 }
+              }
+            }}
+            className="overflow-hidden relative z-10"
+          >
+            <motion.div 
+              initial="closed"
+              animate="open"
+              exit="closed"
+              variants={{
+                open: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
+                closed: { transition: { staggerChildren: 0.05, staggerDirection: -1 } }
+              }}
+              className="p-6 pt-0 ml-6 border-l border-neutral-900/50 space-y-4"
+            >
+              {children}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 };
+
+const CascadingItem: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <motion.div
+    variants={{
+      open: { y: 0, opacity: 1, filter: "blur(0px)" },
+      closed: { y: 10, opacity: 0, filter: "blur(4px)" }
+    }}
+    transition={{ duration: 0.4, ease: [0.5, 1, 0.89, 1] }}
+    className="text-neutral-400 font-mono text-sm leading-relaxed"
+  >
+    {children}
+  </motion.div>
+);
 
 const additionalSafetyFeatures = [
   { icon: <Database />, title: "Real-Time Fact Anchoring", desc: "Timestamped AI observations (e.g., '14:02:11 - Audio: Gunshot detected (92%)'). Solves CA SB 524 forensic audit trail compliance." },
@@ -182,6 +222,7 @@ const DYNAMIC_MESSAGES = [
 const STATIC_LOGS: LogEntry[] = [];
 
 export const Product: React.FC = () => {
+  const [activeTier, setActiveTier] = useState<number | null>(0);
   const MotionDiv = motion.div as any;
   const MotionP = motion.p as any;
 
@@ -225,41 +266,68 @@ export const Product: React.FC = () => {
             <span className="px-4 py-1.5 bg-[#00FF41] text-black not-italic text-sm font-black">A</span> Safety Features (The "Partner" Layer)
           </MotionDiv>
 
-          <div className="mb-12">
-            <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-6">Three-Tier Threat Detection System</h3>
-
+          <div className="mb-20">
             <LayoutGroup id="threat-tiers">
-              <AccordionItem title="TIER 1: Audio-Only Alerts (Low-Medium Confidence)" badge="Low Latency" defaultOpen={true}>
-                <div className="space-y-4">
-                  <p><strong className="text-white">Real-time Gunshot Detection:</strong> &gt;140dB impulse signature.</p>
-                  <p><strong className="text-white">Keyword Spotting:</strong> Distress phrases like "shots fired," "10-33," "officer down," "help," "gun," "knife," "drop it."</p>
-                  <p><strong className="text-white">Struggle Sound Detection:</strong> Impacts, grunting, glass breaking, heavy breathing, vocal stress.</p>
-                  <div className="mt-4 p-4 bg-[#FF3B30]/10 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs">
-                    Action: SMS alert sent to dispatcher with timestamp, GPS location, and 30-second audio clip. Dispatcher makes final decision on sending backup.
-                  </div>
-                </div>
-              </AccordionItem>
+              <div className="relative border-l border-neutral-900 ml-2">
+                <AccordionItem 
+                  title="TIER 1: Audio-Only Alerts" 
+                  badge="Low Latency" 
+                  isOpen={activeTier === 0}
+                  onClick={() => setActiveTier(activeTier === 0 ? null : 0)}
+                >
+                  <CascadingItem>
+                    <strong className="text-white block mb-1">Real-time Gunshot Detection</strong>
+                    &gt;140dB impulse signature analysis.
+                  </CascadingItem>
+                  <CascadingItem>
+                    <strong className="text-white block mb-1">Keyword Spotting</strong>
+                    Distress phrases like "shots fired," "10-33," "officer down."
+                  </CascadingItem>
+                  <CascadingItem>
+                    <div className="mt-4 p-4 bg-[#FF3B30]/10 border-l border-[#FF3B30] text-[#FF3B30] font-black uppercase text-[10px] tracking-widest leading-relaxed">
+                      Action: SMS alert sent to dispatcher + 30s audio buffer.
+                    </div>
+                  </CascadingItem>
+                </AccordionItem>
 
-              <AccordionItem title="TIER 2: Audio & Visual Fusion (Medium-High Confidence)" badge="High Multi-modal Accuracy">
-                <div className="space-y-4">
-                  <p><strong className="text-white">Weapon Identification (CV):</strong> Real-time visual confirmation of firearms or edged weapons via body cam feed.</p>
-                  <p><strong className="text-white">Multi-modal Fusion:</strong> Cross-references audio cues (e.g., "drop the gun") with visual weapon detection to eliminate false positives.</p>
-                  <p><strong className="text-white">Person Down / Officer Stationary:</strong> Detects if an officer is horizontal on the ground or immobile for &gt;10s during a high-stress event.</p>
-                  <div className="mt-4 p-4 bg-[#FF3B30]/20 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs">
-                    Action: Priority RoIP voice injection to all nearby units. Automatic CAD entry for "Officer in Trouble" (10-33). Stream opens for supervisory review.
-                  </div>
-                </div>
-              </AccordionItem>
+                <AccordionItem 
+                  title="TIER 2: Audio & Visual Fusion" 
+                  badge="Multi-modal Accuracy"
+                  isOpen={activeTier === 1}
+                  onClick={() => setActiveTier(activeTier === 1 ? null : 1)}
+                >
+                  <CascadingItem>
+                    <strong className="text-white block mb-1">Weapon Identification (CV)</strong>
+                    Real-time visual confirmation via body cam feed.
+                  </CascadingItem>
+                  <CascadingItem>
+                    <strong className="text-white block mb-1">Person Down Detection</strong>
+                    Detects officer horizontal/immobile during high-stress.
+                  </CascadingItem>
+                  <CascadingItem>
+                    <div className="mt-4 p-4 bg-[#FF3B30]/20 border-l border-[#FF3B30] text-[#FF3B30] font-black uppercase text-[10px] tracking-widest leading-relaxed">
+                      Action: Priority RoIP voice injection to all nearby units.
+                    </div>
+                  </CascadingItem>
+                </AccordionItem>
 
-              <AccordionItem title="TIER 3: Extreme Tactical Emergency (Fatal/Critical Threat)" badge="Autonomous Backup">
-                <div className="space-y-4">
-                  <p><strong className="text-white">Gunshot + Officer Down Fusion:</strong> Visual confirmation of a downed officer following a gunshot detection.</p>
-                  <p><strong className="text-white">Ambush Detection:</strong> Mismatched tactical flow (e.g., silent approach followed by immediate high-impulse audio + rapid movement).</p>
-                  <div className="mt-4 p-4 bg-red-600 text-white font-black uppercase text-xs animate-pulse">
-                    Action: Full Tactical Override. Autonomous dispatch of nearest units via MDT. Real-time audio/video broadcast to supervisor dashboard.
-                  </div>
-                </div>
-              </AccordionItem>
+                <AccordionItem 
+                  title="TIER 3: Extreme Tactical Emergency" 
+                  badge="Autonomous Backup"
+                  isOpen={activeTier === 2}
+                  onClick={() => setActiveTier(activeTier === 2 ? null : 2)}
+                >
+                  <CascadingItem>
+                    <strong className="text-white block mb-1">Gunshot + Down Fusion</strong>
+                    Visual confirmation of downing following shot detection.
+                  </CascadingItem>
+                  <CascadingItem>
+                    <div className="mt-4 p-4 bg-red-600 text-white font-black uppercase text-[10px] tracking-widest animate-pulse leading-relaxed">
+                      Action: Full Tactical Override. Autonomous Dispatch (MDT).
+                    </div>
+                  </CascadingItem>
+                </AccordionItem>
+              </div>
             </LayoutGroup>
           </div>
 
