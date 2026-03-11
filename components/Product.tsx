@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useSpring, LayoutGroup } from 'framer-motion';
 import { Shield, PenTool, Radio, Fingerprint, Activity, MessageSquare, Database, Cpu, Terminal, ArrowUpRight, ChevronDown, CheckCircle2, Lock, Eye, Zap, Volume2, Video } from 'lucide-react';
 
 // Define FeatureCardProps to properly handle React props including 'key'
@@ -95,50 +95,43 @@ const AccordionItem: React.FC<{ title: string, badge?: string, defaultOpen?: boo
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
     <motion.div 
-      layout 
-      className="border border-neutral-800 bg-neutral-950 mb-4 overflow-hidden rounded-sm"
-      transition={{ layout: { duration: 0.5, ease: [0.32, 0.72, 0, 1] } }}
+      layout
+      className="border border-neutral-800 bg-neutral-950 mb-4 overflow-hidden rounded-sm cursor-pointer"
+      transition={{ 
+        layout: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
+      }}
+      onClick={() => setIsOpen(!isOpen)}
     >
-      <button
-        className="w-full flex items-center justify-between p-6 text-left hover:bg-neutral-900 transition-colors group relative z-20"
-        onClick={() => setIsOpen(!isOpen)}
-      >
+      <div className="w-full flex items-center justify-between p-6 text-left hover:bg-neutral-900/50 transition-colors group relative z-20">
         <div className="flex items-center gap-4">
           <span className={`font-black text-lg uppercase tracking-tight transition-colors duration-500 ${isOpen ? 'text-[#00FF41]' : 'text-white'}`}>{title}</span>
           {badge && <span className="px-3 py-1 bg-neutral-800 text-[10px] font-mono text-neutral-400 rounded-sm">{badge}</span>}
         </div>
         <motion.div 
           animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          transition={{ type: "spring", stiffness: 200, damping: 25 }}
         >
           <ChevronDown className={`transition-colors duration-500 ${isOpen ? 'text-[#00FF41]' : 'text-neutral-500'}`} />
         </motion.div>
-      </button>
-      <AnimatePresence initial={false} mode="wait">
-        {isOpen && (
-          <motion.div
-            layout
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ 
-              height: { duration: 0.5, ease: [0.32, 0.72, 0, 1] },
-              opacity: { duration: 0.3 }
-            }}
-            className="overflow-hidden relative z-10"
-          >
-            <motion.div 
-              initial={{ y: -20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -10, opacity: 0 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              className="p-6 pt-0 border-t border-neutral-900 text-neutral-400 font-mono text-sm leading-relaxed"
-            >
-              {children}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </div>
+      
+      <motion.div
+        layout
+        initial={false}
+        animate={{ 
+          height: isOpen ? 'auto' : 0,
+          opacity: isOpen ? 1 : 0
+        }}
+        transition={{ 
+          duration: 0.6, 
+          ease: [0.22, 1, 0.36, 1]
+        }}
+        className="overflow-hidden relative z-10"
+      >
+        <div className="p-6 pt-0 border-t border-neutral-900 text-neutral-400 font-mono text-sm leading-relaxed">
+          {children}
+        </div>
+      </motion.div>
     </motion.div>
   );
 };
@@ -218,38 +211,39 @@ export const Product: React.FC = () => {
           <div className="mb-12">
             <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-6">Three-Tier Threat Detection System</h3>
 
-            <AccordionItem title="TIER 1: Audio-Only Alerts (Low-Medium Confidence)" badge="Low Latency" defaultOpen={true}>
-              <div className="space-y-4">
-                <p><strong className="text-white">Real-time Gunshot Detection:</strong> &gt;140dB impulse signature.</p>
-                <p><strong className="text-white">Keyword Spotting:</strong> Distress phrases like "shots fired," "10-33," "officer down," "help," "gun," "knife," "drop it."</p>
-                <p><strong className="text-white">Struggle Sound Detection:</strong> Impacts, grunting, glass breaking, heavy breathing, vocal stress.</p>
-                <div className="mt-4 p-4 bg-[#FF3B30]/10 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs">
-                  Action: SMS alert sent to dispatcher with timestamp, GPS location, and 30-second audio clip. Dispatcher makes final decision on sending backup.
+            <LayoutGroup id="threat-tiers">
+              <AccordionItem title="TIER 1: Audio-Only Alerts (Low-Medium Confidence)" badge="Low Latency" defaultOpen={true}>
+                <div className="space-y-4">
+                  <p><strong className="text-white">Real-time Gunshot Detection:</strong> &gt;140dB impulse signature.</p>
+                  <p><strong className="text-white">Keyword Spotting:</strong> Distress phrases like "shots fired," "10-33," "officer down," "help," "gun," "knife," "drop it."</p>
+                  <p><strong className="text-white">Struggle Sound Detection:</strong> Impacts, grunting, glass breaking, heavy breathing, vocal stress.</p>
+                  <div className="mt-4 p-4 bg-[#FF3B30]/10 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs">
+                    Action: SMS alert sent to dispatcher with timestamp, GPS location, and 30-second audio clip. Dispatcher makes final decision on sending backup.
+                  </div>
                 </div>
-              </div>
-            </AccordionItem>
+              </AccordionItem>
 
-            <AccordionItem title="TIER 2: Audio + Video Confirmed Threats (High Confidence - Auto-Dispatch)" badge="Automated Dispatch">
-              <div className="space-y-4">
-                <p><strong className="text-white">Multi-Modal Trigger:</strong> Triggered when 2+ audio models agree (&gt;80% confidence each).</p>
-                <p><strong className="text-white">Video Confirmation:</strong> System pulls 30-second video clip on-demand (15 sec before + 15 sec after trigger).</p>
-                <p><strong className="text-white">Computer Vision:</strong> YOLO weapon detection (handguns, rifles, knives visible) + Person detection/threat posture analysis (multiple attackers, fighting stance).</p>
-                <div className="mt-4 p-4 bg-[#FF3B30]/20 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs">
-                  Action: Automatic RoIP dispatch broadcast: "Unit [badge], automatic backup alert. Officer [name], [address]. [Threat type]. Backup units respond Code 3." + SMS alert to dispatch supervisor verifying auto-dispatch was sent.
+              <AccordionItem title="TIER 2: Audio & Visual Fusion (Medium-High Confidence)" badge="High Multi-modal Accuracy">
+                <div className="space-y-4">
+                  <p><strong className="text-white">Weapon Identification (CV):</strong> Real-time visual confirmation of firearms or edged weapons via body cam feed.</p>
+                  <p><strong className="text-white">Multi-modal Fusion:</strong> Cross-references audio cues (e.g., "drop the gun") with visual weapon detection to eliminate false positives.</p>
+                  <p><strong className="text-white">Person Down / Officer Stationary:</strong> Detects if an officer is horizontal on the ground or immobile for &gt;10s during a high-stress event.</p>
+                  <div className="mt-4 p-4 bg-[#FF3B30]/20 border-l-2 border-[#FF3B30] text-[#FF3B30] font-black uppercase text-xs">
+                    Action: Priority RoIP voice injection to all nearby units. Automatic CAD entry for "Officer in Trouble" (10-33). Stream opens for supervisory review.
+                  </div>
                 </div>
-              </div>
-            </AccordionItem>
+              </AccordionItem>
 
-            <AccordionItem title="TIER 3: Officer Down - Emergency Protocol" badge="Critical">
-              <div className="space-y-4">
-                <p><strong className="text-white">Silence Analysis:</strong> Impact sound detection + silence analysis (&gt;10 seconds no radio activity).</p>
-                <p><strong className="text-white">Horizon Line Shift:</strong> Officer prone/unconscious via accelerometer + video.</p>
-                <p><strong className="text-white">Continuous Monitoring:</strong> Real-time assessment updates if officer regains consciousness.</p>
-                <div className="mt-4 p-4 bg-[#FF3B30] text-white font-black uppercase text-xs">
-                  Action: Emergency RoIP broadcast to ALL units: "Unit [badge], OFFICER DOWN. [Address]. No response detected. All units Code 3." + SMS to all on-duty supervisors + Automatic EMS notification + Alert sent to nearest 5 units.
+              <AccordionItem title="TIER 3: Extreme Tactical Emergency (Fatal/Critical Threat)" badge="Autonomous Backup">
+                <div className="space-y-4">
+                  <p><strong className="text-white">Gunshot + Officer Down Fusion:</strong> Visual confirmation of a downed officer following a gunshot detection.</p>
+                  <p><strong className="text-white">Ambush Detection:</strong> Mismatched tactical flow (e.g., silent approach followed by immediate high-impulse audio + rapid movement).</p>
+                  <div className="mt-4 p-4 bg-red-600 text-white font-black uppercase text-xs animate-pulse">
+                    Action: Full Tactical Override. Autonomous dispatch of nearest units via MDT. Real-time audio/video broadcast to supervisor dashboard.
+                  </div>
                 </div>
-              </div>
-            </AccordionItem>
+              </AccordionItem>
+            </LayoutGroup>
           </div>
 
           <h3 className="text-sm font-mono text-neutral-500 uppercase tracking-widest mb-6">Additional Safety Capabilities</h3>
