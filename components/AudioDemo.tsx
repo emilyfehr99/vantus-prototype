@@ -217,13 +217,7 @@ interface ManagedIncident {
 type OperationalContext =
     | 'standard_patrol'
     | 'protest_riot'
-    | 'aviation'
-    | 'marine'
-    | 'motorcycle'
-    | 'bicycle'
-    | 'school'
-    | 'court'
-    | 'prison_transport';
+    | 'school';
 
 interface ContextProfile {
     label: string;
@@ -252,80 +246,20 @@ const CONTEXT_PROFILES: Record<OperationalContext, ContextProfile> = {
         icon: 'users',
         color: 'red',
         detection: 'CAD code 10-68 (civil disturbance) + GPS cluster of 3+ units within 200m',
-        falsePositives: ['Mass yelling/chanting (struggle model)', 'Flash-bang deployment (gunshot model)', 'Crowd surge impacts (struggle model)'],
+        falsePositives: ['Mass yelling/chanting (struggle model)', 'Flash-bang deployment (gunshot model)'],
         thresholds: { gunshot: 98, struggle: 99, keyword: 60 },
         suppressModels: ['struggle'],
-        education: 'Mass crowd noise produces constant false struggle alerts. Gunshot threshold raised to 98% to filter flash-bangs. Keyword detection sensitivity INCREASED — officer "help" calls are the primary threat signal in crowd environments.'
-    },
-    aviation: {
-        label: 'Aviation / Helicopter',
-        icon: 'plane',
-        color: 'blue',
-        detection: 'Unit assignment code (AIR-*) + sustained 2-4kHz rotor frequency signature',
-        falsePositives: ['Rotor wash (broadband noise)', 'Engine whine (high-freq sustained)', 'Wind buffeting (struggle model)', 'Radio feedback loops'],
-        thresholds: { gunshot: 99, struggle: 99, keyword: 50 },
-        suppressModels: ['gunshot', 'struggle'],
-        education: 'Helicopter rotor noise (85-110dB) overwhelms audio classification. System switches to KEYWORD-ONLY mode — voice isolation via spectral subtraction of rotor harmonics. Gunshot and struggle models are suppressed as ambient noise floor makes them unreliable.'
-    },
-    marine: {
-        label: 'Marine / Boat Patrol',
-        icon: 'anchor',
-        color: 'cyan',
-        detection: 'Unit code (MARINE-*) + broadband water noise spectral pattern (sustained low-freq energy)',
-        falsePositives: ['Wave impacts against hull (struggle model)', 'Outboard engine rumble (gunshot model)', 'Wind over water (broadband noise)', 'Radio spray interference'],
-        thresholds: { gunshot: 98, struggle: 98, keyword: 60 },
-        suppressModels: ['struggle'],
-        education: 'Water environments produce broadband noise that confuses impact-based models. Wave slaps against the hull register as physical struggle. Engine noise at idle can mimic low-caliber shots. Keyword detection remains primary with enhanced voice isolation. Man-overboard keywords added to priority list.'
-    },
-    motorcycle: {
-        label: 'Motorcycle Unit',
-        icon: 'bike',
-        color: 'orange',
-        detection: 'Unit assignment (MC-*) + sustained wind noise without cabin enclosure signature',
-        falsePositives: ['Wind rush at speed (struggle/impact model)', 'Engine exhaust pops (gunshot model)', 'Helmet vibration resonance', 'Road debris impacts'],
-        thresholds: { gunshot: 98, struggle: 99, keyword: 55 },
-        suppressModels: ['struggle'],
-        education: 'Motorcycle wind noise scales with speed — above 30mph, audio classification becomes unreliable. System enters speed-adaptive mode: at city speeds, all models active with raised thresholds; at highway speeds, keyword-only via helmet mic voice isolation. Engine backfires suppressed from gunshot model.'
-    },
-    bicycle: {
-        label: 'Bicycle Unit',
-        icon: 'bike',
-        color: 'lime',
-        detection: 'Unit assignment (BIKE-*) + no engine spectral signature + cadence pedaling pattern',
-        falsePositives: ['Heavy breathing / panting from exertion (struggle model)', 'Chain noise (metallic clicks)', 'Wind at moderate speed'],
-        thresholds: { gunshot: 95, struggle: 98, keyword: 65 },
-        suppressModels: [],
-        education: 'Bicycle officers generate heavy breathing and elevated heart rate during normal patrol — this triggers the struggle/distress model. System establishes an exertion baseline using respiratory rate patterns. Physical distress is only flagged when breathing patterns deviate from expected exertion (e.g., sudden gasping vs. rhythmic panting). Gunshot remains at standard sensitivity since no engine masks it.'
+        education: 'Mass crowd noise produces constant false struggle alerts. Gunshot threshold raised to 98% to filter flash-bangs.'
     },
     school: {
         label: 'School Resource Officer',
         icon: 'school',
         color: 'purple',
         detection: 'GPS geofence (school property) + time correlation (0700-1500 on school days)',
-        falsePositives: ['Children screaming during recess (struggle model)', 'School bell / fire alarm (impact/gunshot model)', 'Class change buzzers', 'Gymnasium impacts'],
+        falsePositives: ['Children screaming during recess (struggle model)', 'School bell / fire alarm (impact/gunshot model)'],
         thresholds: { gunshot: 85, struggle: 99, keyword: 60 },
         suppressModels: [],
-        education: 'CRITICAL: Gunshot sensitivity is INCREASED (threshold lowered to 85%) due to active shooter risk. Children screaming during recess is the primary false positive — struggle model threshold raised to 99% during bell-schedule windows (recess, class changes). School bell sounds are filtered from the gunshot model via tonal pattern matching. System learns the specific school\'s bell/alarm frequencies during the first week of deployment.'
-    },
-    court: {
-        label: 'Court Security',
-        icon: 'gavel',
-        color: 'amber',
-        detection: 'GPS geofence (courthouse) + assignment code (COURT-*)',
-        falsePositives: ['Gavel strikes (gunshot model — sharp transient impact)', 'Raised voices in arguments (struggle model)', 'Crowd murmuring', 'Door slams in hallways'],
-        thresholds: { gunshot: 97, struggle: 98, keyword: 65 },
-        suppressModels: [],
-        education: 'Courtroom gavels produce sharp transient impacts that match gunshot spectral profiles. System learns gavel frequency (~200-800Hz, short decay) and applies a tonal filter. Raised voices during heated arguments are expected — struggle model requires multi-modal confirmation (voice + impact + keyword). Hallway acoustics (hard surfaces) amplify door slams which can also trigger impact detection.'
-    },
-    prison_transport: {
-        label: 'Prison / Jail Transport',
-        icon: 'lock',
-        color: 'gray',
-        detection: 'CAD assignment code (TRANS-*) + confined-space reverb acoustic signature (RT60 > 0.8s)',
-        falsePositives: ['Metallic door/cage clangs (gunshot model)', 'Inmate yelling (struggle model)', 'Restraint chain rattling', 'Vehicle partition impacts'],
-        thresholds: { gunshot: 98, struggle: 98, keyword: 55 },
-        suppressModels: [],
-        education: 'Transport vehicles have confined acoustics with high reverb (RT60 > 0.8s) that amplifies and distorts all sounds. Metal partitions and cage doors produce sharp impacts matching gunshot profiles. Inmate yelling is expected and should not trigger struggle alerts — system uses keyword detection as primary with distress-specific vocabulary ("help", "can\'t breathe", "officer down"). Restraint sounds are baselined during booking.'
+        education: 'CRITICAL: Gunshot sensitivity is INCREASED (threshold lowered to 85%) due to active shooter risk. Children screaming is filtered via higher struggle thresholds.'
     }
 };
 
@@ -451,45 +385,8 @@ const DISPATCH_CLAIM_TTL_MS = 120000; // 2 min claim expiry
 // ── Additional Scenario Profiles (12 auto-detected edge cases) ──
 type AdditionalScenarioKey =
     | 'officerPanicking' | 'footPursuit' | 'radioKeying' | 'officerUnresponsive'
-    | 'bwcFaceDown' | 'extremeWeather' | 'taserDeployment' | 'constructionZone' | 'tunnelPatrol'
-    | 'interviewRoom' | 'hospitalPatrol' | 'cityEvent'
-    | 'networkOutage' | 'intermittentSignal' | 'staleCAD'
-    // ── Linguistic Ambiguity (Category 1) ──
-    | 'tacticalComm' | 'mediaInterference' | 'radioCrosstalk'
-    // ── Visual Misidentification (Category 2) ──
-    | 'pistolGripObject' | 'flashlightReflection' | 'holsterDraw'
-    // ── Solo vs. Partner Gap (Category 3) ──
-    | 'ghostPartner' | 'coordinatedArrest'
-    // ── Acoustic & Linguistic (Batch 2) ──
-    | 'narrativeRecall' | 'phoneticOverlap' | 'vehicleBackfire' | 'sirenEcho' | 'gearNoise' | 'narrationKwsFP'
-    // ── Visual & CV (Batch 2) ──
-    | 'doritoBag' | 'shadowGun' | 'occlusionReentry' | 'motionBlurWeapon' | 'uniformConfusion'
-    // ── Situational & Contextual ──
-    | 'cprFalseAlarm' | 'friendlyContact' | 'rehearsalPrank' | 'animalEncounter' | 'bwcDropped'
-    // ── Logic & Metadata ──
-    | 'gpsDrift' | 'crossJurisdiction' | 'sensitivityOverride'
-    // ── Acoustic & Environmental Interference (Batch 3) ──
-    | 'hydraulicHiss' | 'echoChamber' | 'k9Distress' | 'thunderclap' | 'velcroRip' | 'paScreech' | 'crowdChant'
-    // ── CV & Physical Misinterpretation (Batch 3) ──
-    | 'sprayPaintCan' | 'flashlightStrobe' | 'telescopicBaton' | 'reflectiveSafetyVest' | 'selfieStickLongGun' | 'fingerGun' | 'medicalEquipment'
-    // ── Tactical & Operational Logic Errors (Batch 3) ──
-    | 'code4Delay' | 'doorBreaching' | 'undercoverSlang' | 'taserRapidFire' | 'footfallBiometrics' | 'brushWhipping' | 'radioHandReach' | 'windowPunch' | 'safeTable' | 'patDown' | 'loudMusicVibration'
-    // ── Meta & Psychological (Batch 4) ──
-    | 'sarcasmDarkHumor' | 'thirdPersonNarrative' | 'radioClash' | 'languageBarrier' | 'mentalHealthRepeat'
-    // ── Hardware & Physics (Batch 4) ──
-    | 'magnetometerInterference' | 'radioPouchClip' | 'lightBarStrobe' | 'rainSweatLens' | 'chestThump'
-    // ── Fringe Environmental (Batch 4) ──
-    | 'bugZapper' | 'highWindBuffeting' | 'skateboardPop' | 'carWash' | 'beanBagRound'
-    // ── Human-in-the-Loop Logic Gaps (Batch 4) ──
-    | 'bathroomBreak' | 'undercoverSafeWord' | 'firmwareBug' | 'tacticalBreathing' | 'handcuffClicks'
-    // ── Smart City Interference (Batch 4) ──
-    | 'droneInterference' | 'evPedestrianAlert' | 'smartDoorbellCrosstalk' | 'mirrorIncident' | 'crowdPanicApp'
-    // ── Adversarial & Intentional Manipulation (Batch 5) ──
-    | 'externalVoiceTrigger' | 'audioMaskingDetection'
-    // ── High-Velocity & Physics (Batch 5) ──
-    | 'vehicleBailoutLogic'
-    // ── System & Legal Compliance (Batch 5) ──
-    | 'sensitiveLocationMasking' | 'spatialClusterEngine' | 'stealthModeSuppression';
+    | 'bwcFaceDown' | 'cprFalseAlarm' | 'code4Delay' | 'taserDeployment' | 'doorBreaching'
+    | 'holsterDraw' | 'narrativeRecall' | 'sarcasmDarkHumor' | 'vehicleBailoutLogic';
 
 interface AdditionalScenarioProfile {
     label: string;
@@ -502,863 +399,108 @@ interface AdditionalScenarioProfile {
 }
 
 const ADDITIONAL_SCENARIO_PROFILES: Record<AdditionalScenarioKey, AdditionalScenarioProfile> = {
-    // ── A. Physiological / Officer State ──
     officerPanicking: {
         label: 'Officer: Elevated Stress', category: 'physiological',
-        detection: 'Rapid breath rate (>20 breaths/min) detected from mic spectral analysis + pitch elevation in voice.',
-        thresholdAdjust: { gunshot: 0, struggle: 5, keyword: 0 },
+        detection: 'Rapid breath rate (>20 breaths/min) + pitch elevation in voice.',
+        thresholdAdjust: { struggle: 5 },
         suppressModels: [],
-        education: 'Hyperventilation and vocal stress artifacts produce irregular audio bursts that mimic struggle sounds. All model thresholds are raised by 5% during confirmed high-stress state to absorb this noise floor.',
+        education: 'All model thresholds are adjusted by 5% during confirmed high-stress state.',
         defaultActive: false,
     },
     footPursuit: {
         label: 'Foot Pursuit Active', category: 'physiological',
-        detection: 'Heavy rhythmic exertion breath pattern (>60 breath/min) + rapid GPS position change (>4 m/s on foot).',
-        thresholdAdjust: { gunshot: 0, struggle: 10, keyword: 0 },
+        detection: 'Heavy rhythmic breath pattern + rapid GPS position change.',
+        thresholdAdjust: { struggle: 10 },
         suppressModels: ['struggle'],
-        education: 'Running produces heavy, labored breathing that is acoustically identical to a distress struggle. Foot pursuit is auto-detected from GPS velocity and breath cadence. Struggle model is suppressed until officer stops moving. Gunshot and keyword remain active — these are critical during a pursuit.',
+        education: 'Struggle model is suppressed until officer stops moving.',
         defaultActive: false,
     },
     radioKeying: {
-        label: 'Radio Transmission Active', category: 'physiological',
-        detection: 'Radio PTT click signature (~900Hz transient) detected in audio. Confirmed by 0.3–3s silent gap immediately after.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
+        label: 'Radio Transmission', category: 'physiological',
+        detection: 'Radio PTT click signature detected.',
+        thresholdAdjust: {},
         suppressModels: ['keyword'],
-        education: 'When an officer keys their radio, the audio stream contains a 0.3–3s gap (PTT hold) that breaks speech mid-sentence. Keyword detection during this window produces fragmented false matches. Keyword model is suppressed for 3s after any PTT click is detected.',
+        education: 'Keyword model is suppressed for 3s after any PTT click.',
         defaultActive: false,
     },
     officerUnresponsive: {
         label: 'Officer Unresponsive', category: 'physiological',
-        detection: 'No audio, motion, or GPS change for >90 seconds during active shift. P2: Never Fail Silent.',
+        detection: 'No audio, motion, or GPS change for >90 seconds.',
         thresholdAdjust: { gunshot: -10, struggle: -10, keyword: -10 },
         suppressModels: [],
-        education: 'P2 — Never Fail Silent: If the system detects no activity from the officer for 90s during an active shift, it lowers all thresholds by 10% and flags a supervisor alert. This is a fail-safe for officer down situations. The system prefers a false positive over a missed officer emergency.',
+        education: 'Lower thresholds by 10% — preferred false positive over missed emergency.',
         defaultActive: false,
     },
-
-    // ── B. Environmental / Equipment ──
     bwcFaceDown: {
         label: 'BWC Muffled / Face-Down', category: 'environmental',
-        detection: 'High-frequency rolloff >8kHz combined with room tone (low ambient variation). Audio quality score <40%.',
+        detection: 'High-frequency rolloff >8kHz + low ambient variation.',
         thresholdAdjust: { gunshot: 10, struggle: 8, keyword: 5 },
         suppressModels: [],
-        education: 'When a BWC is placed on a hard surface or obscured by clothing, high frequencies are muffled, degrading model accuracy significantly. All thresholds are raised to prevent low-quality audio from triggering alerts. Multi-modal confirmation is required.',
+        education: 'Thresholds are raised to prevent low-quality audio from triggering alerts.',
         defaultActive: false,
     },
-    extremeWeather: {
-        label: 'Extreme Weather', category: 'environmental',
-        detection: 'Sustained broadband noise energy >80dB with characteristic rain spectral shape (pink noise 2–8kHz). Wind bursts detected as low-frequency amplitude spikes.',
-        thresholdAdjust: { gunshot: 8, struggle: 10, keyword: 3 },
+    cprFalseAlarm: {
+        label: 'CPR / Medical Assist', category: 'temporal',
+        detection: 'Rhythmic impacts (1.5-2.0Hz) + CAD medical code.',
+        thresholdAdjust: { struggle: 20 },
         suppressModels: [],
-        education: 'Heavy rain produces a sustained noise floor that raises ambient energy by 15–25dB. Wind gusts create sharp amplitude spikes that match impact patterns. Thresholds are raised proportionally to the detected noise floor during storm conditions.',
+        education: 'Struggle threshold raised 20% in confirmed medical response.',
+        defaultActive: false,
+    },
+    code4Delay: {
+        label: 'Code 4 Dispatch Logic', category: 'temporal',
+        detection: 'Verbal "Code 4" within 5s of a trigger event.',
+        thresholdAdjust: {},
+        suppressModels: [],
+        education: 'Cancel always wins over trigger when within the 5-second window.',
         defaultActive: false,
     },
     taserDeployment: {
-        label: 'Taser / CEW Deployment', category: 'environmental',
-        detection: 'Taser arc signature: 19 pulses/second electrical discharge pattern (NMF spectral matching). Duration 1–5s.',
-        thresholdAdjust: { gunshot: 15, struggle: 0, keyword: 0 },
+        label: 'Taser Deployment', category: 'environmental',
+        detection: 'Taser arc signature: 19 pulses/second.',
+        thresholdAdjust: { gunshot: 15 },
         suppressModels: [],
-        education: 'A TASER CEW generates a rapid electrical arc (19Hz) that produces a short transient burst acoustically similar to a suppressed gunshot. Gunshot threshold is raised by 15% for 10s after a Taser signature is detected. The Taser arc itself is logged as a use-of-force event.',
-        defaultActive: false,
-    },
-    constructionZone: {
-        label: 'Construction Zone', category: 'environmental',
-        detection: 'Sustained percussive noise with characteristic harmonics (jackhammer: 30–50Hz fundamental, nail gun: sharp 200–800Hz transients) for >60s baseline.',
-        thresholdAdjust: { gunshot: 12, struggle: 5, keyword: 0 },
-        suppressModels: [],
-        education: 'Construction equipment produces percussion patterns (jackhammers, nail guns, pneumatic tools) that directly mimic gunshot spectral profiles. After 60s of confirmed construction noise baseline, gunshot threshold is raised by 12%. Keyword remains active — an officer calling for help will still be detected.',
-        defaultActive: false,
-    },
-    tunnelPatrol: {
-        label: 'Tunnel / Underground Patrol', category: 'environmental',
-        detection: 'High reverb signature detected (RT60 >0.6s measured from impulse response estimation). GPS signal degraded or lost.',
-        thresholdAdjust: { gunshot: 12, struggle: 12, keyword: 5 },
-        suppressModels: [],
-        education: 'Enclosed concrete spaces (tunnels, parking garages, subway platforms) produce strong reverb (RT60 0.6–1.5s) that causes audio classification models to "hear" echoes as secondary events. All thresholds are raised. GPS loss is used as a corroborating signal for underground detection.',
-        defaultActive: false,
-    },
-
-    // ── C. Temporal / Procedural ──
-    interviewRoom: {
-        label: 'Interview / Interrogation Room', category: 'temporal',
-        detection: 'Station geofence active + CAD unit status code: INTERVIEW or INTERROGATION. Room acoustics match small enclosed space (RT60 0.2–0.4s).',
-        thresholdAdjust: { gunshot: 5, struggle: 20, keyword: 0 },
-        suppressModels: ['struggle'],
-        education: 'During interrogations, raised voices, crying, emotional outbursts, and even simulated aggression are expected and lawful. The struggle model would generate continuous false alerts. Struggle detection is suppressed when officer is confirmed in an interview room. Keyword and gunshot remain active for officer safety.',
-        defaultActive: false,
-    },
-    hospitalPatrol: {
-        label: 'Hospital / ER Patrol', category: 'temporal',
-        detection: 'GPS geofence matches known hospital/medical facility coordinates. CAD location type: HOSPITAL, ER, or MEDICAL_FACILITY.',
-        thresholdAdjust: { gunshot: 5, struggle: 15, keyword: -5 },
-        suppressModels: [],
-        education: 'Hospital and ER environments produce continuous alarms, PA announcements, medical distress sounds, and cardiac monitor tones that closely match keyword and struggle signatures. Struggle threshold is raised significantly. Keyword threshold is lowered by 5% — officer safety calls are more likely in a volatile ER environment.',
-        defaultActive: false,
-    },
-    cityEvent: {
-        label: 'City Event / Mass Gathering', category: 'temporal',
-        detection: 'CAD event code: SPECIAL_EVENT or CROWD_CONTROL. GPS location matches permitted event venue. Crowd size >500 estimated from ambient audio energy.',
-        thresholdAdjust: { gunshot: 10, struggle: 15, keyword: -5 },
-        suppressModels: [],
-        education: 'Concerts, sports events, and festivals generate sustained crowd noise (85–110dB), fireworks, confetti cannons, and pyrotechnics that trigger gunshot and impact models at high rates. Both thresholds are raised proportionally. Keyword threshold is lowered — officer distress calls must cut through crowd noise.',
-        defaultActive: false,
-    },
-
-    // ── D. Network / Communication ──
-    networkOutage: {
-        label: 'Network Outage', category: 'network',
-        detection: 'CAD API unreachable for >30s AND GPS telemetry offline. System enters local-only mode.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: -5 },
-        suppressModels: ['gunshot', 'struggle'],
-        education: 'P5 — Graceful Degradation: When both CAD and GPS are unreachable, the system cannot verify solo status, call context, or location. Gunshot and struggle models are suppressed (cannot confirm solo). Keyword model remains active at a lower threshold — verbal distress is the most reliable solo indicator when all other signals are lost.',
-        defaultActive: false,
-    },
-    intermittentSignal: {
-        label: 'Intermittent Signal', category: 'network',
-        detection: 'Signal quality score <50% over a rolling 60s window. Connection drops >3 times in 5 minutes.',
-        thresholdAdjust: { gunshot: 5, struggle: 5, keyword: 0 },
-        suppressModels: [],
-        education: 'P4 + P5: Intermittent connectivity is worse than a clean outage because it causes rapid state oscillation (solo→partnered→solo) as signals reconnect. All thresholds are raised by 5% during unstable connectivity, and the hysteresis timer is extended to 90s to absorb reconnection noise.',
-        defaultActive: false,
-    },
-    staleCAD: {
-        label: 'Stale CAD Data', category: 'network',
-        detection: 'CAD event timestamps lagging real-time by >120s. Detected by comparing CAD clock against device clock.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'P3 + P5: When CAD data is more than 2 minutes old, solo/partnered decisions based on CAD assignment codes are marked as low-confidence. The system increases the weight of Bluetooth and GPS signals automatically, and flags all CAD-sourced decisions with a staleness warning in the decision log.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // CATEGORY 1: Contextual Linguistic Ambiguity
-    // ══════════════════════════════════════════════════════════════
-    tacticalComm: {
-        label: 'Tactical Comm: Found Weapon', category: 'physiological',
-        detection: 'Keyword detected ("gun", "weapon") but vocal pitch is calm and clipped (officer declarative tone, <120Hz fundamental). No distress harmonics. No struggle audio co-present within ±2s window.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 15 },
-        suppressModels: [],
-        education: 'Officers routinely announce discovered weapons: "Gun in the drawer", "He\'s got a knife on the table." These are not threat declarations — they are scene safety calls. NLU pitch analysis distinguishes calm declarative statements from panicked distress calls. Keyword confidence threshold is raised 15% when calm vocal tone is detected without corroborating audio threats. Requires struggle >80% OR gunshot >85% to dispatch.',
-        defaultActive: false,
-    },
-    mediaInterference: {
-        label: 'Media / Ambient Keyword Interference', category: 'physiological',
-        detection: 'Keyword source voice profile does not match enrolled officer voiceprint (pitch, formant spacing, MFCC delta). OR audio contains MP3/AAC compression artifacts (pre-echo at 4–8kHz, bitrate signature <128kbps) indicating recorded/broadcast origin.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 20 },
-        suppressModels: [],
-        education: 'A radio in a patrol car, a bystander\'s phone, or ambient TV can broadcast trigger words into the BWC microphone. Audio from recorded media has distinctive spectral fingerprints: MP3 pre-echo artifacts, quantization noise at high frequencies, and a voice profile that doesn\'t match the officer\'s enrolled voiceprint. Keyword threshold raised 20% when external media origin is detected. Requires officer\'s own voice to be the keyword source before dispatch.',
-        defaultActive: false,
-    },
-    radioCrosstalk: {
-        label: 'Radio Cross-Talk / Signal 13 Feedback', category: 'physiological',
-        detection: 'Audio stream contains radio squelch burst (white noise transient, 1–3kHz, duration <500ms) immediately before or during a keyword event. Confirms audio originated from radio speaker broadcast, not the live environment. OR keyword detected within 2s of a PTT click signature.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: ['keyword'],
-        education: 'A "Signal 13 — Officer Needs Help" broadcast over dispatch radio can be picked up by every BWC on frequency, creating a feedback loop where each camera tries to independently dispatch backup. The radio squelch fingerprint (a distinctive wideband burst) is detectable in <50ms. Keyword model is suppressed for 5s after any squelch burst is confirmed. This prevents a single dispatch broadcast from generating dozens of redundant backup requests from other officers\' cameras.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // CATEGORY 2: Visual Misidentification (Computer Vision)
-    // ══════════════════════════════════════════════════════════════
-    pistolGripObject: {
-        label: 'Pistol-Grip Object Misidentification', category: 'environmental',
-        detection: 'CV weapon confidence in ambiguous zone (55–82%). No audio corroboration: no gunshot transient, no distress keyword, no struggle audio within ±1s. Officer GPS shows stationary or slow movement (<1 m/s). Object detected in officer\'s own hands or a stationary scene position.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'Power drills, high-intensity flashlights, certain handguns-shaped phones, and PVC pipe fittings share the pistol-grip silhouette that computer vision models are trained on. A visual detection confidence below 83% is insufficient for dispatch authorization. Multi-modal confirmation is required: visual weapon detection must be corroborated by audio (gunshot >85%, struggle >80%, or keyword) before any dispatch is triggered. P2: we never suppress the visual signal — it is logged and escalated to supervisor for human review.',
-        defaultActive: false,
-    },
-    flashlightReflection: {
-        label: 'Flashlight Reflection / Muzzle Flash FP', category: 'environmental',
-        detection: 'Video flash event detected (luminance spike >3x ambient in <16ms frame). Audio analysis of the same ±50ms window shows NO transient >65dB. Physics: every real gunshot produces a pressure wave ≥140dB at source; suppressed firearms still produce ≥120dB. A silent flash is a reflection.',
-        thresholdAdjust: { gunshot: 15, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'Muzzle flash and flashlight reflections off windows, car mirrors, wet pavement, or metallic surfaces are visually identical to a CV model. The distinguishing physical fact: every real gunshot (including suppressed) produces a sonic pressure wave detectable at the BWC microphone. If a luminance spike occurs without a corresponding audio transient within 50ms, the event is classified as an environmental reflection. Gunshot threshold raised 15% when recent unconfirmed visual flash events are present in the frame history.',
-        defaultActive: false,
-    },
-    holsterDraw: {
-        label: 'Officer Own-Weapon / Holster Draw', category: 'environmental',
-        detection: 'CV weapon detected in frame, but spatial origin analysis shows the object is entering frame from the officer\'s 4–8 o\'clock position (lower body / hip zone) — consistent with holster draw geometry. No audio threat. Movement matches standard draw velocity profile (<0.8s from holster to center frame).',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'When an officer draws their own weapon, it enters the camera frame from their body\'s lower periphery — a trajectory directly opposite to a suspect presenting a weapon (which enters from center-frame or approaches). The BWC mounting position and draw geometry are known. Weapons detected in the officer\'s own body zone during a standard draw motion (< 0.8s) are classified as the officer\'s own firearm and are not treated as threats. The event is logged as "Officer: weapon deployed" for the use-of-force audit trail.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // CATEGORY 3: The Solo vs. Partner Logic Gap
-    // ══════════════════════════════════════════════════════════════
-    ghostPartner: {
-        label: 'Ghost Partner (Backup Not Registered)', category: 'environmental',
-        detection: 'A new person with body-armor / duty-weapon CV profile enters frame, but NO second BWC has registered on the BT mesh for this scene. GPS shows a second device signal within 10m that matches an officer duty device beacon pattern. Triggers a 20s verification hold.',
-        thresholdAdjust: { gunshot: 8, struggle: 8, keyword: 0 },
-        suppressModels: [],
-        education: 'When backup arrives on scene, there is a 5–30s window before their BWC connects to the local BT mesh. During this window, the arriving officer — armed, wearing body armor, moving quickly — matches a threat profile exactly. A 20-second verification hold is applied: all model thresholds are raised 8% while awaiting BT mesh registration from the new device. If the second BWC registers within 20s, they are logged as a confirmed partner. If not, normal monitoring resumes but a supervisor alert is flagged for the unverified armed presence.',
-        defaultActive: false,
-    },
-    coordinatedArrest: {
-        label: 'Coordinated Arrest (Simultaneous Shout)', category: 'temporal',
-        detection: 'Keyword or struggle event on THIS BWC occurs within 500ms of an identical audio event on another registered BWC on the same CAD call. Detected via BT mesh audio timestamp sync. Simultaneous events across 2+ cameras = synchronized officer action.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'During a coordinated arrest, both officers simultaneously shout commands: "Stop resisting!", "Don\'t move!", "Hands behind your back!" Each BWC hears one officer\'s voice and the other\'s echo — effectively doubling the keyword/struggle confidence. Without cross-camera correlation, the system generates two independent threat events for the same arrest. BT mesh timestamp matching (±500ms window) identifies simultaneous multi-camera events and classifies them as a single coordinated officer action. P1: one event generates one log entry, not two. Dispatch is not triggered for predicted command compliance situations.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // ACOUSTIC & LINGUISTIC FALSE POSITIVES (Batch 2)
-    // ══════════════════════════════════════════════════════════════
-    narrativeRecall: {
-        label: 'Narrative Recall / Story-Telling', category: 'temporal',
-        detection: 'Keyword detected ("shots fired", "had a gun", "he pulled a weapon") but verb tense is past-tense and vocal cadence is calm, conversational (slow speech rate <140 wpm, low arousal pitch). No concurrent behavioral signals (stationary officer, no struggle, no gunshot audio).',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 20 },
-        suppressModels: [],
-        education: 'Officers frequently debrief incidents to colleagues, write reports aloud, or call family using past-tense threat language. "He had a gun" during a calm conversation is fundamentally different from the same words shouted under stress. Speech rate, pitch variance, and arousal level are detectable from the audio signal. Keyword threshold is raised 20% when past-tense sentence structure + calm vocal arousal are co-detected. Struggle and gunshot models remain fully active.',
-        defaultActive: false,
-    },
-    phoneticOverlap: {
-        label: 'Phonetic Overlap ("Run!" → "Gun!")', category: 'environmental',
-        detection: 'Keyword phoneme confidence in ambiguous zone (55–78%) in a high-reverberation environment (RT60 >0.5s detected). Adjacent phoneme analysis shows the word could equally match a phonetically similar non-threat word ("run", "done", "sun", "one").',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 18 },
-        suppressModels: [],
-        education: 'High-reverb environments (tunnels, stairwells, alleys, concrete parking structures) smear phoneme boundaries, making "run" and "gun" perceptually indistinguishable to a model. When keyword confidence is below 79% AND reverberation is confirmed, an N-best phoneme list is computed. If a non-threat word scores within 15% of the trigger word confidence, the event is classified as a phonetic ambiguity and keyword threshold is raised by 18%.',
-        defaultActive: false,
-    },
-    vehicleBackfire: {
-        label: 'Vehicle Backfire / Tire Blowout', category: 'environmental',
-        detection: 'Single transient >85dB within 20ms followed by rapid decay (no secondary acoustic events >60dB within 500ms). Spectral profile matches low-frequency combustion transient (fundamental <200Hz, strong impulse) rather than ballistic gunshot (broadband 20Hz–20kHz with sustained crack). Officer GPS shows vehicle proximity.',
-        thresholdAdjust: { gunshot: 12, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'A car backfire and a small-caliber gunshot share similar peak amplitude and impulse duration, but differ in spectral content. A backfire has a strong low-frequency combustion signature and no supersonic crack. A gunshot has a broadband signature including a high-frequency "crack" from the projectile breaking the sound barrier. Gunshot threshold is raised 12% near vehicles. If the transient is single and isolated (no follow-on shots or distress audio), it is classified as a mechanical event.',
-        defaultActive: false,
-    },
-    sirenEcho: {
-        label: 'Siren Echo / Ambulance Chirp', category: 'environmental',
-        detection: 'High-pitched oscillating tone detected (1–4kHz sweep, 0.5–2s cycle) that matches patrol siren / EMS chirp waveform signature. Correlated with the officer\'s own vehicle siren activation status (CAN bus signal) or GPS proximity to an active emergency vehicle.',
-        thresholdAdjust: { gunshot: 0, struggle: 5, keyword: 8 },
-        suppressModels: [],
-        education: 'A siren "yelp" or "wail" produces oscillating tones that some NLU models confuse with a distress whistle, alarm, or even a screamed syllable in the keyword phoneme space. The solution is environmental siren detection: if the officer\'s own vehicle has the siren engaged (via CAN bus integration) or a siren waveform is detected in the ambient audio, keyword and struggle thresholds are raised proportionally until the siren event clears.',
-        defaultActive: false,
-    },
-    gearNoise: {
-        label: 'Duty Belt / Gear Metal Noise', category: 'environmental',
-        detection: 'Short metallic transient (5–15ms, frequency peak 2–8kHz) detected without any accompanying audio events. Accelerometer shows moderate officer body movement consistent with gear adjustment. No distress audio co-present. Spectral profile matches handcuff or magazine rattle (narrow-band metallic ring).',
-        thresholdAdjust: { gunshot: 8, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'An officer adjusting their duty belt, re-holstering, clipping handcuffs, or re-seating a magazine produces a metallic "clack" or "click" that pattern-matches a firearm action (slide, hammer, or safety). The distinguishing factors: gear noise is short (<15ms), narrow-band, and always correlated with body movement. A weapon action in a threat context would be accompanied by distress audio, keyword, or elevated vocal arousal. Gunshot threshold raised 8% when gear-origin metallic transients are detected.',
-        defaultActive: false,
-    },
-    narrationKwsFP: {
-        label: 'De-escalation Narration Keyword FP', category: 'physiological',
-        detection: 'Keyword detected as part of a longer negation sentence: "putting [gun] away", "[gun] is secured", "not [armed]", "[weapon] is holstered". NLU negation detection identifies the keyword is preceded by a verb of reduction (putting, securing, holstering, unloading) or a negation (not, no longer, isn\'t).',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 25 },
-        suppressModels: [],
-        education: 'Officers trained in verbal de-escalation narrate their actions to demonstrate non-aggression: "I am putting my firearm away." However, KWS systems that operate on word-level detection will extract "firearm" or "gun" as a threat keyword, ignoring the surrounding sentence context. Full NLU sentence-level analysis parses the complete phrase for negation and de-escalation verb patterns. Keyword confidence threshold is raised by 25% when a negation or reduction context is detected around the trigger word.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // VISUAL & COMPUTER VISION FALSE POSITIVES (Batch 2)
-    // ══════════════════════════════════════════════════════════════
-    doritoBag: {
-        label: '"Dorito Bag" Reflective Packaging FP', category: 'environmental',
-        detection: 'CV weapon confidence triggered by small metallic-reflective object in officer\'s hand or scene. Object dimensions in frame are <15cm longest axis (too small to be a firearm). No mass/inertia consistent with a weapon (object moves freely without the ballistic hold characteristic of a handgun). No audio corroboration.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'The "Dorito Bag" scenario is real and documented: metallic-lined snack packaging reflects light in a way that CV models trained on metal-finish firearms will flag as a weapon. The physical distinguisher: a firearm occupies 15–30cm and has characteristic mass-weighted movement (the wrist doesn\'t move freely under its weight). A snack bag is lightweight and moves freely. Visual detections of small, freely-moving reflective objects below 15cm are suppressed pending audio corroboration. The event is logged for supervisor review.',
-        defaultActive: false,
-    },
-    shadowGun: {
-        label: 'Shadow Gun (Silhouette False Positive)', category: 'environmental',
-        detection: 'CV weapon detected in ground or wall shadow region of frame (not in a person\'s hands). Object is a 2D projection (no depth perception / stereo parallax). Light direction consistent with dusk/dawn low-angle sun or point-source illumination. Object source is long and thin (umbrella, tripod, walking stick profile).',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'At dusk and dawn, low-angle sunlight casts elongated shadow projections of any cylindrical or L-shaped object onto flat surfaces. A person holding an umbrella, a tripod, or a walking cane produces a shadow profile that CV models classify as a rifle or long-gun silhouette at confident rates. Shadow regions are identified by their 2D planarity and absence of depth. Weapon classifications within confirmed shadow zones require a living person holding the originating object with corroborating behavioral signals.',
-        defaultActive: false,
-    },
-    occlusionReentry: {
-        label: 'Occlusion Re-entry (Hand / Phone FP)', category: 'environmental',
-        detection: 'CV tracked hand disappears from frame behind a concealment zone (pocket, bag, waistband) for 0.5–3s, then re-emerges holding a dark rectangular object <12cm. AI "hallucination" risk: model fills in the most common object seen after pocket retrieval in training data. No gunshot audio. Object dimensions match wallet/phone, not firearm.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'CV models trained on violent encounter footage often learn to predict "weapon" after a hand reappears from an occlusion zone (pocket or waistband), because this is a statistically common sequence in threat videos. The model "hallucinates" a weapon even when the emerging object is a phone. The mitigation: re-emerging objects are evaluated on dimension ratio (phone: narrow rectangle, firearm: specific grip + barrel geometry) and the absence of threat audio before a weapon classification is confirmed.',
-        defaultActive: false,
-    },
-    motionBlurWeapon: {
-        label: 'Motion Blur Weapon (Pursuit FP)', category: 'environmental',
-        detection: 'CV weapon detection occurs in a frame with motion blur magnitude >60% (calculated from frame-to-frame optical flow). Officer GPS speed >4 m/s (foot pursuit). Object that triggered classification is a fast-moving environmental element (handlebars, arm, tree branch) that briefly assumes a gun-like shape in the blurred frame.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'During a foot pursuit, rapid camera movement creates motion blur that degrades CV classification confidence significantly. Fast-moving objects in the scene — a cyclist\'s handlebars, a person\'s swinging arm, a passing car\'s mirror — appear as elongated blurred shapes that weapon detectors classify as drawn firearms. All CV weapon detections in frames with >60% motion blur are flagged as low-confidence and require two consecutive non-blurred frames of confirmation before dispatch is authorized.',
-        defaultActive: false,
-    },
-    uniformConfusion: {
-        label: 'Uniform / Gear Confusion (Security FP)', category: 'environmental',
-        detection: 'CV person classification identifies multiple individuals with bulky vest, duty-belt profile, or high-visibility gear. More than one person in frame matches "law enforcement gear" signature. Scene demographics include civilian security, construction workers, or event staff who wear similar load-bearing equipment.',
-        thresholdAdjust: { gunshot: 0, struggle: 5, keyword: 0 },
-        suppressModels: [],
-        education: 'Security guards, parking enforcement officers, and construction workers in high-visibility vests with tool belts closely resemble a police officer\'s gear silhouette. When multiple people in a scene match a "uniform" profile, the system cannot reliably distinguish the officer from similarly-dressed civilians. Struggle threshold is raised 5% in multi-uniform scenes. Weapon detections require additional behavioral context (aggressive movement, distress audio) before generating alerts.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // SITUATIONAL & CONTEXTUAL FALSE POSITIVES
-    // ══════════════════════════════════════════════════════════════
-    cprFalseAlarm: {
-        label: 'CPR / Medical Assist Struggle FP', category: 'temporal',
-        detection: 'Rhythmic high-intensity impact audio (1.5–2.0Hz, matching CPR compression rate) combined with heavy officer breathing. Officer GPS shows stationary. CAD call type: MEDICAL, EMS_ASSIST, or CARDIAC. No distress keyword. No gunshot.',
-        thresholdAdjust: { gunshot: 0, struggle: 20, keyword: 0 },
-        suppressModels: [],
-        education: 'CPR generates a rhythmic, high-intensity physical signal (100–120 compressions/minute) with heavy officer breathing — a pattern that struggle detection models score very highly. The differentiating features: a regular 1.5–2.0Hz rhythm (too metronomic for a fight), a stationary officer GPS, and a medical CAD call code. When all three are co-present, struggle threshold is raised 20%. Post-event, the audio is flagged as a Medical Assist and preserved for QA review of AI false positive rates.',
-        defaultActive: false,
-    },
-    friendlyContact: {
-        label: 'Friendly Contact / Hug / High-Five FP', category: 'temporal',
-        detection: 'Struggle model triggers on brief physical contact event (<3s duration). Contact occurs in a de-escalation context (preceding audio: calm speech, no raised voices, no distress keywords in previous 30s). Officer posture (accelerometer) shows no defensive or aggressive movement pattern.',
-        thresholdAdjust: { gunshot: 0, struggle: 12, keyword: 0 },
-        suppressModels: [],
-        education: 'A friendly hug, high-five, handshake, or a de-escalated subject moving suddenly but non-aggressively produces brief physical contact audio that the struggle model classifies as battery or resisting arrest. The key differentiator is conversational context: if the preceding 30 seconds of audio contain calm speech, no raised voices, and no threat keywords, and the physical contact is brief (<3s), the event is classified as a non-adversarial contact. Struggle threshold raised 12% in confirmed calm-context interactions.',
-        defaultActive: false,
-    },
-    rehearsalPrank: {
-        label: 'Theater Rehearsal / Prop Weapon', category: 'temporal',
-        detection: 'CV detects realistic prop weapon (firearm replica profile) but behavioral analysis shows choreographed, scripted movement (repeated identical motions, stage positions). GPS geofence matches theater, school, or event venue. Bystanders in non-defensive postures, facing inward (audience orientation).',
-        thresholdAdjust: { gunshot: 5, struggle: 10, keyword: 5 },
-        suppressModels: [],
-        education: 'High-fidelity prop weapons used in theater rehearsals, student films, and pranks are indistinguishable from real firearms in CV classification. The behavioral differentiators: scripted movement follows a repeating pattern (same motion twice = scripted), participants face inward rather than scattering, and a GPS geofence matches a known performance venue. All thresholds are raised in confirmed rehearsal contexts, and a human supervisor review flag is generated for any weapon detection until the scene is cleared.',
-        defaultActive: false,
-    },
-    animalEncounter: {
-        label: 'Animal Encounter / Dog Bark', category: 'temporal',
-        detection: 'Sudden audio spike (>75dB, <200ms) with frequency profile matching canine bark (fundamental 400–800Hz, harmonic-rich) or rapid TASER deployment click (sharp 19Hz burst). No human distress audio in the preceding 5s. Officer movement suggests rapid lateral repositioning (avoidance response on accelerometer), not aggressive engagement.',
-        thresholdAdjust: { gunshot: 0, struggle: 10, keyword: 0 },
-        suppressModels: [],
-        education: 'A sudden aggressive dog bark or the sound of a TASER being deployed to deter an animal triggers struggle and sometimes gunshot model responses. A large-dog bark at close range produces an audio impulse that compresses similarly to a close-range confrontation. TASER deployment produces the same 19Hz arc burst used in Taser detection. When canine frequency profile + avoidance movement are co-detected with no preceding human distress audio, the event is classified as an animal encounter. Struggle threshold raised 10%.',
-        defaultActive: false,
-    },
-    bwcDropped: {
-        label: 'BWC Dropped / Fell Off Mount', category: 'environmental',
-        detection: 'Sudden high-g accelerometer impact spike (>8g, <50ms) followed by video showing ground-plane orientation (pitch > 80 degrees from normal mount angle). Audio: thud transient + environmental ambient shift (camera now at ground level). Officer voice still audible from above, not proximate to camera.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: ['struggle', 'gunshot'],
-        education: 'P2 + P5: When a BWC falls from its mount (during a sprint, a struggle, or a physical altercation), the spinning ground-level video and impact thud are likely to trigger "Officer Down" alerts. The impact g-force signature is detectable and distinct from a fall (single-axis spike, not multi-axis tumble). When a BWC dismount is confirmed, struggle and gunshot models are suppressed from the dislodged camera feed. Audio from the camera is still monitored for keyword detection since the officer\'s voice will still be audible from above.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // LOGIC & METADATA FALSE POSITIVES
-    // ══════════════════════════════════════════════════════════════
-    gpsDrift: {
-        label: 'GPS Drift (Multi-Story / Indoor)', category: 'network',
-        detection: 'GPS position changes rapidly (>20m jump in <5s) without corresponding velocity, OR GPS accuracy radius >15m, OR GPS signal lost while audio/accelerometer shows officer is still active. Multi-story building detected by barometric pressure sensor delta from baseline.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'In multi-story buildings, GPS signal reflects off floors and walls, producing fictitious position jumps of 20–100m. This causes geofence-based logic (station detection, hospital geofence, scene officer proximity) to falsely trigger or clear, corrupting solo/partner decisions. When GPS drift is detected (accuracy radius >15m or impossible jump velocity), all GPS-derived logic is temporarily suspended and Bluetooth mesh + CAD data become the primary signals. Dispatch coordinates use the last confirmed stable GPS fix until signal quality improves.',
-        defaultActive: false,
-    },
-    crossJurisdiction: {
-        label: 'Cross-Jurisdictional Officer Confusion', category: 'network',
-        detection: 'A second BWC device is detected on the BT mesh that does NOT match any registered officer in the local CAD/RMS system. Device uses a different dept. radio frequency or MDT system identifier. Both systems see the other\'s officer as an "unknown armed individual."',
-        thresholdAdjust: { gunshot: 8, struggle: 8, keyword: 0 },
-        suppressModels: [],
-        education: 'When officers from different departments (city PD, county sheriff, state police) respond to the same incident, their systems don\'t share a common BWC mesh network or CAD integration. Each department\'s AI sees the other\'s officers as unaffiliated armed individuals and may trigger "armed unknown" alerts. The mitigation: any BWC that presents a valid law enforcement digital certificate (issued by a certified authority) is treated as a friendly unit, even if not in the local CAD. Thresholds are raised 8% until a formal handshake is completed via mutual aid protocol.',
-        defaultActive: false,
-    },
-    sensitivityOverride: {
-        label: 'Intentional Over-Alerting / Sensitivity Tuning', category: 'network',
-        detection: 'System-wide alert rate in the current shift has exceeded 3x baseline alert frequency. Alerts are triggering at <70% confidence across all models simultaneously (not a single-model spike). No corroborating incident reports. System configuration shows sensitivity thresholds set below recommended baseline.',
-        thresholdAdjust: { gunshot: 10, struggle: 10, keyword: 10 },
-        suppressModels: [],
-        education: 'When a system is tuned for maximum sensitivity (prioritizing officer safety), every heated argument, loud conversation, or physical greeting becomes an alert. This creates "alert fatigue" — dispatchers begin ignoring alerts because the false positive rate is too high, which paradoxically makes the system less safe. This scenario monitors shift-level alert frequency. When the alert rate exceeds 3x baseline, all thresholds are automatically raised 10% and a calibration flag is sent to the system administrator with a false positive rate report for review.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // ACOUSTIC & ENVIRONMENTAL INTERFERENCE (Batch 3)
-    // ══════════════════════════════════════════════════════════════
-    hydraulicHiss: {
-        label: 'Hydraulic Hiss / Air Brake Release', category: 'environmental',
-        detection: 'Continuous wideband hiss (white/pink noise, 2–12kHz, >2s duration). Officer GPS adjacent to road with heavy vehicle traffic. Acoustic matches pneumatic air-brake discharge or bus air suspension release. No concurrent human distress audio.',
-        thresholdAdjust: { gunshot: 10, struggle: 0, keyword: 8 },
-        suppressModels: [],
-        education: 'Air brake release from buses, garbage trucks, and semi-trailers produces a sustained high-frequency hiss (2–12kHz) that some models misclassify as a chemical leak alarm or a suppressed firearm. Real suppressors produce a sharp transient under 200ms; a pneumatic hiss lasts 2–10 seconds. Gunshot threshold raised 10% when a sustained hiss >2s is detected adjacent to a road environment.',
-        defaultActive: false,
-    },
-    echoChamber: {
-        label: 'Echo Chamber (Parking Garage / Tunnel)', category: 'environmental',
-        detection: 'Reverberation RT60 >0.8s (high-echo confirmed). Short audio event generates a train of decaying reflections. NLU receives overlapping phoneme signal matching a two-syllable distress code due to inter-reflection interference.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 20 },
-        suppressModels: [],
-        education: 'In a concrete parking garage, a single syllable bounces 4–8 times within 100–800ms, creating a cascade the NLU interprets as multi-word speech. "Hey!" becomes "Hey-AY-ay" — matching a distress code pattern. When RT60 >0.8s, keyword threshold is raised 20% and the phoneme sequence must be consistent across all reflections, not just the first-arrival wavefront.',
-        defaultActive: false,
-    },
-    k9Distress: {
-        label: 'K9 Barking (Patrol Unit)', category: 'environmental',
-        detection: 'Sustained barking (fundamental 400–1200Hz, harmonic-rich, repetitive 0.3–0.8s bursts). Audio source consistent with vehicle interior acoustics. No human distress audio co-present. CAD unit type: K9.',
-        thresholdAdjust: { gunshot: 0, struggle: 15, keyword: 0 },
-        suppressModels: [],
-        education: 'A patrol K9 barking in the rear compartment produces sustained 80–95dB audio that struggle models classify as a human altercation. K9 bark frequency (400–1200Hz, repetitive short bursts) is detectably different from human screaming. When K9 barking is confirmed alongside vehicle-interior acoustics and no human distress, struggle threshold raised 15%. K9 unit status from CAD directly triggers this flag.',
-        defaultActive: false,
-    },
-    thunderclap: {
-        label: 'Thunderclap / Lightning Strike', category: 'environmental',
-        detection: 'Single extremely high-amplitude transient (>100dB peak) with low-frequency rumble tail (20–200Hz, 0.5–3s). Thunder is >500ms; gunshots are <100ms. Weather API or barometric sensor confirms storm conditions.',
-        thresholdAdjust: { gunshot: 15, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'A nearby lightning strike produces one of the loudest sounds a BWC microphone will record. Thunder has a characteristic infrasonic rumble tail lasting 500ms–3s; even large-caliber gunshots decay within 100ms. Thunder also has strong energy below 200Hz that firearms don\'t produce. When storm conditions are confirmed, gunshot threshold raised 15% and consecutive thunder events are tagged as a storm pattern.',
-        defaultActive: false,
-    },
-    velcroRip: {
-        label: 'Velcro / Tactical Vest Rip', category: 'environmental',
-        detection: 'Broadband noise burst (1–18kHz, 100–400ms) with characteristic high-to-low frequency sweep (velcro separation acoustic signature). Correlated with officer body movement (accelerometer). No concurrent human distress.',
-        thresholdAdjust: { gunshot: 8, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'Ripping open a tactical vest\'s velcro closure produces a broadband burst in the 1–18kHz range. Velcro produces a characteristic frequency sweep (high-to-low) as separation propagates along the strip — absent in firearm discharges. Gunshot threshold raised 8% when velcro-signature audio is detected concurrent with body movement.',
-        defaultActive: false,
-    },
-    paScreech: {
-        label: 'PA / Megaphone Feedback Screech', category: 'environmental',
-        detection: 'Sustained high-frequency tone (1–4kHz) or rapid amplitude sweep consistent with acoustic feedback. Audio has PA spectral fingerprint (band-limited, clipped peaks, compression artifacts). Officer GPS near protest, event, or public gathering.',
-        thresholdAdjust: { gunshot: 0, struggle: 10, keyword: 10 },
-        suppressModels: [],
-        education: 'Megaphone feedback produces an intense high-frequency screech that acoustic models classify as a high-stress distress vocalization. The PA feedback signature is a narrow-band sustained tone with strong clipping artifacts from the PA amplifier. When this signature is detected alongside crowd-event GPS context, both struggle and keyword thresholds are raised 10%.',
-        defaultActive: false,
-    },
-    crowdChant: {
-        label: 'Crowd Chant Trigger Word FP', category: 'temporal',
-        detection: 'Keyword detected (\"shoot\", \"gun\", \"hands up\") within a rhythmic chanting context. Audio features: regular cadence (0.5–2s repetition), multiple voices in unison, crowd noise floor. Keyword appears as part of a repeated phrase, not an isolated distress vocalization.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 25 },
-        suppressModels: [],
-        education: 'Protest chants like "Hands up, don\'t shoot!" contain direct trigger words. Detection of rhythmic repetition (same audio pattern repeats every 1–2 seconds) with multi-voice unison is the primary discriminator. When chant cadence is confirmed, keyword threshold raised 25%. The trigger must originate from a single proximate speaker, not from a distributed crowd voice field.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // CV & PHYSICAL MISINTERPRETATION (Batch 3)
-    // ══════════════════════════════════════════════════════════════
-    sprayPaintCan: {
-        label: 'Spray Paint Can / Pressurized Duster FP', category: 'environmental',
-        detection: 'CV weapon confidence triggered by small cylindrical object in a forward grip, 15–30cm length. Object shows lightweight, freely movable profile (not weight-constrained by firearm mass). No gunshot audio. Hissing spray audio may be present.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'Spray paint cans and pressurized dusters share the same cylindrical forward-grip profile as a compact handgun at 5–20 meters. Differentiator: a spray can produces a characteristic hissing audio when deployed, has no trigger mechanism in the CV silhouette, and is lightweight (<500g inertia profile). Visual-only weapon detections of small, freely-moving reflective cylindrical objects require audio corroboration.',
-        defaultActive: false,
-    },
-    flashlightStrobe: {
-        label: 'Flashlight Strobe / Frame Rate Confusion', category: 'environmental',
-        detection: 'Rapid luminance oscillation in BWC frame (>8Hz flash rate). Optical flow shows no corresponding scene motion. Frequency consistent with tactical strobe (8–20Hz). Frame artifacts: aliasing patterns, ghost object outlines in high-contrast regions.',
-        thresholdAdjust: { gunshot: 10, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'A tactical flashlight strobe at 8–20Hz creates a beat frequency with the BWC sensor frame rate, causing aliasing. Static objects appear to swim; edges stutter; high-contrast shapes appear and disappear. CV weapon detections in a frame with confirmed strobe aliasing require two consecutive non-strobed frames of confirmation before dispatch.',
-        defaultActive: false,
-    },
-    telescopicBaton: {
-        label: 'Telescopic Baton Extension FP', category: 'environmental',
-        detection: 'Rapid extension of mid-length cylindrical object from officer\'s hand (0.3–0.8s). Object trajectory is horizontal and extends away from body. CV confidence: 55–82% (ambiguous zone). No gunshot audio transient.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'An expandable baton extends from 20cm to 60cm in under 0.5 seconds, mimicking a firearm being drawn. Distinguishing features: the extension trajectory is longitudinal (not ballistic); the extended profile is a uniform cylinder without perpendicular grip geometry; the action produces a metallic click, not a gunshot transient. Weapon detections showing a longitudinal extension pattern are classified as tool deployment.',
-        defaultActive: false,
-    },
-    reflectiveSafetyVest: {
-        label: 'Reflective Vest Night Glare / Sensor Blind', category: 'environmental',
-        detection: 'Camera sensor saturates (luminance >255, >30% of frame) from retroreflective material at night. Duration >50ms (sustained, not a gunshot flash transient). Source is wide and diffuse (vest surface), not a point source. GPS near road work or construction.',
-        thresholdAdjust: { gunshot: 15, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'High-intensity retroreflective material photographed at night by flashlight can saturate BWC sensor pixels, then overcompensate with a dark halo. Differentiator: a reflective vest bloom is wide and diffuse; a muzzle flash is a small point-source event. Gunshot threshold raised 15% after any diffuse saturating glare from a wide non-point source.',
-        defaultActive: false,
-    },
-    selfieStickLongGun: {
-        label: 'Selfie Stick / Gimbal Classified as Long Gun', category: 'environmental',
-        detection: 'CV detects elongated object (50–150cm apparent length) held at shoulder-height by a bystander facing the officer (filming orientation). Object is thin, lightweight. No audio threat. Scene: public event, protest, or media presence.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'A selfie stick or camera monopod approximates a rifle profile in object detection models. Key CV distinguisher: it terminates in a camera/phone (rectangular head, screen visible), not a muzzle. The holder\'s posture is filming-oriented (facing the camera), not weapon-presenting (sighted). Elongated object detections in crowd contexts require audio corroboration before dispatch.',
-        defaultActive: false,
-    },
-    fingerGun: {
-        label: 'Finger Gun / Aggressive Pointing FP', category: 'environmental',
-        detection: 'CV detects hand in extension grip with index finger pointing forward. Object confidence: 45–65% in weapon class. No metallic object present. Scene context: verbal altercation (raised voices, no gunshot). Motion is gesticulating, not aim-stable.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'A person pointing their index finger aggressively during an argument produces a hand pose that weapon detection models often flag. The CV differentiator: no metallic/hard object is present in the hand; the hand moves continuously in a gesticulating pattern rather than holding a stable aim point. Weapon classification requires a detected object with non-zero mass held stable for >200ms.',
-        defaultActive: false,
-    },
-    medicalEquipment: {
-        label: 'Medical Equipment / Defibrillator FP', category: 'temporal',
-        detection: 'CV detects a large rectangular object held by a person in non-uniform clothing (EMS). Object has attached cable or lead wires. Audio: high-pitch charge tone (700–1200Hz) or electrical discharge. GPS: hospital, ER, or ambulance landing zone.',
-        thresholdAdjust: { gunshot: 0, struggle: 20, keyword: 0 },
-        suppressModels: [],
-        education: 'A defibrillator (AED) held at waist height during a cardiac emergency is a large object with cable attachments — a posture CV models associate with an armed subject. Its discharge arc sound resembles a TASER. Mitigating factors: flat paddle design inconsistent with any firearm; EMS operator; medical GPS context. Struggle threshold raised 20% during confirmed medical response contexts.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // TACTICAL & OPERATIONAL LOGIC ERRORS (Batch 3)
-    // ══════════════════════════════════════════════════════════════
-    code4Delay: {
-        label: 'Code 4 Delay (Cancel After Trigger)', category: 'temporal',
-        detection: 'Threat event detected at T=0. Officer verbal cancel ("Code 4", "I\'m OK", "Stand down") detected at T=+0.5s to T=+5s. Processing pipeline would dispatch the threat before the cancel is processed due to buffering latency.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'A real-world event-timestamp ordering gap: if an officer says "Code 4" within 5 seconds of a trigger event, the audio pipeline may process the threat first due to buffering. Mitigation: a 3-second confirmation hold is applied to all auto-dispatch decisions. During those 3 seconds, the system listens for a verbal cancel. If detected within the hold window, dispatch is suppressed. Cancel always wins over trigger when within the 5-second window.',
+        education: 'Gunshot threshold raised 15% for 10s after Taser detected.',
         defaultActive: false,
     },
     doorBreaching: {
-        label: 'Door Breaching (Ram / Halligan FP)', category: 'environmental',
-        detection: 'Massive acoustic impulse >95dB combined with sharp structural vibration (multi-axis, high-g). Duration 20–200ms, followed by structural material deforming and falling. CAD call type: WARRANT, SEARCH, ENTRY, or SWAT.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
+        label: 'Door Breaching', category: 'environmental',
+        detection: 'High-amplitude impulse + CAD entry code.',
+        thresholdAdjust: {},
         suppressModels: ['gunshot'],
-        education: 'A battering ram strike produces a massive acoustic and mechanical impulse that registers as a large-caliber gunshot or explosion, while the physical shockwave mimics an "officer down" event. Key signal: CAD call type. If the unit is assigned to an entry operation, door-breaching sounds are expected. Gunshot model suppressed during confirmed entry operations. A human observer flag is still generated for audit.',
+        education: 'Gunshot model suppressed during confirmed entry operations.',
         defaultActive: false,
     },
-    undercoverSlang: {
-        label: 'Undercover / Buy-Bust Street Slang', category: 'temporal',
-        detection: 'Keyword detected ("heat", "straps", "bangers", "tools") in street-slang context. Officer CAD status: UNDERCOVER, SURVEILLANCE, or BWC tag: EVIDENCE_COLLECTION. Vocal tone calm and conversational. No distress audio.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 25 },
+    holsterDraw: {
+        label: 'Officer Weapon Draw', category: 'environmental',
+        detection: 'CV draw motion + no audio threat.',
+        thresholdAdjust: {},
         suppressModels: [],
-        education: 'During undercover buy-bust operations, officers use street slang ("heat", "straps", "blowers") to maintain cover. When an officer is flagged in CAD as undercover or evidence-collecting, all keyword thresholds raised 25% and trigger words are evaluated for calm conversational tone. Audio is preserved under chain-of-custody for evidence, but no dispatch is generated.',
+        education: 'Weapons detected in officer own body zone are classified as deployment.',
         defaultActive: false,
     },
-    taserRapidFire: {
-        label: 'TASER Rhythmic Clacking (Rapid-Fire FP)', category: 'environmental',
-        detection: 'Regular rhythmic audio transients at 5–15 per second (matching deployed TASER probe cycling). Each transient <5ms with 19Hz electrical arc fundamental. Spectral envelope matches TASER drive-stun profile, not ballistic firearm discharge.',
-        thresholdAdjust: { gunshot: 15, struggle: 0, keyword: 0 },
+    narrativeRecall: {
+        label: 'Narrative Recall', category: 'temporal',
+        detection: 'Past-tense threat keywords + calm conversational tone.',
+        thresholdAdjust: { keyword: 20 },
         suppressModels: [],
-        education: 'A deployed TASER cycling produces a series of high-frequency clicks that audio models interpret as rapid semi-automatic fire. The distinguishing acoustic features: TASER pulses fire at a fixed 19Hz arc frequency and are extremely brief (<5ms each), while firearm reports are broadband, >20ms, and have a ballistic crack. Gunshot threshold raised 15% when a rhythmic 19Hz electrical arc pattern is detected.',
+        education: 'Keyword threshold raised 20% during debrief contexts.',
         defaultActive: false,
     },
-    footfallBiometrics: {
-        label: 'Foot Pursuit Heavy Footfalls (Struck FP)', category: 'environmental',
-        detection: 'Regular high-impact accelerometer spikes (1–3g, 1.5–3Hz cadence) consistent with running or stair-climbing. Officer GPS velocity >3 m/s. No distress audio. No struggle model audio co-present.',
-        thresholdAdjust: { gunshot: 0, struggle: 12, keyword: 0 },
-        suppressModels: [],
-        education: 'Running in a full duty belt generates impact forces of 1–3g per footfall at 1.5–3Hz — a pattern interpreted as being repeatedly struck. The differentiating feature: running has a regular bilateral cadence pattern; impacts from being struck are irregular and asymmetric. Regular bilateral cadence + sustained GPS velocity = locomotion, not impact. Struggle threshold raised 12%.',
-        defaultActive: false,
-    },
-    brushWhipping: {
-        label: 'Brush / Vegetation Whipping BWC', category: 'environmental',
-        detection: 'Rapid repeated visual obstructions across frame (dark streaks, >5 per second). Audio: irregular broadband percussion from vegetation contact. GPS: park, rural, or wilderness area. Officer velocity: 2–6 m/s. No human distress.',
-        thresholdAdjust: { gunshot: 0, struggle: 15, keyword: 0 },
-        suppressModels: [],
-        education: 'During search operations in heavy brush, branches continuously whip across the BWC lens and microphone, creating visual streaks (resembling physical altercation motion) and percussive audio. When GPS is non-urban and motion is sustained at running pace, visual and audio events are reclassified as vegetation contact and struggle threshold raised 15%.',
-        defaultActive: false,
-    },
-    radioHandReach: {
-        label: 'Radio Hand-Reach / Shoulder Mic FP', category: 'environmental',
-        detection: 'CV tracks officer\'s hand moving from resting to upper-chest/shoulder area (shoulder mic location). Hand retrieves a dark small rectangular object. Motion trajectory is lateral-to-chest, not waist-to-forward. No audio threat.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'Officers reach for their shoulder radio or lapel mic dozens of times per shift. A black radio handset moving from shoulder to the officer\'s face follows a trajectory CV models associate with a weapon transition. Spatial discriminator: radio retrieval originates from the upper chest and terminates at the face; a weapon draw originates from the hip. Upper-chest-to-face object trajectory = communication device retrieval.',
-        defaultActive: false,
-    },
-    windowPunch: {
-        label: 'Window Punch / Glass Shatter', category: 'environmental',
-        detection: 'Sharp high-frequency acoustic event (3–12kHz peak, <100ms) followed by sustained high-frequency ring tone (glass resonance at 2–8kHz for 200–1500ms). No ballistic crack. GPS: adjacent to a vehicle.',
-        thresholdAdjust: { gunshot: 12, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'A window punch or spark plug fragment breaking laminated glass produces an impulse that acoustic models classify as a small-caliber gunshot. The distinctive differentiator: glass fracture is followed by a sustained ring tone from glass resonating as it fractures. A gunshot produces no such ring tone — only a ballistic echo decay. Gunshot threshold raised 12% when a high-frequency ring tone follows an impulse within 10–100ms.',
-        defaultActive: false,
-    },
-    safeTable: {
-        label: 'Evidence Firearm (Safe Table / Precinct)', category: 'temporal',
-        detection: 'Officer GPS: police station or evidence lab geofence. Audio: firearm slide-rack or action sound. CV: firearm visible at a table in a controlled environment. CAD status: OFF_CALL, END_OF_SHIFT, or EVIDENCE_PROCESSING.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: ['gunshot', 'struggle'],
-        education: 'Officers clear and process recovered firearms at a "Safe Table" at the precinct. The slide-rack sound and visual of a firearm are identical to a real threat in audio and CV classification. Contextual signals are definitive: station geofence + off-call status + evidence processing CAD code. When all three confirmed, gunshot and struggle models are suppressed. All weapon detections are logged (not dispatched) as evidence handling events for the audit trail.',
-        defaultActive: false,
-    },
-    patDown: {
-        label: 'Pat-Down / Legal Search Bulge FP', category: 'temporal',
-        detection: 'CV detects officer\'s hands making contact with subject\'s clothing at waist, belt, or pocket areas. Subject is stationary. Close-range foreshortening makes a fabric bulge appear as a "weapon in waistband" grip. No audio threat. CAD: TERRY_STOP or ARREST.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'During a pat-down, the officer\'s hands move systematically over the subject\'s waistband area. At close range, the BWC\'s wide-angle lens foreshortens the scene, making officer hand pressure on a fabric bulge appear as a grip-on-weapon motion. When CAD indicates a search or stop context, waist-area contact detections are reclassified as search-maneuver events, not weapon draws.',
-        defaultActive: false,
-    },
-    loudMusicVibration: {
-        label: 'Loud Bass Music / BWC Mount Vibration', category: 'environmental',
-        detection: 'Regular rhythmic low-frequency vibration on BWC accelerometer (20–200Hz, periodic) coincident with external music audio (beat frequency matches vibration). Strong bass energy at 60–200Hz in audio. No impact signature consistent with human strike. Officer GPS adjacent to a stationary vehicle.',
-        thresholdAdjust: { gunshot: 0, struggle: 12, keyword: 0 },
-        suppressModels: [],
-        education: 'A subwoofer system in a nearby vehicle physically vibrates the BWC mount through nearby surfaces. The rhythmic vibration at bass frequencies (60–200Hz) registers as repeated physical impacts on the accelerometer, which struggle models interpret as the officer being struck. Differentiating feature: the vibration frequency precisely matches the audio bass content (beat detection), forming a correlated mechanical-acoustic pair. When this correlation is confirmed, struggle threshold raised 12%.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // META & PSYCHOLOGICAL (Batch 4)
-    // ══════════════════════════════════════════════════════════════
     sarcasmDarkHumor: {
-        label: 'Sarcasm / Dark Humor FP', category: 'temporal',
-        detection: 'Trigger keyword detected ("shoot me", "kill me", "just shoot it") within a low-arousal vocal context (normal pitch, no breathiness, no tremor). Speaker tone analysis: flat affect, no urgency prosody. Context: conversational audio with laughter or partner voice also present. Audio segment does not contain distress phonemes.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 25 },
+        label: 'Sarcasm / Dark Humor', category: 'temporal',
+        detection: 'Trigger word + flat affect/conversational context.',
+        thresholdAdjust: { keyword: 25 },
         suppressModels: [],
-        education: 'Officers frequently use dark humor as a stress coping mechanism: "Go ahead and shoot me," "I\'m already dead," "Kill me now." An NLU system that processes only the surface-level keyword (\"shoot,\" \"kill\") without prosodic and contextual analysis will trigger on these statements. The differentiating features: (1) Low arousal vocal profile — no elevated pitch, breathiness, or tremor that accompanies genuine distress; (2) Partner voice co-present with a conversational dynamic (indicating a non-emergency exchange); (3) No high-amplitude audio event preceding the statement. Keyword threshold raised 25% when these sarcasm indicators are detected. The system logs the event for audit without dispatching.',
+        education: 'Keyword threshold raised 25% when sarcasm indicators detected.',
         defaultActive: false,
     },
-    thirdPersonNarrative: {
-        label: 'Third-Person Narrative / Training Speech FP', category: 'temporal',
-        detection: 'Trigger keyword detected ("gun", "weapon", "shoot") within a sentence containing a third-person hypothetical marker ("if he", "suppose someone", "what if", "in that scenario", "now imagine"). NLU dependency parse identifies the keyword as the object of a conditional clause, not a direct indicative statement. Speaker cadence suggests instructional context (slower, deliberate pace, pauses after key phrases).',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 30 },
-        suppressModels: [],
-        education: 'Training scenarios and rookie coaching consistently involve hypothetical weapon-related language: "If he were to pull a gun right here..." or "Suppose a suspect draws a weapon." These conditional-clause structures are syntactically distinct from direct threat speech. NLU dependency parsing identifies the keyword as residing in a subordinate conditional clause ("if-then" structure), which is a strong indicator of hypothetical speech. Additionally, instructional speaking pace (longer inter-phrase pauses, deliberate enunciation) lowers urgency scores. Keyword threshold raised 30% for conditional-clause keyword detections.',
-        defaultActive: false,
-    },
-    radioClash: {
-        label: 'Radio Clash (Two-Officer Crosstalk)', category: 'environmental',
-        detection: 'Keyword or struggle audio detected that has acoustic properties of a radio transmission: band-limited (300–3400Hz), heavy compression artifacts, characteristic radio squelch carrier-wave envelope. Source audio does not match room/environment reverb profile of the BWC\'s current acoustic space. Officer B\'s BWC detects Officer A\'s radio transmission as "nearby voice."',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 20 },
-        suppressModels: [],
-        education: 'When two officers are within radio range (20–50 feet), Officer A\'s keyed transmission is audible to Officer B\'s BWC. The BWC has no way to know this is a radio signal (filtered, compressed, 300–3400Hz band) rather than a real person speaking. The key audio discriminator: radio transmissions have a characteristic spectral fingerprint — band-limited (no frequency above 3400Hz), constant-amplitude carrier envelope, and audio compression artifacts. An officer\'s real voice in the same space contains full-spectrum frequencies (200Hz–8kHz+) with natural room reverb. When radio spectral fingerprint is confirmed (BW <3.4kHz + carrier artifact), keyword confidence raised 20% and source classified as radio transmission, not ambient threat.',
-        defaultActive: false,
-    },
-    languageBarrier: {
-        label: 'Language Barrier / Non-English Phoneme Hallucination', category: 'temporal',
-        detection: 'Keyword confidence: 55–78% (ambiguous zone). Audio contains non-English phoneme patterns (foreign-accent prosody, non-English lexical structure). Officer is using a translation app (detected by secondary audio source) or spoken language classified as non-English. Keyword candidate has high phonetic overlap with a non-English word in the detected language.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 25 },
-        suppressModels: [],
-        education: 'AI speech models trained primarily on English data (which describes most KWS systems) have a known failure mode: they "hallucinate" English trigger words from non-English phoneme sequences. Spanish tactical commands, Mandarin syllables, or Arabic speech segments can produce high-confidence false matches for English trigger words. For example, the Spanish "fue" (was) or "fuego" (fire) can trigger English KWS for "fire." When non-English language is detected in the audio stream (language ID model), English keyword threshold raised 25% and the NLU requires the suspected keyword to pass a secondary acoustic phone-by-phone verification against the English phoneme sequence.',
-        defaultActive: false,
-    },
-    mentalHealthRepeat: {
-        label: 'Mental Health Call / Mirroring Repeat FP', category: 'temporal',
-        detection: 'Trigger keyword detected (\"kill\", \"hurt\", \"gun\", \"die\"). Immediately prior 5s: subject voice with high distress markers (elevated pitch, crying, tremor). Officer voice immediately follows with same keyword in lower-arousal, slower delivery (de-escalation mirroring pattern). CAD call type: EDP, MENTAL_HEALTH, or CRISIS.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 30 },
-        suppressModels: [],
-        education: 'Active listening and de-escalation technique requires officers to reflect a subject\'s words back to them: "I hear you saying you want to hurt yourself." The keyword "hurt" triggers the NLU. The differentiating pattern: (1) CAD call is EDP/mental health; (2) the same keyword appeared in the subject\'s voice (high distress) 1–3 seconds before the officer\'s repetition; (3) the officer\'s repeat uses a lower arousal, slower, deliberate vocal delivery (de-escalation prosody vs. distress prosody). When this mirror-repeat pattern is confirmed with a mental health CAD context, keyword threshold raised 30% and the event is logged as de-escalation audio for audit, not dispatched.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // HARDWARE & PHYSICS (Batch 4)
-    // ══════════════════════════════════════════════════════════════
-    magnetometerInterference: {
-        label: 'Magnetometer Interference (Power Lines / MRI)', category: 'environmental',
-        detection: 'BWC internal compass/gyro shows anomalous rapid rotation or high-rate oscillation (>45°/s with no corresponding GPS movement). No accelerometer impact spikes. Officer GPS: adjacent to high-voltage power line corridor, electrical substation, or hospital with MRI unit. Magnetic field strength detected is >3x ambient baseline.',
-        thresholdAdjust: { gunshot: 0, struggle: 15, keyword: 0 },
-        suppressModels: [],
-        education: 'High-voltage transmission lines and large MRI machines generate extremely strong magnetic fields (10–300mT for MRI; 50–100µT near HV lines). The BWC\'s internal magnetometer and MEMS gyroscope can be disrupted by these fields, producing phantom rotation signals. The gyro\'s reported angular velocity then falsely indicates the officer is spinning or thrashing — matching the accelerometer profile of a physical struggle. The discriminating signal: gyro shows rapid rotation but accelerometer shows no corresponding G-force, and GPS shows the officer is stationary. Struggle threshold raised 15% when gyro-accelerometer divergence is detected adjacent to known high-field environments.',
-        defaultActive: false,
-    },
-    radioPouchClip: {
-        label: 'Radio Pouch / Duty Belt Clip FP', category: 'environmental',
-        detection: 'Short broadband burst (0.5–8kHz, <150ms) with a sharp leading transient and minimal decay. Audio source correlated with officer body movement (accelerometer). Spectral pattern matches textile separation or plastic-on-metal snap event, not a firearm.',
-        thresholdAdjust: { gunshot: 8, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'Unsnapping or zipping a radio pouch, magazine pouch, or equipment clip on a duty belt produces a sharp broadband click/zip distinct from velcro (which has a frequency sweep). This type of click can be mistaken for a mechanical firearm action at close range. Key discriminator: firearm actions (slide rack, hammer cock) have a specific metallic resonance profile with a decay longer than 100ms, while plastic/fabric clip sounds decay in under 50ms. Additionally, the clip sound is correlated with officer body movement. Gunshot threshold raised 8% when a short-decay (<50ms) broadband click is detected concurrent with officer-origin body movement.',
-        defaultActive: false,
-    },
-    lightBarStrobe: {
-        label: 'Police Light Bar Strobe (Wet Road Reflection)', category: 'environmental',
-        detection: 'Rhythmic luminance oscillation in BWC frame matching 1–3Hz pattern (light bar rotation frequency) on wet/reflective surface. Flash source is wide-angle, not a point source. Color channels alternate red/blue (police light spectrum). Audio: no concurrent gunshot transient.',
-        thresholdAdjust: { gunshot: 15, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'A rotating police light bar reflecting off rain-wet pavement creates a bright, rhythmic strobe visible to the officer\'s own BWC. The CV model can interpret this rhythmic flash pattern as repetitive muzzle flashes, especially since the 1–3 Hz rotation rate falls within the cadence range of semi-automatic fire. The key discriminators: (1) The flash is wide-angle and diffuse (pavement reflection), not a point-source muzzle flash; (2) Red/blue alternating color channels uniquely identify the police light spectrum; (3) No concurrent gunshot acoustic signature. Gunshot threshold raised 15% during confirmed light-bar-reflection strobe events.',
-        defaultActive: false,
-    },
-    rainSweatLens: {
-        label: 'Rain / Sweat Lens Distortion (Funhouse FP)', category: 'environmental',
-        detection: 'Video frame analysis shows partial lens occlusion: a large optical distortion region (>8% of frame area) with high refractive index variation. The distortion causes elongation or blooming of objects in the affected region. Audio: no corresponding distress. Light levels dropping (rain/humidity). Distortion region changes shape between frames (liquid rather than surface contaminant).',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'A large raindrop or sweat droplet on the BWC lens acts as a convex lens element, distorting the image in its region — elongating shapes, blooming edges, and making arms or objects appear weapon-length. The CV model, seeing an elongated shape approximating a weapon, can generate a weapons confidence in its ambiguous range. The discriminating detection: the distortion region changes shape between consecutive frames (liquid dynamics), whereas a real weapon maintains a consistent shape. Any weapon detection within a frame containing a detected liquid distortion region requires distortion-free confirmation from a following frame.',
-        defaultActive: false,
-    },
-    chestThump: {
-        label: 'Chest Thump / Cough Into Mic FP', category: 'environmental',
-        detection: 'Single high-amplitude, low-frequency transient (20–200Hz dominant, <80ms) directly into the BWC microphone. Audio source is the microphone housing itself (no external reverb). Spectral profile: strong low-frequency content, minimal high-frequency (no ballistic crack component). Followed by airway noise (cough, exhale) within 500ms.',
-        thresholdAdjust: { gunshot: 12, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'Coughing or clearing the throat sends a low-frequency pressure wave directly into a chest-mounted BWC microphone, creating a "boom" directly proportional to how close the mouth is to the mic. This registers as a massive low-frequency transient that gunshot models may classify as a proximity explosion or large-caliber weapon. The spectral discriminator: a cough/thump is dominated by very low frequencies (<200Hz) with minimal high-frequency content, while all gunshots have significant energy above 1kHz due to the ballistic crack and mechanical action. Additionally, cough/airway noise follows within 500ms. Gunshot threshold raised 12% after any proximity microphone impact event.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // FRINGE ENVIRONMENTAL (Batch 4)
-    // ══════════════════════════════════════════════════════════════
-    bugZapper: {
-        label: 'Bug Zapper / Electric Arc Pop FP', category: 'environmental',
-        detection: 'Single sharp high-frequency transient (<10ms) with 19Hz electrical arc harmonic. Spectral: dominant energy 2–8kHz, no ballistic infrasonics (<100Hz). Audio environment: indoor, quiet baseline. Repeated at irregular intervals (insect-driven, not periodic). GPS: residential or commercial building interior.',
-        thresholdAdjust: { gunshot: 10, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'A bug zapper executes a high-voltage electrical arc discharge when an insect contacts the grid — producing a sharp, high-frequency "pop" in the 2–8kHz range at irregular intervals. Some shot-detection algorithms trained on handgun audio (which also has energy in 2–8kHz) will flag this as a small-caliber discharge. The differentiating features: (1) The bug zapper produces electrical arc harmonics at 19Hz, absent in true gunshots; (2) Intervals are irregular and biologically driven (not periodic); (3) No infrasonic component (<100Hz) that all gunshots produce. Gunshot threshold raised 10% when 19Hz arc harmonic is present in a quiet indoor environment.',
-        defaultActive: false,
-    },
-    highWindBuffeting: {
-        label: 'High Wind Buffeting (60+ mph)', category: 'environmental',
-        detection: 'Sustained broadband audio saturation from wind turbulence directly on BWC microphone (>85dB continuous, wideband, non-periodic). Spectral profile: flat across 20Hz–8kHz (wind produces near-white noise). No intelligible speech. GPS velocity: officer moving at sustained speed OR weather API confirms high wind warning. Wind turbulence on microphone vs. human scream: human screams are narrowband (300–3500Hz) with formant structure.',
-        thresholdAdjust: { gunshot: 15, struggle: 15, keyword: 20 },
-        suppressModels: [],
-        education: 'Extreme wind (60+ mph) hitting a BWC microphone directly creates a sustained broadband noise (near white noise) at very high SPL. Struggle models may detect this as "screaming" and keyword models may find phoneme-like patterns in the turbulence noise. The spectral discriminator: real human distress sounds (screaming, struggle) have formant structure — peaks at specific frequencies corresponding to the vocal tract resonances. Wind turbulence produces a flat, featureless spectral profile. All three model thresholds raised significantly during confirmed high-wind conditions. Outdoor anemometer data or GPS-correlated weather API confirm active wind advisory.',
-        defaultActive: false,
-    },
-    skateboardPop: {
-        label: 'Skateboard "Pop" / Pavement Clack FP', category: 'environmental',
-        detection: 'Single sharp transient (2–8kHz, <50ms). Spectral: hard surface impact with wood resonance at 400–800Hz (~skateboard deck frequency). Irregular cadence. GPS: urban sidewalk, park, or skate-park environment. No infrasonic component (<100Hz). No muzzle-blast spectral signature. No concurrent distress audio.',
-        thresholdAdjust: { gunshot: 10, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'A skateboard "pop" (the trick initiation where the tail of the deck strikes the pavement) is a notorious false positive for small-caliber gunfire in acoustic gunshot detection systems, including acoustic ShotSpotter-type systems. The pop shares similar frequency content (2–8kHz) and duration (<50ms) with a .22LR or small pistol discharge. The key differentiating spectral feature: a skateboard pop has a strong wood-resonance harmonic at 400–800Hz (the deck material vibrating) and no infrasonic component, while even small-caliber rounds produce significant energy below 200Hz from the ballistic muzzle blast. Gunshot threshold raised 10% for any short transient (<50ms) with wood-resonance harmonics in an urban pedestrian environment.',
-        defaultActive: false,
-    },
-    carWash: {
-        label: 'Automated Car Wash Chaos FP', category: 'environmental',
-        detection: 'An officer\'s BWC is active while driving through a car wash. Acoustic profile: sustained high-pressure water impact (80–95dB, broadband), mechanical machinery vibration. Visual profile: near-total darkness punctuated by spray arcs and brush motion creating rapid visual obstructions. Accelerometer: sustained low-frequency vibration from brushes. No GPS movement after entering (officer is stationary in the wash).',
-        thresholdAdjust: { gunshot: 15, struggle: 20, keyword: 15 },
-        suppressModels: [],
-        education: 'A car wash creates a perfect storm of multi-modal false positives for a BWC AI system. High-pressure water impact produces broadband high-amplitude acoustic events (similar to impact sounds). Brush rotation creates visual obstructions (similar to physical struggle). Darkness with burst illumination from nozzle lights resembles strobing. The discriminating signal: the officer is stationary (GPS), the acoustic and visual events are sustained and periodic (not event-based), and the GPS-confirmed location is a car wash. All three model thresholds are raised when the officer is confirmed stationary inside a high-vibration/high-noise environment.',
-        defaultActive: false,
-    },
-    beanBagRound: {
-        label: 'Bean Bag / Cracker Shell (Less-Lethal FP)', category: 'temporal',
-        detection: 'Single high-amplitude acoustic transient (>90dB) with no ballistic crack (no supersonic component). Spectral: broad impulse with strong low-frequency energy from propellant, weaker high-frequency vs. regular ammunition. CAD call type: WILDLIFE, ANIMAL_CONTROL, or officer CAD note includes less-lethal deployment. Post-event: no secondary acoustic event (no return fire, no screaming, no struggle continuation).',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'A less-lethal bean bag round or "cracker shell" (pyrotechnic wildlife deterrent) produces a firearm discharge that is acoustically identical to lethal ammunition from the standpoint of a shot-detector — same propellant charge, same impulsive sound. The CAD context is the primary discriminator: when the assigned call type is wildlife control or animal management, any firearm acoustic event is classified as less-lethal deployment first, lethal threat second. The absence of post-event secondary sounds (no distress, no return fire, no sustained activity) confirms non-lethal encounter. Dispatch is suppressed pending officer verbal confirmation. Less-lethal deployment is logged automatically to the audit trail.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // HUMAN-IN-THE-LOOP LOGIC GAPS (Batch 4)
-    // ══════════════════════════════════════════════════════════════
-    bathroomBreak: {
-        label: 'Bathroom Break / Unmuted BWC FP', category: 'temporal',
-        detection: 'Officer GPS is stationary. BWC audio shows high-amplitude impulsive sounds (stall door slam, toilet flush transient at 200–800Hz, plumbing knock). No distress audio. Accelerometer shows minimal movement consistent with a stationary seated or standing position. Last activity timestamp: officer has not spoken in >5 minutes.',
-        thresholdAdjust: { gunshot: 12, struggle: 10, keyword: 0 },
-        suppressModels: [],
-        education: 'An officer on a personal bathroom break who forgets to activate the BWC\'s standby or mute function exposes the AI to a series of impulsive sounds that individually resemble threat events: a heavy stall door slam (broadband impact), a toilet fill valve hiss (sustained high-frequency), hand-dryer noise (broadband), or metal plumbing knock (high-amplitude transient). None of these sounds contain the distress prosody (rushed speech, screaming) or escalating acoustic events that precede real threats. When the officer has been stationary for >5 minutes with no speech detected and impulsive sounds occur in a single-occupant acoustic space, thresholds are raised and the event is classified as personal-break audio.',
-        defaultActive: false,
-    },
-    undercoverSafeWord: {
-        label: 'Undercover Safe Word / "Piece" Keyword FP', category: 'temporal',
-        detection: 'KWS detects a firearm euphemism ("piece", "heat", "hardware", "banger", "iron") spoken by a non-officer voice adjacent to the BWC. Officer CAD status does not include UNDERCOVER. Vocal tone of the speaker: calm, conversational, no distress markers. Context: a drug/contraband negotiation-type audio environment.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 20 },
-        suppressModels: [],
-        education: 'In street-level drug and weapons transactions, gun references ("you got a piece?", "what\'s the hardware?") are common transactional language, not immediate threats. The KWS system, without slang-context awareness, may flag these as threat keywords. The discriminating features: (1) The speaker is a bystander/subject, not the officer; (2) Vocal tone is calm and transactional; (3) No concurrent weapon audio. The NLU slang-context module tags these as "transactional firearm reference" (subject intending to buy/sell), not "officer threat declaration." Keyword threshold raised 20% for slang euphemisms in conversational transactional context.',
-        defaultActive: false,
-    },
-    firmwareBug: {
-        label: 'Firmware Bug / OTA Triggered FP', category: 'network',
-        detection: 'Multiple BWC devices across unrelated locations simultaneously trigger identical alert types within a short window (<60s). Alert pattern is statistically improbable given geographic distribution (officers are not co-located). Alert trigger audio event is a common ambient sound (seatbelt chime, elevator ding, microwave beep). System-level: recent OTA firmware update deployed to the affected device fleet.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: ['gunshot', 'struggle'],
-        education: 'A software regression in a firmware update to the BWC fleet could introduce a bug where a specific common audio event (e.g., a vehicle seatbelt warning chime at a particular frequency) triggers the gunshot or struggle model with artificially inflated confidence. The detection mechanism: if the same alert type fires across 5+ geographically distributed officers within 60 seconds, it is statistically impossible to be a real correlated event (unless it\'s a mass-casualty scenario, which has additional corroboration signals). The system immediately quarantines the affected firmware version, reverts to the previous known-good version, and all triggered alerts are flagged as FIRMWARE_SUSPECT in the audit log pending manual review.',
-        defaultActive: false,
-    },
-    tacticalBreathing: {
-        label: 'Tactical Breathing / Box Breathing FP', category: 'temporal',
-        detection: 'Rhythmic breathing audio pattern: 4-second inhale, 4-second hold, 4-second exhale, 4-second hold (0.0625Hz cadence). Volume: elevated from proximity to chest-mounted mic. Continuity: sustained for >30s. No distress speech. No struggle audio. Officer status: training, high-stress, or pursuit-recovery context. Breathing cadence is deliberate and highly regular (mechanical regularity, not natural breathing variation).',
-        thresholdAdjust: { gunshot: 0, struggle: 8, keyword: 0 },
-        suppressModels: [],
-        education: 'Box breathing (4-4-4-4 cadence) is a tactical breathing technique used by officers during high-stress but safe contexts — after a foot pursuit, during a tense negotiation, or in tactical training. The rhythmic, high-amplitude breathing into the chest-mounted mic can be classified by the struggle model as "labored breathing" or "choking/respiratory distress." The discriminating feature: tactical breathing has an extremely regular mechanical cadence (±0.2s variance) that natural respiratory distress does not exhibit — real choking is irregular and degrading. The 4-4-4-4 cadence is uniquely regular. When deliberate cadence is detected with no distress speech, struggle threshold raised 8%.',
-        defaultActive: false,
-    },
-    handcuffClicks: {
-        label: 'Handcuff Ratcheting / Application Clicks', category: 'environmental',
-        detection: 'Series of rapid, evenly-spaced metallic clicks (8–16 per second) each <10ms duration, with 5–20kHz peak. Pattern: clicks occur in a short burst (0.5–2s total) then cease. Audio correlated to officer arm/hand movement (accelerometer). CAD call type includes ARREST or STOP. No concurrent gunshot transient.',
-        thresholdAdjust: { gunshot: 12, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'Applying handcuffs produces a rapid metallic ratcheting sound (typically 8–16 clicks/second as the cuff closes) that some audio models flag as semi-automatic cycling. The key discriminators: (1) The handcuff ratchet has a very high fundamental frequency (5–20kHz metallic range) compared to firearm cycling (which is dominated by lower mechanical frequencies); (2) Total duration is ultra-short (0.5–2s burst for one application); (3) An arrest-context CAD call immediately contextualizes the action; (4) Officer hand movement is correlated (handcuff application requires deliberate hand movement toward the subject). Gunshot threshold raised 12% during confirmed arrest-context scenarios with high-frequency metallic burst events.',
-        defaultActive: false,
-    },
-
-    // ══════════════════════════════════════════════════════════════
-    // SMART CITY INTERFERENCE (Batch 4)
-    // ══════════════════════════════════════════════════════════════
-    droneInterference: {
-        label: 'Police Drone Motor Whine Interference', category: 'environmental',
-        detection: 'Continuous high-frequency tonal audio (1,000–12,000Hz fundamental, harmonic series at multiples). Source is stationary or moves slowly relative to officer. Acoustic doppler shift present when drone moves. Audio from drone is constant, not impulsive. Officer GPS co-located with known drone deployment area (from CAD). Human speech masked: intelligibility score drops >40%.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 20 },
-        suppressModels: [],
-        education: 'A police drone hovering at low altitude produces a sustained multi-frequency whine from its brushless motors (typically 1–12kHz range with harmonics at multiples of the motor fundamental). This drone noise directly masks human speech in the same frequency band as keyword spotting (especially 300–3400Hz conversational frequency range). The result is degraded KWS performance — either missing real keywords or generating phoneme hallucinations from the drone noise. When drone-proximity audio is confirmed (tonal, continuous, non-impulsive, CAD drone-deployment co-located), keyword threshold raised 20% and the system logs "drone interference — KWS degraded" to ensure dispatchers are aware of reduced detection accuracy.',
-        defaultActive: false,
-    },
-    evPedestrianAlert: {
-        label: 'EV Pedestrian Alert Sound Masking', category: 'environmental',
-        detection: 'Continuous low-frequency synthetic sound (AVAS — Acoustic Vehicle Alerting System): artificial hum/tone at 56–75dB, 315–5000Hz per UN regulation R138. Audio source moving at pedestrian-speed approach velocity (0.5–1.5 m/s relative to officer). Genuine pedestrian footstep audio would be present below this sound floor. No speech or distress audio detected.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 15 },
-        suppressModels: [],
-        education: 'Under UN Regulation R138 and NHTSA regulations, electric vehicles must emit a minimum sound (AVAS system) at low speeds. This artificial sound is precisely in the frequency range (315–5000Hz) that overlaps with human speech and footsteps. An officer near a slow-moving EV may not hear approaching footsteps masked by the AVAS sound, diminishing situational awareness — and the AI may similarly fail to detect or misclassify low-amplitude audio events. Additionally, the AVAS tone — a synthetic, non-natural periodic sound — can cause KWS phoneme hallucinations near trigger-word frequencies. Keyword threshold raised 15% when an AVAS-signature sound source is detected at close range.',
-        defaultActive: false,
-    },
-    smartDoorbellCrosstalk: {
-        label: 'Smart Doorbell / AI Voice Crosstalk', category: 'environmental',
-        detection: 'Officer GPS: residential or commercial building entrance. Audio detects automated speech from a proximity source (Ring, Nest Hello, or similar): characteristic prerecorded message ("You are being recorded," "Hello, how can I help you?"). Source audio has synthetic prosody (uniformly timed, flat affect, no natural breath pauses). No human distress. Audio quality indicates external speaker playback, not a real voice.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 20 },
-        suppressModels: [],
-        education: 'Smart doorbells that play automated vocal messages can create audio crosstalk with the BWC\'s NLU system. The automated message may contain near-trigger words in its phrasing, and the BWC\'s KWS may attribute the audio to the officer\'s environment rather than an external speaker. The key discriminating feature: synthetic speech has a characteristic prosody profile — uniformly timed syllables, flat pitch contour, no natural breath patterns, and often compressed audio artifacts from the building\'s speaker driver. The NLU TTS-detection module flags this as a synthetic voice source and raises keyword threshold 20%. Log entry notes proximity AI voice source for auditors.',
-        defaultActive: false,
-    },
-    mirrorIncident: {
-        label: 'Mirror Reflection (Officer Seen as Armed Threat)', category: 'environmental',
-        detection: 'CV weapon detection triggered by an object visible in the frame. Object analysis: the detected "person" has identical clothing/silhouette to the officer. Movement of the "subject" is perfectly mirror-inverse to the officer\'s own movement (phase correlation = -1). GPS: indoor, hallway, residential, or hotel (typical mirror locations). No second person detected in the non-mirror region of the frame.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'In a dark or dimly lit hallway, a full-length mirror shows the officer\'s own reflection, complete with duty belt, holster, and weapon. The CV model sees "a person holding what appears to be a firearm" — which is accurate, but it is the officer themselves. The discriminating detection: the reflected "suspect\'s" movements are perfectly mirror-inverse to the officer (temporal motion phase-correlation of -1.0 between the two detected human poses). This is physically impossible for a real second person who is not deliberately mimicking. When mirror-inverse motion correlation is detected, the CV threat is suppressed and classified as reflective surface FP.',
-        defaultActive: false,
-    },
-    crowdPanicApp: {
-        label: 'Crowd Panic App / Mass-False-Trigger FP', category: 'network',
-        detection: 'System receives >10 automated dispatch pings from a single GPS area within a 30-second window. Pings are from consumer panic/safety apps (not BWC devices). No corroborating BWC audio or video from police units at the location. No corroborating calls from 911 dispatch. No officer-reported threat at the scene.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: [],
-        education: 'Consumer panic apps (SafeTrek, Noonlight, connected protest apps) can be triggered by large groups simultaneously. 50 protest attendees activating their panic app at the same moment generates 50 automated location pings, which a naive aggregation system could interpret as a mass-casualty event. The key discriminating factor: authentic mass-casualty events are corroborated by at least one of: (1) BWC audio detection from an officer at the scene, (2) 911 call influx, (3) CAD officer-reported distress. A cluster of consumer app pings with zero corroborating officer-side signals is classified as a coordinated consumer app event, not a mass-casualty incident. The dispatcher is notified of the ping cluster with a "consumer app — verify before dispatch" note.',
-        defaultActive: false,
-    },
-
-    // ════════ BATCH 5: ADVERSARIAL, TACTICAL, & COMPLIANCE ════════
-
-    // ── Adversarial & Intentional Manipulation ──
-    externalVoiceTrigger: {
-        label: 'Audio Injection / Swatting FP', category: 'network',
-        detection: 'Loud "Officer Down!" or "Help!" keyword detected, but Speaker ID / Voice Biometrics profile does not match the BWC wearer or any registered BT Mesh partner.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 25 },
-        suppressModels: [],
-        education: 'Suspects may attempt to trigger a massive police response by playing high-fidelity recordings of police distress calls from a Bluetooth speaker during an ambush. The system uses Speaker ID to cross-reference the distress shout against the officer\'s enrolled voiceprint and the voiceprints of known partners on the mesh. If the voice is external, it is flagged as an EXTERNAL_VOICE_TRIGGER and treated as a Priority 2 intelligence event rather than an immediate Priority 1 auto-dispatch, preventing the dispatcher from sending units blindly into a trap.',
-        defaultActive: false,
-    },
-    audioMaskingDetection: {
-        label: 'Acoustic Jamming / Masking', category: 'environmental',
-        detection: 'Persistent broadband white noise or heavy metal music played at >90dB specifically to oversaturate the BWC microphone payload, clipping the audio sensor.',
-        thresholdAdjust: { gunshot: 0, struggle: 0, keyword: 0 },
-        suppressModels: ['gunshot', 'struggle', 'keyword'],
-        education: 'Adversaries may use noise generators or loud music to "blind" acoustic sensors. When the YAMNet layer detects intentional audio masking (sustained >90dB broadband noise with zero dynamic range), it inhibits audio-based dispatch entirely and alerts the officer via haptic feedback that "Audio sensors are obstructed—Visual-only mode active." This forces the system to rely entirely on Computer Vision (weapon detection) and the IMU (struggle telemetry).',
-        defaultActive: false,
-    },
-
-    // ── High-Velocity Motion & Physics ──
     vehicleBailoutLogic: {
         label: 'Vehicle Bail-Out / Foot Pursuit', category: 'physiological',
-        detection: 'CAN_BUS telemetry indicates the patrol vehicle is still in "Drive" or moving >10mph, while the officer\'s BWC IMU registers a violent >4G lateral exit spike followed by rapid foot-movement cadence.',
-        thresholdAdjust: { gunshot: 0, struggle: -20, keyword: -15 },
-        suppressModels: [], // Enhances dispatch!
-        education: 'When an officer bails out of a moving vehicle to chase a suspect, the violent physical action and slamming door routinely mimic a struggle or a percussive gunshot. However, this specific sequence—vehicle in drive, explosive exit, immediate foot strike—is a 99% indicator of a highly volatile, high-stress emergency. Instead of suppressing the alert, this physics-based sequence drastically LOWERS the dispatch threshold for struggle and keywords, proactively queuing backup for the foot pursuit.',
-        defaultActive: false,
-    },
-
-    // ── System & Legal Compliance ──
-    sensitiveLocationMasking: {
-        label: 'Privacy Geofence (Hospital/School)', category: 'physiological',
-        detection: 'GPS correlates with a known sensitive location (Hospital ER, religious site, school) where continuous video recording may violate department policy or HIPAA.',
-        thresholdAdjust: { gunshot: 15, struggle: 15, keyword: 20 },
-        suppressModels: [], // Redacts video stream
-        education: 'Officers frequently operate in sensitive locations where live-streaming BWC video to dispatch without a warrant or active threat is a policy violation. When entering a SENSITIVE_LOCATION geofence, Vantus automatically redacts/blurs the live video feed visible to the dispatcher. The AI continues to listen for "Shots Fired" or monitor the IMU for struggles. The video un-blurs ONLY if a lethal threat (fusion score > dispatch threshold) is confirmed, balancing privacy with immediate officer safety.',
-        defaultActive: false,
-    },
-    spatialClusterEngine: {
-        label: 'Fleet-Wide Mass Event Correlation', category: 'network',
-        detection: '15+ BWC units within a 2-block radius simultaneously trigger acoustic alerts (e.g., an explosion, gas leak hiss, or crowd panic) within a 5-second window.',
-        thresholdAdjust: { gunshot: 5, struggle: 5, keyword: 5 },
+        detection: 'CAN_BUS telemetry (vehicle in drive) + violent >4G lateral exit spike.',
+        thresholdAdjust: { struggle: -20, keyword: -15 },
         suppressModels: [],
-        education: 'In a mass-casualty event or industrial accident (e.g., a massive explosion), every BWC in the vicinity will trigger a separate "Officer in Distress" or "Gunshot" alert. Without spatial clustering, a single explosion would flood the CAD screen with 15 individual, uncoordinated Priority 1 alerts. The Spatial Cluster Engine aggregates these simultaneous, geographically concentrated triggers and rolls them up into a single, massive "Major Incident / Mass Event" alert polygon on the dispatcher\'s map.',
-        defaultActive: false,
-    },
-    stealthModeSuppression: {
-        label: 'Tactical Silence / Search Mode', category: 'temporal',
-        detection: 'Officer is dispatched on a CAD "Search Warrant" or "Building Clearance" code where stealth is required.',
-        thresholdAdjust: { gunshot: 10, struggle: 10, keyword: 10 },
-        suppressModels: [], // AI still works, but BWC is silent
-        education: 'During tactical operations (clearing a dark building, executing a warrant), an officer might whisper "Gun" to a partner to indicate a found weapon. If the AI detects this and sends a standard "Alert Confirmed" haptic vibration or audible chirp back to the BWC, it could immediately compromise the officer\'s position to the suspect. When CAD flags STEALTH_MODE, all haptic and audio feedback from the BWC to the officer is strictly killed. The AI silently "whispers" its telemetry to Dispatch without ever making the officer a target.',
+        education: 'Physics sequence drastically LOWERS thresholds for immediate backup.',
         defaultActive: false,
     }
 };

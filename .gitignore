@@ -17,6 +17,8 @@
 !.gitignore
 !README.md
 !README_VANTUS.md
+!docs/
+!docs/**
 !package.json
 !vercel.json
 !.github/**
