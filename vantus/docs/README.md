@@ -4,7 +4,18 @@ This directory contains essential documentation for the Vantus AI Partner system
 
 ## Required Reading Before Pilots
 
-### 1. Signal Generation & Limitations
+### 1. Operational Roadmap (Phases)
+**File:** `OPERATIONAL_ROADMAP.md`
+
+**Who should read:** Stakeholders, project leads, technical leads
+
+**Contents:**
+- Demo Mode (Simulation)
+- Phase 1 (Post-Shift Audit)
+- Phase 2 (Live Field Pilot)
+- Integration & Accuracy roadmap
+
+### 2. Signal Generation & Limitations
 **File:** `SIGNAL_GENERATION_AND_LIMITATIONS.md`
 
 **Who should read:** Legal teams, risk management, supervisors, administrators
@@ -26,6 +37,7 @@ This directory contains essential documentation for the Vantus AI Partner system
 ```
 docs/
 ├── README.md (this file)
+├── OPERATIONAL_ROADMAP.md (Phases & Goals)
 ├── SIGNAL_GENERATION_AND_LIMITATIONS.md (Model Governance)
 └── [Future documentation]
     ├── USER_MANUAL_SUPERVISOR.md

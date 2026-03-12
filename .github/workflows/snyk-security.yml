@@ -12,9 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/node@master
+        uses: snyk/actions/node@v1
         continue-on-error: true # To prevent breaking the build while in pilot phase
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
+
+
