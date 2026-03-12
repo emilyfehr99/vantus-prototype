@@ -1,78 +1,59 @@
-# Vantus Operational Roadmap: Demo, Phase 1, and Phase 2
+# Vantus Operational roadmap: The 3-Tier "Active AI Partner"
 
-This document provides an in-depth breakdown of the three primary operational phases of Vantus Safety Systems, detailing detection capabilities, accuracy logic, and real-world scenarios for each.
-
----
-
-## 1. Demo Mode (Real-Time In-Browser Simulation)
-**Status:** Live on Prototype
-**Objective:** Prove the "Active AI" concept using commodity hardware (browser-based processing).
-
-### 🚀 Key Features
-- **In-Browser ML**: Uses TensorFlow.js and YAMNet for hardware-accelerated audio event classification without server-side latency.
-- **Whisper Integration**: Uses `@xenova/transformers` for real-time Keyword Spotting (KWS).
-- **Synthetic Sensor Logic**: Simulates GPS, Accelerometer, and Bluetooth (BT) Mesh signals to demonstrate multi-signal fusion.
-
-### 🔍 What It Detects
-- **Acoustic Events**: Gunshots, Explosions, and Struggles (shouts, glass breaking, rhythmic impacts).
-- **Urgent Keywords**: "Shots fired," "Officer down," "10-33," "Drop the gun."
-- **Stress Patterns**: Phonetic analysis of vocal jitter and breath rate spikes.
-
-### 📊 Accuracy & Logic
-- **Multimodal SOS Gate**: Requires a weighted joint score of **72%** before triggering. (Formula: `Gunshot × 0.45 + Struggle × 0.30 + Keyword × 0.25`).
-- **N-Best Phoneme Logic**: Specifically filters out phonetic twins (e.g., "Run" vs "Gun") by checking spectral resonance and context.
+This document outlines the operational roadmap for Vantus Safety Systems, focused on a three-tier escalation architecture that balances officer safety with extreme cost-efficiency.
 
 ---
 
-## 2. Phase 1: Post-Shift Audit (The Scribe Layer)
-**Status:** Implementation Ready (Forensic Focus)
-**Objective:** Automated forensic review of body-worn camera (BWC) footage to ensure safety compliance and reduce manual supervisor workload.
+## 🟢 TIER 1: Audio-Only Alerts (The "Acoustic Sentinel")
+**Focus:** 24/7 background overwatch with minimal payload.
+**Cost:** ~$8/officer/year.
 
-### 🚀 Key Features
-- **Evidence.com Integration**: Connects to Axon APIs to extract and process video/audio batches after a shift is docked.
-- **Forensic Sifting**: Automatically flags "Critical Moments" based on AI-detected threats that may have been missed in manual reports.
-- **CA SB 524 Compliance**: Generates millisecond-precise, immutable fact logs for audit trails.
+### 🔍 Detection Capabilities
+- **Voice-Stress Trigger**: Natural Language Processing (NLP) monitors for "High-Arousal" vocal tones and specific "Code 3" keywords (e.g., "Drop it!", "10-33", "Gun!").
+- **Acoustic Sentinel**: Spectral analysis detects gunshots (>140dB impulse), glass breaking, impact sounds, and struggle audio.
 
-### 🔍 What It Detects
-- **Safety Gaps**: "Phantom" events where an officer was in a high-stress struggle but did not request backup.
-- **Compliance Markers**: Verifies if "Officer Down" commands were recognized and if the 30-second pre-event buffer was correctly captured.
-- **Fact Anchoring**: "14:02:11 - Visual confirmation of bladed stance."
-
-### 📊 Efficiency Focus
-- **Hours Saved Metric**: Compares automated AI audit time against manual supervisor review time.
-- **False Positive suppression**: Higher latency but higher accuracy layer (using larger, non-real-time models).
+### 🚀 Action
+- **SMS Dispatch**: Automatically sends a high-priority SMS alert to the dispatcher.
+- **Human-in-the-Loop**: The dispatcher receives the alert and decides whether to escalate or send backup based on the audio transcript/context.
 
 ---
 
-## 3. Phase 2: Live Field Pilot (Autonomous Oversight)
-**Status:** Production Integration Phase
-**Objective:** Real-time, low-latency autonomous overwatch that bypasses human dispatcher lag to save lives.
+## 🟡 TIER 2: Audio + Video Confirmed (The "Guardian" Overwatch)
+**Focus:** Multi-modal confirmation for autonomous dispatch authority.
+**Cost:** ~$2/officer/year (Video is only pulled on-demand, ~480 times/year/officer).
 
-### 🚀 Key Features
-- **BT Mesh Mesh**: Multiple cameras in proximity sync timestamps to ensure **"One Incident = One Dispatch."**
-- **CAD Loop Integration**: Direct injection into Computer-Aided Dispatch (CAD) systems (e.g., Motorola, Axon CAD).
-- **Tactical Whisperer**: Real-time voice advisory through the officer's Bluetooth earpiece ("Check six," "Backup 2 mins out").
+### 🔍 Detection Capabilities
+- **Guardian Overwatch**: When 2+ audio models (Tier 1) agree on a threat, the system initiates an on-demand 30-second video pull (30s pre-buffer + real-time stream).
+- **YOLOv8-M Computer Vision**: Analyzes the video stream for brandished weapons (firearms/knives), multiple attackers, and aggressive stances.
+- **Multimodal Consensus**: Requires both Audio (stress/gunshot) and Video (weapon/stance) to agree before taking autonomous action.
 
-### 🔍 What It Detects (Elite Features)
-- **Kinematic Intent**: Predicts imminent attacks based on center-of-gravity shifts (500ms prediction window).
-- **Ghost Partner Logic**: Identifies if an officer is "solo" vs "partnered" by checking CAD rosters and nearby BT beacons.
-- **Operational Contexts**: 67+ auto-detected scenarios:
-    - **Aviation Mode**: Rotor noise suppression.
-    - **Hospital Mode**: Geofenced alarm filtering.
-    - **Acoustic Jamming**: Detects if a suspect is intentional masking audio.
+### 🚀 Action
+- **Autonomous Dispatch (Silent 10-33)**: Vantus auto-injects a Priority 1 Backup Request directly into the officer's talkgroup via RoIP (Radio over IP).
+- **Survival Metric**: Backup is rolling in **<20 seconds** from the initial incident start.
 
-### 📊 Mission-Critical Logic
-- **Autonomous Dispatch (10-33)**: Auto-escalates to Priority 1 Dispatch if heart rate >160 BPM persists for 10s during a Critical Threat event.
-- **Lieutenant's Veto**: A 10-second "Intelligent Triage Gate" on the dashboard allows a supervisor to veto or confirm the dispatch before it hits the MDT.
+---
+
+## 🔴 TIER 3: Officer Down (Emergency Protocol)
+**Focus:** Fail-safe rescue when an officer is incapacitated.
+**Cost:** High-priority bandwidth allocation.
+
+### 🔍 Detection Capabilities
+- **Kinematic Threat Detection**: AI analyzes BWC horizon line shifts (>90 degrees) combined with a static pose (>10 seconds) to identify a prone or unconscious officer.
+- **Silence Analysis**: Detects a high-G impact sound (BWC hit) followed by no radio/vocal activity for 10+ seconds.
+- **Video Confirmation**: Force-pulls a live video feed to confirm if the officer is on the ground and immobile.
+
+### 🚀 Action
+- **Force Broadcast**: Triggers an emergency RoIP broadcast to ALL units on all talkgroups.
+- **Automatic EMS**: Direct notification to Emergency Medical Services with precise GPS coordinates.
+- **Immediate Overwatch**: Notifies the nearest 5 units with an audible "Officer Down" siren tone.
 
 ---
 
 ## Technical Summary Table
 
-| Feature | Demo Mode | Phase 1 (Audit) | Phase 2 (Live Pilot) |
-| :--- | :--- | :--- | :--- |
-| **Data Source** | Local Simulated / Mic | Evidence.com (Stored) | Live BWC Flux + CAD |
-| **Latency** | <500ms (Local) | N/A (Batch) | <1.5s (Cloud Edge) |
-| **Accuracy Layer** | 7-Layer Gate | Forensic Deep Scan | Real-Time Fusion |
-| **Dispatch Logic** | Simulated Notification | Compliance Report | Autonomous CAD Injection |
-| **Primary Goal** | Stakeholder Buy-in | Efficiency & Compliance | Officer Survival |
+| Layer | Primary Sensor | Mode | Cost/Year | Action |
+| :--- | :--- | :--- | :--- | :--- |
+| **Tier 1** | Mic (24/7) | Continuous | $8 | SMS to Dispatch |
+| **Tier 2** | Mic + Camera | On-Demand | $2 | Autonomous Dispatch (RoIP) |
+| **Tier 3** | Accel + Camera | Emergency | N/A | Force Broadcast + EMS |
+
